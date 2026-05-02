@@ -4,9 +4,12 @@ import { ConfigService } from '@nestjs/config';
 export const ClerkClientProvider = {
   provide: 'ClerkClient',
   useFactory: (configService: ConfigService) => {
+    const publishableKey = configService.getOrThrow<string>('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY');
+    const secretKey = configService.getOrThrow<string>('CLERK_SECRET_KEY');
+
     return createClerkClient({
-      publishableKey: configService.get<string>('CLERK_PUBLISHABLE_KEY'),
-      secretKey: configService.get<string>('CLERK_SECRET_KEY'),
+      publishableKey,
+      secretKey,
     });
   },
   inject: [ConfigService],

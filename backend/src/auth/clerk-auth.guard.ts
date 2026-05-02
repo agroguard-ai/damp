@@ -21,7 +21,7 @@ export class ClerkAuthGuard implements CanActivate {
     }
 
     try {
-      const secretKey = this.configService.get<string>('CLERK_SECRET_KEY');
+      const secretKey = this.configService.getOrThrow<string>('CLERK_SECRET_KEY');
       const tokenPayload = await verifyToken(bearerToken, {
         secretKey,
       });
