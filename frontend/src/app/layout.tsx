@@ -1,5 +1,5 @@
 import { ClerkProvider } from '@clerk/nextjs';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, DM_Sans } from 'next/font/google';
 import '@/app/globals.css';
 
 const inter = Inter({
@@ -8,8 +8,8 @@ const inter = Inter({
   display: 'swap',
 });
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: '--font-jetbrains-mono',
+const dmSans = DM_Sans({
+  variable: '--font-dm-sans',
   subsets: ['latin'],
   display: 'swap',
 });
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`${inter.variable} ${dmSans.variable}`}>
       <body className="antialiased">
         <ClerkProvider afterSignOutUrl="/">{children}</ClerkProvider>
       </body>
