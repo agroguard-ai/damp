@@ -38,6 +38,11 @@ export class WebhookService {
         const id = event.data.id;
         const emailAddress = event.data.email_addresses?.[0]?.email_address;
 
+        if (!id || !emailAddress) {
+          this.logger.error('Invalid user data');
+          break;
+        }
+
         await this.prisma.user.upsert({
           where: { clerkId: id },
           update: { email: emailAddress },
