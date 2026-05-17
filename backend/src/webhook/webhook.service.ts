@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { Webhook } from 'svix';
+import { WebhookEvent } from '@clerk/backend';
 
 @Injectable()
 export class WebhookService {
@@ -18,25 +17,25 @@ export class WebhookService {
     const secret = this.configService.getOrThrow<string>('CLERK_WEBHOOK_SECRET');
 
     const webhook = new Webhook(secret);
-    let event: any;
+    let event: WebhookEvent;
 
     try {
       event = webhook.verify(payload.toString(), {
         'svix-id': headers['svix-id'],
         'svix-timestamp': headers['svix-timestamp'],
         'svix-signature': headers['svix-signature'],
-      });
+      }) as WebhookEvent;
     } catch (error: any) {
       this.logger.error('Error verifying webhook:', error);
       throw new BadRequestException('Invalid signature');
     }
 
-    const { id } = event.data;
     const eventType = event.type;
 
     switch (eventType) {
       case 'user.created':
       case 'user.updated': {
+        const id = event.data.id;
         const emailAddress = event.data.email_addresses?.[0]?.email_address;
 
         await this.prisma.user.upsert({
@@ -51,7 +50,9 @@ export class WebhookService {
         break;
       }
 
-      case 'user.deleted':
+      case 'user.deleted': {
+        const id = event.data.id;
+        if (!id) break;
         try {
           await this.prisma.user.delete({
             where: { clerkId: id },
@@ -60,6 +61,7 @@ export class WebhookService {
           this.logger.error('Error deleting user:', error);
         }
         break;
+      }
     }
   }
 }
