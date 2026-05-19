@@ -12,10 +12,6 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  ADMIN
-}
-
 enum Sex {
   MALE
   FEMALE
@@ -29,6 +25,16 @@ enum MedicalEventType {
   VACCINATION
   TREATMENT
   SURGERY
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  farmUsers FarmUser[]
+
+  @@map("role")
 }
 
 model User {
@@ -62,11 +68,13 @@ model FarmUser {
   id     String @id @default(uuid())
   farmId String @map("farm_id")
   userId String @map("user_id")
-  role   Role?
+  roleId String @map("role_id")
 
   farm Farm @relation(fields: [farmId], references: [id])
   user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
 
+  @@unique([farmId, userId])
   @@map("farm_user")
 }
 
