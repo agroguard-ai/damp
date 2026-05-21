@@ -44,10 +44,10 @@ export class WebhookService {
         }
 
         await this.prisma.user.upsert({
-          where: { clerk_id: id },
+          where: { clerkId: id },
           update: { email: emailAddress },
           create: {
-            clerk_id: id,
+            clerkId: id,
             email: emailAddress,
           },
         });
@@ -60,7 +60,7 @@ export class WebhookService {
         if (!id) break;
         try {
           await this.prisma.user.delete({
-            where: { clerk_id: id },
+            where: { clerkId: id },
           });
         } catch (error: any) {
           this.logger.error('Error deleting user:', error);
