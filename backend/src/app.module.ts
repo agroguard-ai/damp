@@ -5,9 +5,18 @@ import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { AuthModule } from '@/auth/auth.module';
 import { WebhookModule } from '@/webhook/webhook.module';
+import { AnimalsModule } from './animals/animals.module';
+import { FarmsModule } from './farms/farms.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule, AuthModule, WebhookModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    AuthModule,
+    WebhookModule,
+    AnimalsModule,
+    FarmsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

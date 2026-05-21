@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${dmSans.variable}`}>
-      <body className="antialiased">
+    <html lang="es" className={`${inter.variable} ${dmSans.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         <ClerkProvider afterSignOutUrl="/">{children}</ClerkProvider>
       </body>
     </html>
