@@ -67,13 +67,81 @@ export class AnimalsService {
     };
   }
 
-  findAll() {
+  async findAll(query: {
+    farmId?: string;
+    sectorId?: string;
+    animalType?: string;
+    collarStatus?: string;
+    healthStatus?: string;
+  }) {
+    const { farmId, sectorId, animalType, collarStatus, healthStatus } = query;
+    const whereClause: any = {};
+
+    if (farmId) {
+      whereClause.farmId = farmId;
+    }
+
+    if (animalType) {
+      whereClause.animalType = animalType;
+    }
+
+    if (sectorId) {
+      whereClause.animalGeofences = {
+        some: {
+          geofence: {
+            sectorId: sectorId,
+          },
+          endAt: null,
+        },
+      };
+    }
+
+    if (collarStatus) {
+      whereClause.animalCollars = {
+        some: {
+          collar: {
+            status: collarStatus,
+          },
+          endAt: null,
+        },
+      };
+    }
+
+    if (healthStatus) {
+      // Filtrar por eventos médicos activos o tipos de eventos
+      if (['TREATMENT', 'VACCINATION', 'SURGERY'].includes(healthStatus)) {
+        whereClause.medicalEvents = {
+          some: {
+            type: healthStatus,
+          },
+        };
+      }
+    }
+
     return this.prisma.animal.findMany({
+      where: whereClause,
       include: {
         animalCollars: {
-          include: { collar: true }
-        }
-      }
+          where: { endAt: null },
+          include: {
+            collar: true,
+          },
+        },
+        animalGeofences: {
+          where: { endAt: null },
+          include: {
+            geofence: {
+              include: {
+                sector: true,
+              },
+            },
+          },
+        },
+        medicalEvents: {
+          orderBy: { occurredAt: 'desc' },
+          take: 1,
+        },
+      },
     });
   }
 
@@ -83,6 +151,16 @@ export class AnimalsService {
       include: {
         animalCollars: {
           include: { collar: true }
+        },
+        animalGeofences: {
+          include: {
+            geofence: {
+              include: { sector: true }
+            }
+          }
+        },
+        medicalEvents: {
+          orderBy: { occurredAt: 'desc' }
         }
       }
     });
