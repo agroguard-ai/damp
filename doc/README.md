@@ -1,6 +1,8 @@
 # Guía de Redacción de Documentación del Sistema DAMP
 
-Esta carpeta contiene la documentación técnica del proyecto DAMP, organizada por Epics. Para mantener la consistencia en el repositorio, todos los miembros del equipo (Santino, Matías y Tomás) deben seguir las siguientes reglas para la creación y redacción de documentos.
+Esta carpeta contiene la documentación técnica del proyecto DAMP, organizada por Epics. 
+
+El objetivo principal de estos archivos **no es duplicar la información de Taiga** (las descripciones de las Epics y User Stories ya viven allí). Su propósito es **documentar qué y cómo se resolvió técnicamente la Epic**, dejando asentado el contrato de integración y las instrucciones claras de cómo conectarse o consumir esta parte del sistema. Esto facilita que tanto tus compañeros de equipo como cualquier IA asistente puedan entender el trabajo realizado y acoplarse a él de manera rápida sin tener que inspeccionar todo el código fuente.
 
 ---
 
@@ -14,50 +16,62 @@ Cada Epic debe documentarse en su propio archivo Markdown (`.md`) dentro de esta
 1. **Minúsculas**: Todo el nombre del archivo debe estar en minúsculas.
 2. **Sin caracteres especiales**: No usar acentos, eñes, corchetes `[]` ni paréntesis `()`.
 3. **Separadores**: Usar guiones medios `-` en lugar de espacios.
-4. **Autor**: El nombre del autor al final del archivo en minúsculas (`santino`, `matias` o `tomas`).
+4. **Autor**: El nombre del desarrollador que la resolvió al final (`santino`, `matias` o `tomas`).
 
 ### Ejemplos prácticos:
-* Para la Epic *2 - Gestión de Animales [ABM]* desarrollada por **Santino**:
-  `epic-2-gestion-animales-abm-santino.md`
-* Para una Epic *3 - Alertas Automáticas* desarrollada por **Tomás**:
-  `epic-3-alertas-automaticas-tomas.md`
-* Para una Epic *4 - Geolocalización y Cerco Virtual* desarrollada por **Matías**:
-  `epic-4-geolocalizacion-cerco-virtual-matias.md`
+* `epic-2-gestion-animales-abm-santino.md`
+* `epic-3-alertas-automaticas-tomas.md`
 
 ---
 
 ## 2. Estructura del Documento de Epic
 
-Cada archivo de Epic debe estructurarse con las siguientes secciones:
+Cada archivo de Epic debe estructurarse obligatoriamente bajo las siguientes secciones técnicas:
 
 ```markdown
-# Epic [Nro]: [Nombre Oficial de la Epic]
+# Epic [Nro]: [Nombre de la Epic]
 
 * **Autor**: [Nombre del Desarrollador]
-* **Fecha de Creación**: [DD/MM/AAAA]
-* **Estado**: [En Progreso / Completado]
+* **Fecha de Finalización**: [DD/MM/AAAA]
 
-## 1. Descripción General
-Breve resumen de qué resuelve esta Epic y cuál es su objetivo dentro de la plataforma DAMP.
+## 1. Resumen de la Solución Técnica
+Explicación concisa del enfoque técnico elegido para resolver esta Epic. Qué patrones se usaron y qué cambios estructurales se hicieron en la base de datos (Prisma), Backend (NestJS) y Frontend (Next.js).
 
-## 2. Historias de Usuario (US) Relacionadas
-Detalle de las historias de usuario que componen la Epic.
-* **US X.Y**: [Título de la US]
-  * **Descripción**: Como [rol], quiero [acción] para [beneficio].
-  * **Criterios de Aceptación**: [Lista de criterios]
+## 2. Contrato de Integración y Consumo (Cómo Conectarse)
+*Sección crítica para el equipo.* Detallar cómo interactuar con esta parte del sistema.
+* **Endpoints / API**: 
+  * `POST /animals` - Registra un animal y le vincula un collar.
+    * **Request Body (JSON)**:
+      ```json
+      {
+        "farmId": "string (UUID)",
+        "tag": "string (opcional)",
+        "breed": "string",
+        "weightKg": "number",
+        "ageMonths": "number",
+        "collarMacAddress": "string (opcional)"
+      }
+      ```
+    * **Response (JSON)**:
+      ```json
+      {
+        "message": "Animal creado exitosamente",
+        "animal": { "id": "uuid", "farmId": "uuid", ... },
+        "collarLinked": true
+      }
+      ```
+* **Eventos / Sockets (si aplica)**: Describir qué eventos emite o escucha.
+* **Relaciones en Base de Datos**: Cómo impacta en otras tablas y qué campos usar como llave foránea.
 
-## 3. Arquitectura y Stack Utilizado
-Explicación técnica de cómo se estructuró la solución (ej. si se crearon nuevos módulos en NestJS, nuevas vistas en Next.js, cambios en el esquema de la base de datos, etc.).
+## 3. Mapa del Código (Dónde buscar)
+Rutas de los archivos clave creados o modificados para facilitar la navegación rápida en el código:
+* **Modelos DB**: `backend/prisma/schema.prisma` (Tablas: `Animal`, `Collar`, `AnimalCollar`)
+* **Controlador Backend**: `backend/src/animals/animals.controller.ts`
+* **Lógica / Servicios**: `backend/src/animals/animals.service.ts`
+* **Componentes Frontend / Páginas**: `frontend/src/app/animals/new/page.tsx`
 
-## 4. Archivos Creados o Modificados
-Lista de los archivos principales involucrados en la implementación de esta Epic.
-* **Backend**:
-  * `backend/src/...`
-* **Frontend**:
-  * `frontend/src/...`
-
-## 5. Testing y Seguridad
-Cómo probar los desarrollos de esta Epic y qué medidas de seguridad se implementaron (ej. validaciones de DTO, CORS, autenticación JWT, etc.).
+## 4. Instrucciones de Prueba Rápida
+Comandos, payloads de prueba o pasos mínimos en la UI para verificar que el módulo funciona.
 ```
 
 ---
