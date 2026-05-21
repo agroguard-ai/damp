@@ -27,9 +27,9 @@ export default function NewFarmPage() {
     try {
       const payload = {
         name: formData.name,
-        address: formData.address || undefined,
-        province: formData.province || undefined,
-        totalAreaHa: formData.totalAreaHa ? Number(formData.totalAreaHa) : undefined,
+        address: formData.address,
+        province: formData.province,
+        totalAreaHa: Number(formData.totalAreaHa),
       };
 
       const res = await fetch("http://localhost:3001/farms", {
@@ -93,6 +93,7 @@ export default function NewFarmPage() {
                 Dirección / Ubicación
               </label>
               <input
+                required
                 type="text"
                 name="address"
                 value={formData.address}
@@ -107,6 +108,7 @@ export default function NewFarmPage() {
                 Provincia
               </label>
               <input
+                required
                 type="text"
                 name="province"
                 value={formData.province}
@@ -121,6 +123,7 @@ export default function NewFarmPage() {
                 Superficie Total (Hectáreas)
               </label>
               <input
+                required
                 type="number"
                 step="0.1"
                 name="totalAreaHa"

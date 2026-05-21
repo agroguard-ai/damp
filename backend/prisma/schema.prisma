@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -12,8 +7,169 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  ADMIN
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  clerk_id  String     @unique
+  farmUsers FarmUser[]
+
+  @@map("users")
+}
+
+model Farm {
+  id          String     @id @default(uuid())
+  name        String
+  address     String
+  province    String
+  totalAreaHa Float      @map("total_area_ha")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  animals     Animal[]
+  farmUsers   FarmUser[]
+  sectors     Sector[]
+
+  @@map("farm")
+}
+
+model FarmUser {
+  id      String @id @default(uuid())
+  farmId  String @map("farm_id")
+  userId  String @map("user_id")
+  role_id String
+  farm    Farm   @relation(fields: [farmId], references: [id])
+  role    role   @relation(fields: [role_id], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([farmId, userId])
+  @@map("farm_user")
+}
+
+model Sector {
+  id          String                   @id @default(uuid())
+  farmId      String                   @map("farm_id")
+  name        String?
+  description String?
+  areaHa      Float?                   @map("area_ha")
+  geometry    Unsupported("geometry")?
+  createdAt   DateTime                 @default(now()) @map("created_at")
+  updatedAt   DateTime                 @updatedAt @map("updated_at")
+  geofences   Geofence[]
+  farm        Farm                     @relation(fields: [farmId], references: [id])
+
+  @@map("sector")
+}
+
+model Geofence {
+  id              String                   @id @default(uuid())
+  sectorId        String                   @map("sector_id")
+  name            String?
+  geometry        Unsupported("geometry")?
+  active          Boolean?
+  activatedAt     DateTime?                @map("activated_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+  animalGeofences AnimalGeofence[]
+  sector          Sector                   @relation(fields: [sectorId], references: [id])
+
+  @@map("geofence")
+}
+
+model Animal {
+  id              String            @id @default(uuid())
+  farmId          String            @map("farm_id")
+  tag             String?
+  sex             Sex?
+  birthDate       DateTime?         @map("birth_date")
+  breed           String?
+  weightKg        Float?            @map("weight_kg")
+  animalType      AnimalType?       @map("animal_type")
+  status          String            @default("ACTIVE")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  farm            Farm              @relation(fields: [farmId], references: [id])
+  animalCollars   AnimalCollar[]
+  animalGeofences AnimalGeofence[]
+  medicalEvents   MedicalEvent[]
+  telemetry       TelemetryRecord[]
+
+  @@map("animal")
+}
+
+model Collar {
+  id              String            @id @default(uuid())
+  serialNumber    String?           @unique @map("serial_number")
+  status          String?
+  firmwareVersion String?           @map("firmware_version")
+  animalCollars   AnimalCollar[]
+  telemetry       TelemetryRecord[]
+
+  @@map("collar")
+}
+
+model AnimalCollar {
+  id       String    @id @default(uuid())
+  collarId String    @map("collar_id")
+  animalId String    @map("animal_id")
+  startAt  DateTime  @map("start_at")
+  endAt    DateTime? @map("end_at")
+  animal   Animal    @relation(fields: [animalId], references: [id])
+  collar   Collar    @relation(fields: [collarId], references: [id])
+
+  @@map("animal_collar")
+}
+
+model MedicalEvent {
+  id          String            @id @default(uuid())
+  animalId    String            @map("animal_id")
+  type        MedicalEventType?
+  description String?
+  occurredAt  DateTime          @map("occurred_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  animal      Animal            @relation(fields: [animalId], references: [id])
+
+  @@map("medical_event")
+}
+
+model TelemetryRecord {
+  id          String                   @id @default(uuid())
+  animalId    String                   @map("animal_id")
+  collarId    String                   @map("collar_id")
+  temperature Float?
+  heartRate   Float?                   @map("heart_rate")
+  location    Unsupported("geometry")?
+  recordedAt  DateTime                 @map("recorded_at")
+  animal      Animal                   @relation(fields: [animalId], references: [id])
+  collar      Collar                   @relation(fields: [collarId], references: [id])
+
+  @@map("telemetry_record")
+}
+
+model AnimalGeofence {
+  id         String    @id @default(uuid())
+  animalId   String    @map("animal_id")
+  geofenceId String    @map("geofence_id")
+  startAt    DateTime  @map("start_at")
+  endAt      DateTime? @map("end_at")
+  animal     Animal    @relation(fields: [animalId], references: [id])
+  geofence   Geofence  @relation(fields: [geofenceId], references: [id])
+
+  @@map("animal_geofence")
+}
+
+model role {
+  id         String     @id
+  name       String     @unique
+  created_at DateTime   @default(now())
+  farm_user  FarmUser[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
 }
 
 enum Sex {
@@ -29,160 +185,4 @@ enum MedicalEventType {
   VACCINATION
   TREATMENT
   SURGERY
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  farmUsers FarmUser[]
-
-  @@map("users")
-}
-
-model Farm {
-  id          String   @id @default(uuid())
-  name        String?
-  address     String?
-  province    String?
-  totalAreaHa Float?   @map("total_area_ha")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  farmUsers FarmUser[]
-  sectors   Sector[]
-  animals   Animal[]
-
-  @@map("farm")
-}
-
-model FarmUser {
-  id     String @id @default(uuid())
-  farmId String @map("farm_id")
-  userId String @map("user_id")
-  role   Role?
-
-  farm Farm @relation(fields: [farmId], references: [id])
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("farm_user")
-}
-
-model Sector {
-  id          String   @id @default(uuid())
-  farmId      String   @map("farm_id")
-  name        String?
-  description String?
-  areaHa      Float?   @map("area_ha")
-  geometry    Unsupported("geometry(Polygon, 4326)")?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  
-  farm      Farm       @relation(fields: [farmId], references: [id])
-  geofences Geofence[]
-
-  @@map("sector")
-}
-
-model Geofence {
-  id          String   @id @default(uuid())
-  sectorId    String   @map("sector_id")
-  name        String?
-  geometry    Unsupported("geometry(Polygon, 4326)")?
-  active      Boolean?
-  activatedAt DateTime? @map("activated_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  sector          Sector           @relation(fields: [sectorId], references: [id])
-  animalGeofences AnimalGeofence[]
-
-  @@map("geofence")
-}
-
-model Animal {
-  id         String      @id @default(uuid())
-  farmId     String      @map("farm_id")
-  tag        String?
-  sex        Sex?
-  birthDate  DateTime?   @map("birth_date")
-  breed      String?
-  weightKg   Float?      @map("weight_kg")
-  animalType AnimalType? @map("animal_type")
-  createdAt  DateTime    @default(now()) @map("created_at")
-
-  farm            Farm              @relation(fields: [farmId], references: [id])
-  medicalEvents   MedicalEvent[]
-  telemetry       TelemetryRecord[]
-  animalGeofences AnimalGeofence[]
-  animalCollars   AnimalCollar[]
-
-  @@map("animal")
-}
-
-model Collar {
-  id              String        @id @default(uuid())
-  serialNumber    String?       @unique @map("serial_number")
-  status          String?
-  firmwareVersion String?       @map("firmware_version")
-
-  telemetry     TelemetryRecord[]
-  animalCollars AnimalCollar[]
-
-  @@map("collar")
-}
-
-model AnimalCollar {
-  id       String    @id @default(uuid())
-  collarId String    @map("collar_id")
-  animalId String    @map("animal_id")
-  startAt  DateTime  @map("start_at")
-  endAt    DateTime? @map("end_at")
-
-  collar Collar @relation(fields: [collarId], references: [id])
-  animal Animal @relation(fields: [animalId], references: [id])
-
-  @@map("animal_collar")
-}
-
-model MedicalEvent {
-  id          String@id @default(uuid())
-  animalId    String            @map("animal_id")
-  type        MedicalEventType?
-  description String?
-  occurredAt  DateTime          @map("occurred_at")
-  createdAt   DateTime          @default(now()) @map("created_at")
-
-  animal Animal @relation(fields: [animalId], references: [id])
-
-  @@map("medical_event")
-}
-
-model TelemetryRecord {
-  id          String   @id @default(uuid())
-  animalId    String   @map("animal_id")
-  collarId    String   @map("collar_id")
-  temperature Float?
-  heartRate   Float?   @map("heart_rate")
-  location    Unsupported("geometry(Polygon, 4326)")?
-  recordedAt  DateTime @map("recorded_at")
-
-  animal Animal @relation(fields: [animalId], references: [id])
-  collar Collar @relation(fields: [collarId], references: [id])
-
-  @@map("telemetry_record")
-}
-
-model AnimalGeofence {
-  id         String    @id @default(uuid()) 
-  animalId   String    @map("animal_id")
-  geofenceId String    @map("geofence_id")
-  startAt    DateTime  @map("start_at")
-  endAt      DateTime? @map("end_at")
-
-  animal   Animal   @relation(fields: [animalId], references: [id])
-  geofence Geofence @relation(fields: [geofenceId], references: [id])
-
-  @@map("animal_geofence")
 }

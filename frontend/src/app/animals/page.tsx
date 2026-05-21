@@ -15,6 +15,7 @@ interface Animal {
   weightKg: number;
   animalType: string;
   birthDate: string;
+  status: string;
   createdAt: string;
   animalCollars: Array<{
     collar: {
@@ -48,6 +49,7 @@ export default function AnimalsListPage() {
     animalType: "",
     collarStatus: "",
     healthStatus: "",
+    status: "ACTIVE", // Default to only showing active ones
   });
 
   // Cargar granjas al inicio
@@ -71,35 +73,58 @@ export default function AnimalsListPage() {
   }, []);
 
   // Cargar animales cuando cambia la granja o los filtros
-  useEffect(() => {
+  const loadAnimals = async () => {
     if (!selectedFarm) return;
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        farmId: selectedFarm,
+        ...(filters.animalType && { animalType: filters.animalType }),
+        ...(filters.collarStatus && { collarStatus: filters.collarStatus }),
+        ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
+        status: filters.status,
+      });
 
-    async function loadAnimals() {
-      setLoading(true);
-      try {
-        const queryParams = new URLSearchParams({
-          farmId: selectedFarm,
-          ...(filters.animalType && { animalType: filters.animalType }),
-          ...(filters.collarStatus && { collarStatus: filters.collarStatus }),
-          ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
-        });
-
-        const res = await fetch(`http://localhost:3001/animals?${queryParams.toString()}`);
-        if (!res.ok) throw new Error("Error al obtener listado de animales");
-        const data = await res.json();
-        setAnimals(data);
-      } catch (error) {
-        console.error("Error cargando animales:", error);
-      } finally {
-        setLoading(false);
-      }
+      const res = await fetch(`http://localhost:3001/animals?${queryParams.toString()}`);
+      if (!res.ok) throw new Error("Error al obtener listado de animales");
+      const data = await res.json();
+      setAnimals(data);
+    } catch (error) {
+      console.error("Error cargando animales:", error);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     loadAnimals();
   }, [selectedFarm, filters]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+  const handleArchive = async (animalId: string, reason: string) => {
+    if (!reason) return;
+    if (!confirm(`¿Estás seguro de archivar este animal como ${reason === "SOLD" ? "Vendido" : "Muerto"}? Se desvincularán sus collares y zonas activas.`)) return;
+
+    try {
+      const res = await fetch(`http://localhost:3001/animals/${animalId}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: reason }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Error al archivar el animal");
+      }
+
+      alert("Animal archivado con éxito");
+      loadAnimals(); // Recargar listado
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   const getHealthBadge = (animal: Animal) => {
@@ -108,6 +133,10 @@ export default function AnimalsListPage() {
 
     switch (latestEvent.type) {
       case "TREATMENT":
+        // Si el evento médico indica que fue archivado
+        if (latestEvent.description.includes("archivado") || latestEvent.description.includes("Baja")) {
+          return { label: "Archivado", class: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30" };
+        }
         return { label: "Bajo Tratamiento", class: "bg-amber-500/10 text-amber-400 border-amber-500/30" };
       case "SURGERY":
         return { label: "Post-Operación", class: "bg-red-500/10 text-red-400 border-red-500/30" };
@@ -161,7 +190,7 @@ export default function AnimalsListPage() {
         ) : (
           <>
             {/* Panel de Filtros */}
-            <div className="bg-zinc-900/30 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row gap-6 items-end">
+            <div className="bg-zinc-900/30 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-xl flex flex-col md:flex-row gap-4 items-end">
               
               {/* Seleccionar Campo */}
               <div className="flex-1 space-y-2 w-full">
@@ -179,8 +208,23 @@ export default function AnimalsListPage() {
                 </select>
               </div>
 
+              {/* Filtro Estado del Animal */}
+              <div className="space-y-2 w-full md:w-40">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Estado Hacienda</label>
+                <select
+                  name="status"
+                  value={filters.status}
+                  onChange={handleFilterChange}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
+                >
+                  <option value="ACTIVE" className="bg-zinc-900">Activos</option>
+                  <option value="SOLD" className="bg-zinc-900">Vendidos (Archivados)</option>
+                  <option value="DEAD" className="bg-zinc-900">Fallecidos (Archivados)</option>
+                </select>
+              </div>
+
               {/* Tipo de Animal */}
-              <div className="space-y-2 w-full md:w-48">
+              <div className="space-y-2 w-full md:w-40">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Tipo</label>
                 <select
                   name="animalType"
@@ -194,7 +238,7 @@ export default function AnimalsListPage() {
               </div>
 
               {/* Estado de Collar */}
-              <div className="space-y-2 w-full md:w-48">
+              <div className="space-y-2 w-full md:w-40">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Estado Collar</label>
                 <select
                   name="collarStatus"
@@ -209,7 +253,7 @@ export default function AnimalsListPage() {
               </div>
 
               {/* Estado de Salud */}
-              <div className="space-y-2 w-full md:w-48">
+              <div className="space-y-2 w-full md:w-40">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Estado de Salud</label>
                 <select
                   name="healthStatus"
@@ -245,59 +289,82 @@ export default function AnimalsListPage() {
                   return (
                     <div
                       key={animal.id}
-                      className="bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 hover:border-green-500/30 transition-all group hover:shadow-lg relative overflow-hidden"
+                      className="bg-zinc-900/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 hover:border-green-500/30 transition-all group hover:shadow-lg relative overflow-hidden flex flex-col justify-between"
                     >
                       {/* Ambient Glow on Card Hover */}
                       <div className="absolute -top-12 -right-12 w-24 h-24 bg-green-500/10 rounded-full blur-2xl group-hover:bg-green-500/20 transition-all pointer-events-none"></div>
 
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                            {animal.animalType} - {animal.breed}
+                      <div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                              {animal.animalType} - {animal.breed}
+                            </span>
+                            <h3 className="text-xl font-bold mt-1 text-white">
+                              {animal.tag || `Caravana (${animal.id.slice(0, 5)})`}
+                            </h3>
+                          </div>
+                          <span className={`px-3 py-1 text-xs font-semibold border rounded-full ${health.class}`}>
+                            {animal.status !== "ACTIVE" ? (animal.status === "SOLD" ? "Vendido" : "Fallecido") : health.label}
                           </span>
-                          <h3 className="text-xl font-bold mt-1 text-white">
-                            {animal.tag || `Caravana (${animal.id.slice(0, 5)})`}
-                          </h3>
                         </div>
-                        <span className={`px-3 py-1 text-xs font-semibold border rounded-full ${health.class}`}>
-                          {health.label}
-                        </span>
+
+                        <div className="space-y-3 border-t border-white/5 pt-4 text-sm text-zinc-400">
+                          <div className="flex justify-between">
+                            <span>Peso</span>
+                            <span className="text-white font-medium">{animal.weightKg} Kg</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Collar Asignado</span>
+                            <span className="text-white font-medium">
+                              {collar ? (
+                                <span className="flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full ${collar.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                  {collar.serialNumber}
+                                </span>
+                              ) : (
+                                "No vinculado"
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Sector / Zona</span>
+                            <span className="text-white font-medium">
+                              {sector?.name || "Sin asignar"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="space-y-3 border-t border-white/5 pt-4 text-sm text-zinc-400">
-                        <div className="flex justify-between">
-                          <span>Peso</span>
-                          <span className="text-white font-medium">{animal.weightKg} Kg</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Collar Asignado</span>
-                          <span className="text-white font-medium">
-                            {collar ? (
-                              <span className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${collar.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                {collar.serialNumber}
-                              </span>
-                            ) : (
-                              "No vinculado"
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Sector / Zona</span>
-                          <span className="text-white font-medium">
-                            {sector?.name || "Sin asignar"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-6 flex justify-between items-center text-xs text-zinc-500 border-t border-white/5 pt-4">
-                        <span>Registrado: {new Date(animal.createdAt).toLocaleDateString()}</span>
-                        <Link
-                          href={`/animals/${animal.id}`}
-                          className="text-green-400 hover:text-green-300 font-semibold flex items-center gap-1 group-hover:underline"
-                        >
-                          Ver Detalles &rarr;
-                        </Link>
+                      <div className="mt-6 border-t border-white/5 pt-4">
+                        {animal.status === "ACTIVE" ? (
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-xs text-zinc-500">
+                              Reg: {new Date(animal.createdAt).toLocaleDateString()}
+                            </span>
+                            
+                            {/* Selector de Baja */}
+                            <select
+                              defaultValue=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleArchive(animal.id, e.target.value);
+                                  e.target.value = ""; // Reset select
+                                }
+                              }}
+                              className="bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500"
+                            >
+                              <option value="" disabled>Dar de Baja...</option>
+                              <option value="SOLD">Vendido</option>
+                              <option value="DEAD">Fallecido</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-1 text-xs text-zinc-500">
+                            <span>Estado: {animal.status === "SOLD" ? "Vendido" : "Fallecido"}</span>
+                            <span>Fecha de Baja: {new Date().toLocaleDateString()} (Historial conservado)</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

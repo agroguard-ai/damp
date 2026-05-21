@@ -2,19 +2,21 @@
 
 * **Autor**: Santino
 * **Fecha de Creación**: 21/05/2026
-* **Estado**: En Progreso
+* **Estado**: Completado
 
 ## 1. Resumen de la Solución Técnica
-Esta Epic se extendió para incluir el ABM básico de Campos/Granjas (`Farms`), ya que es un prerrequisito para asociar y catalogar a los animales de forma limpia. 
+Esta Epic incluye el ABM de Granjas (`Farms`), el registro de animales vinculados a collares y geocercas, la visualización filtrada, y finalmente el archivado preventivo (baja lógica).
 
 En esta fase:
-- **Backend (NestJS + Prisma)**: Se crearon dos módulos principales:
-  - `FarmsModule`: Permite registrar nuevos campos (nombre, superficie, ubicación) y listarlos.
-  - `AnimalsModule`: Permite dar de alta animales asociados a una granja y a un collar físico, así como listar todos los animales con filtros avanzados.
-- **Frontend (Next.js 16 + Tailwind CSS 4)**: Se implementó:
+- **Prisma Schema**: Se agregó el campo `status` (String, por defecto `"ACTIVE"`) al modelo `Animal` para permitir bajas lógicas.
+- **Backend (NestJS + Prisma)**:
+  - `FarmsModule`: Gestión de establecimientos agropecuarios.
+  - `AnimalsModule`: Creación, filtros dinámicos en listado (`GET /animals`), y archivado lógico (`PATCH /animals/:id/archive`).
+- **Frontend (Next.js 16 + Tailwind CSS 4)**:
   - Formulario de Registro de Campos.
-  - Formulario de Registro de Animales (con un dropdown dinámico que consume la API de campos).
-  - Panel de Monitoreo (Listado de animales) con filtros dinámicos (Establecimiento, Tipo de animal, Estado del collar y Estado de salud).
+  - Formulario de Registro de Animales (asociado a dropdown de campos).
+  - Panel de Monitoreo con listados filtrados por Establecimiento, Tipo, Estado del Collar, Estado de Salud y Estado de Hacienda (Activos, Vendidos, Fallecidos).
+  - Control de baja directo desde la Card del animal activo.
 
 ---
 
@@ -26,9 +28,9 @@ En esta fase:
     ```json
     {
       "name": "Estancia Don Silvestre",
-      "address": "Ruta 205 Km 90",      // Opcional
-      "province": "Buenos Aires",        // Opcional
-      "totalAreaHa": 450.5               // Opcional
+      "address": "Ruta 205 Km 90",
+      "province": "Buenos Aires",
+      "totalAreaHa": 450.5
     }
     ```
 * **Listar Campos**: `GET http://localhost:3001/farms`
@@ -38,47 +40,37 @@ En esta fase:
   * **Request Body (JSON)**:
     ```json
     {
-      "farmId": "123e4567-e89b-12d3-a456-426614174000", // Requerido (UUID)
-      "tag": "Caravana 22",                            // Opcional (Identificador)
-      "breed": "Hereford",                             // Requerido
-      "weightKg": 410.2,                               // Requerido
-      "ageMonths": 18,                                 // Requerido
-      "collarMacAddress": "00:1B:44:11:3A:B7"          // Opcional (MAC o Nro. Serie)
-    }
-    ```
-
-### 2.3. Listado de Animales con Filtros (US 2.3)
-* **Endpoint**: `GET http://localhost:3001/animals`
-* **Query Parameters (Opcionales)**:
-  * `farmId`: Filtra por el UUID de la granja (muy recomendado para separar haciendas).
-  * `animalType`: Tipo de animal (ej. `COW`).
-  * `collarStatus`: Estado de conexión del collar (`ACTIVE` o `INACTIVE`).
-  * `healthStatus`: Eventos médicos activos (`HEALTHY`, `TREATMENT`, `SURGERY`, `VACCINATION`).
-* **Respuesta Exitosa (200 OK - JSON)**:
-  Retorna un arreglo de animales con su último collar activo (`animalCollars`), geocercas activas (`animalGeofences`), y su último evento médico (`medicalEvents`):
-  ```json
-  [
-    {
-      "id": "78fa1b98-bc88-43d9-9f77-ee3d45aa9821",
+      "farmId": "123e4567-e89b-12d3-a456-426614174000",
       "tag": "Caravana 22",
       "breed": "Hereford",
       "weightKg": 410.2,
-      "animalType": "COW",
-      "birthDate": "2024-11-21T12:00:00.000Z",
-      "createdAt": "2026-05-21T12:25:00.000Z",
-      "animalCollars": [
-        {
-          "collar": {
-            "serialNumber": "00:1B:44:11:3A:B7",
-            "status": "ACTIVE"
-          }
-        }
-      ],
-      "animalGeofences": [],
-      "medicalEvents": []
+      "ageMonths": 18,
+      "collarMacAddress": "00:1B:44:11:3A:B7"
     }
-  ]
+    ```
+
+### 2.3. Listado de Animales con Filtros (US 2.2)
+* **Endpoint**: `GET http://localhost:3001/animals`
+* **Query Parameters**:
+  * `farmId`: (UUID) Filtra por campo.
+  * `animalType`: (COW, etc.)
+  * `collarStatus`: (`ACTIVE` / `INACTIVE`)
+  * `healthStatus`: (`HEALTHY`, `TREATMENT`, `SURGERY`, `VACCINATION`)
+  * `status`: (`ACTIVE`, `SOLD`, `DEAD`). Por defecto es `ACTIVE`.
+
+### 2.4. Archivar Animal sin Perder Historial (US 2.3)
+* **Endpoint**: `PATCH http://localhost:3001/animals/:id/archive`
+* **Cuerpo de la Petición (Request Body)**:
+  ```json
+  {
+    "status": "SOLD" // O "DEAD"
+  }
   ```
+* **Lógica del Negocio al Archivar**:
+  1. Actualiza el `status` del Animal a `SOLD` o `DEAD`.
+  2. **Libera el Collar físico**: Busca la relación activa en `AnimalCollar` (donde `endAt` sea nulo) y establece `endAt` a la fecha actual para que el dispositivo quede libre para otros animales.
+  3. **Desvincula Geocercas**: Cierra la relación activa en `AnimalGeofence` estableciendo `endAt` a la fecha actual.
+  4. **Log de Historial**: Crea un evento médico genérico (`TREATMENT`) con la descripción de la baja, conservando intacto todo el historial de telemetría y eventos previos.
 
 ---
 
@@ -88,20 +80,18 @@ En esta fase:
 * **Módulo Granjas**:
     * Servicio: [farms.service.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/farms/farms.service.ts)
     * Controlador: [farms.controller.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/farms/farms.controller.ts)
-    * DTO: [create-farm.dto.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/farms/dto/create-farm.dto.ts)
 * **Módulo Animales**:
-    * Servicio (Filtros y Creación): [animals.service.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/animals/animals.service.ts)
+    * Servicio (Filtros, Registro y Archivo): [animals.service.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/animals/animals.service.ts)
     * Controlador: [animals.controller.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/animals/animals.controller.ts)
+    * DTO de Archivo: [archive-animal.dto.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/animals/dto/archive-animal.dto.ts)
 
 ### Frontend
-* **Página Registrar Campo**: [farms/new/page.tsx](file:///c:/Users/catal/Desktop/Repos/damp/frontend/src/app/farms/new/page.tsx)
-* **Página Registrar Animal**: [animals/new/page.tsx](file:///c:/Users/catal/Desktop/Repos/damp/frontend/src/app/animals/new/page.tsx)
-* **Página Listado y Filtros (US 2.3)**: [animals/page.tsx](file:///c:/Users/catal/Desktop/Repos/damp/frontend/src/app/animals/page.tsx)
+* **Página Listado y Bajas (US 2.3)**: [animals/page.tsx](file:///c:/Users/catal/Desktop/Repos/damp/frontend/src/app/animals/page.tsx)
 
 ---
 
 ## 4. Instrucciones de Prueba Rápida
-1. Inicia backend y frontend (`pnpm run start:dev` y `pnpm run dev`).
-2. Ve al Home e ingresa a "Registrar Nuevo Campo". Completa los datos y guárdalos.
-3. Te redirigirá automáticamente a "Registrar Nuevo Animal". Verás que ahora el campo recién creado figura seleccionado en el dropdown superior. Completa la vaca y agrégale un ID de collar (ej: `COLLAR-999`).
-4. Ve al "Ver Panel de Monitoreo" (`/animals`). Podrás ver el listado, filtrar por granjas, tipo y estado de collares en tiempo real.
+1. Accede a `http://localhost:3000/animals` (Panel de Monitoreo).
+2. En la tarjeta de cualquier animal activo, selecciona la acción **Dar de Baja...** y elige **Vendido** o **Fallecido**. Confirma en el cuadro de diálogo.
+3. El animal desaparecerá de la vista por defecto (Activos).
+4. Cambia el filtro de "Estado Hacienda" de *Activos* a *Vendidos* o *Fallecidos*. Verás que el animal archivado aparece allí, y su collar figurará como libre o no vinculado, conservando todo el registro de su peso, raza y fecha de registro.

@@ -5,14 +5,11 @@ export class CreateFarmDto {
   name: string;
 
   @IsString()
-  @IsOptional()
-  address?: string;
+  address: string;
 
   @IsString()
-  @IsOptional()
-  province?: string;
+  province: string;
 
   @IsNumber()
-  @IsOptional()
-  totalAreaHa?: number;
+  totalAreaHa: number;
 }
