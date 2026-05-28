@@ -7,6 +7,7 @@ import { AuthModule } from '@/auth/auth.module';
 import { WebhookModule } from '@/webhook/webhook.module';
 import { AnimalsModule } from './animals/animals.module';
 import { FarmsModule } from './farms/farms.module';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FarmsModule } from './farms/farms.module';
     WebhookModule,
     AnimalsModule,
     FarmsModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],

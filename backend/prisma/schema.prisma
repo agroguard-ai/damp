@@ -32,10 +32,10 @@ model User {
 
 model Farm {
   id          String   @id @default(uuid())
-  name        String?
-  address     String?
-  province    String?
-  totalAreaHa Float?   @map("total_area_ha")
+  name        String
+  address     String
+  province    String
+  totalAreaHa Float  @map("total_area_ha")
   createdAt   DateTime @default(now()) @map("created_at")
 
   farmUsers FarmUser[]
