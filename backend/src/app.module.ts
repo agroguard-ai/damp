@@ -8,6 +8,7 @@ import { WebhookModule } from '@/webhook/webhook.module';
 import { AnimalsModule } from './animals/animals.module';
 import { FarmsModule } from './farms/farms.module';
 import { ZonesModule } from './zones/zones.module';
+import { AnimalTypesModule } from './animal-types/animal-types.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ZonesModule } from './zones/zones.module';
     AnimalsModule,
     FarmsModule,
     ZonesModule,
+    AnimalTypesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -20,4 +20,12 @@ export class CreateAnimalDto {
   @IsString()
   @IsOptional()
   collarMacAddress?: string;
+
+  @IsUUID()
+  @IsOptional()
+  animalTypeId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  zoneId?: string;
 }

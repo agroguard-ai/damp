@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
 
@@ -6,17 +6,20 @@ import { CreateAnimalDto } from './dto/create-animal.dto';
 export class AnimalsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createAnimalDto: CreateAnimalDto) {
-    const { farmId, tag, breed, weightKg, ageMonths, collarMacAddress } = createAnimalDto;
+  async create(createAnimalDto: CreateAnimalDto, userId: string) {
+    const { farmId, tag, breed, weightKg, ageMonths, collarMacAddress, animalTypeId, zoneId } = createAnimalDto;
 
     // Calcular fecha de nacimiento en base a la edad en meses
     const birthDate = new Date();
     birthDate.setMonth(birthDate.getMonth() - ageMonths);
 
-    // 1. Validar que la granja exista
+    // 1. Validar que la granja exista y pertenezca al usuario
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
     if (!farm) {
       throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
+    }
+    if (farm.userId !== userId) {
+      throw new ForbiddenException('No tienes acceso a este establecimiento.');
     }
 
     // 2. Si se proporcionó un collar, verificar que exista o crearlo
@@ -37,7 +40,7 @@ export class AnimalsService {
       collarId = collar.id;
     }
 
-    // 3. Crear el registro del animal (Vaca)
+    // 3. Crear el registro del animal
     const animal = await this.prisma.animal.create({
       data: {
         farmId,
@@ -45,12 +48,15 @@ export class AnimalsService {
         breed,
         weightKg,
         birthDate,
-        animalType: 'COW', // Hardcodeado como Vaca según US 2.1
+        animalTypeId: animalTypeId || null,
+        zoneId: zoneId || null,
+        collarId: collarId || null,
         status: 'ACTIVE',
+        isArchived: false,
       },
     });
 
-    // 4. Vincular el collar al animal
+    // 4. Vincular el collar al animal en la tabla relacional
     if (collarId) {
       await this.prisma.animalCollar.create({
         data: {
@@ -68,26 +74,49 @@ export class AnimalsService {
     };
   }
 
-  async findAll(query: {
-    farmId?: string;
-    sectorId?: string;
-    animalType?: string;
-    collarStatus?: string;
-    healthStatus?: string;
-    status?: string;
-  }) {
+  async findAll(
+    query: {
+      farmId?: string;
+      sectorId?: string;
+      animalType?: string;
+      collarStatus?: string;
+      healthStatus?: string;
+      status?: string;
+    },
+    userId: string,
+  ) {
     const { farmId, sectorId, animalType, collarStatus, healthStatus, status } = query;
     const whereClause: any = {};
 
+    // Filtrado por establecimiento (farmId) obligatoriamente del usuario autenticado
     if (farmId) {
+      const farm = await this.prisma.farm.findFirst({
+        where: { id: farmId, userId },
+      });
+      if (!farm) {
+        throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      }
       whereClause.farmId = farmId;
+    } else {
+      // Si no se especifica farmId, traer solo animales de granjas del usuario
+      const userFarms = await this.prisma.farm.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      const farmIds = userFarms.map((f) => f.id);
+      whereClause.farmId = { in: farmIds };
     }
 
-    // Por defecto mostramos solo los activos si no se pide un estado específico
-    whereClause.status = status ? status : 'ACTIVE';
+    // Manejo de borrado lógico (isArchived)
+    if (status === 'ACTIVE' || !status) {
+      whereClause.isArchived = false;
+    } else if (status === 'SOLD' || status === 'DEAD') {
+      whereClause.isArchived = true;
+      whereClause.status = status;
+    }
 
     if (animalType) {
-      whereClause.animalType = animalType;
+      whereClause.animalTypeId = animalType;
     }
 
     if (sectorId) {
@@ -125,6 +154,8 @@ export class AnimalsService {
     return this.prisma.animal.findMany({
       where: whereClause,
       include: {
+        animalType: true,
+        zone: true,
         animalCollars: {
           where: { endAt: null },
           include: {
@@ -149,32 +180,47 @@ export class AnimalsService {
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.animal.findUnique({
+  async findOne(id: string, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
       where: { id },
       include: {
+        farm: true,
+        animalType: true,
+        zone: true,
         animalCollars: {
-          include: { collar: true }
+          include: { collar: true },
         },
         animalGeofences: {
           include: {
             geofence: {
-              include: { sector: true }
-            }
-          }
+              include: { sector: true },
+            },
+          },
         },
         medicalEvents: {
-          orderBy: { occurredAt: 'desc' }
-        }
-      }
+          orderBy: { occurredAt: 'desc' },
+        },
+      },
     });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    // Validar propiedad
+    if (animal.farm.userId !== userId) {
+      throw new ForbiddenException('No tienes acceso a este animal.');
+    }
+
+    return animal;
   }
 
-  async archive(id: string, status: string) {
-    // 1. Verificar existencia del animal y relaciones activas
+  async archive(id: string, status: string, userId: string) {
+    // 1. Verificar existencia y propiedad
     const animal = await this.prisma.animal.findUnique({
       where: { id },
       include: {
+        farm: true,
         animalCollars: { where: { endAt: null } },
         animalGeofences: { where: { endAt: null } },
       },
@@ -184,7 +230,11 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    // 2. Liberar el collar activo (si tuviera uno)
+    if (animal.farm.userId !== userId) {
+      throw new ForbiddenException('No tienes acceso a este animal.');
+    }
+
+    // 2. Liberar el collar activo
     if (animal.animalCollars.length > 0) {
       await this.prisma.animalCollar.updateMany({
         where: {
@@ -210,19 +260,20 @@ export class AnimalsService {
       });
     }
 
-    // 4. Cambiar el estado del animal
+    // 4. Cambiar el estado y archivar
     const updatedAnimal = await this.prisma.animal.update({
       where: { id },
       data: {
         status,
+        isArchived: true,
       },
     });
 
-    // 5. Registrar en el historial de eventos médicos el archivo del animal
+    // 5. Registrar en el historial de eventos médicos
     await this.prisma.medicalEvent.create({
       data: {
         animalId: id,
-        type: 'TREATMENT', // Ocupamos un tipo genérico del enum para registrar la baja
+        type: 'TREATMENT',
         description: `Baja del animal del sistema. Motivo: ${status === 'SOLD' ? 'Vendido' : 'Fallecido'}.`,
         occurredAt: new Date(),
       },

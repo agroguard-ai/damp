@@ -28,6 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/animals/new")) return "Registrar Animal";
     if (pathname.startsWith("/animals")) return "Hacienda (Monitoreo)";
     if (pathname.startsWith("/zonas")) return "Zonas";
+    if (pathname.startsWith("/animal-types")) return "Tipos de Animal";
     return "DAMP";
   };
 
@@ -131,6 +132,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
             Collares IoT
+          </Link>
+
+          {/* Tipos de Animal */}
+          <Link
+            href="/animal-types"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              pathname.includes("/animal-types")
+                ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:text-zinc-900 dark:hover:text-white"
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            Tipos de Animal
           </Link>
         </nav>
       </aside>

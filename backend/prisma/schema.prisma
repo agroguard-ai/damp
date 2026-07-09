@@ -94,18 +94,23 @@ model Geofence {
 }
 
 model Animal {
-  id         String      @id @default(uuid())
-  farmId     String      @map("farm_id")
-  tag        String?
-  sex        Sex?
-  birthDate  DateTime?   @map("birth_date")
-  breed      String?
-  weightKg   Float?      @map("weight_kg")
-  animalType AnimalType? @map("animal_type")
-  status     String      @default("ACTIVE")
-  createdAt  DateTime    @default(now()) @map("created_at")
+  id           String      @id @default(uuid())
+  farmId       String      @map("farm_id")
+  tag          String?
+  sex          Sex?
+  birthDate    DateTime?   @map("birth_date")
+  breed        String?
+  weightKg     Float?      @map("weight_kg")
+  animalTypeId String?     @map("animal_type_id")
+  zoneId       String?     @map("zone_id")
+  collarId     String?     @map("collar_id")
+  isArchived   Boolean     @default(false) @map("is_archived")
+  status       String      @default("ACTIVE")
+  createdAt    DateTime    @default(now()) @map("created_at")
 
   farm            Farm              @relation(fields: [farmId], references: [id])
+  animalType      AnimalType?       @relation(fields: [animalTypeId], references: [id])
+  zone            Zone?             @relation(fields: [zoneId], references: [id])
   medicalEvents   MedicalEvent[]
   telemetry       TelemetryRecord[]
   animalGeofences AnimalGeofence[]
@@ -193,10 +198,6 @@ enum Sex {
   FEMALE
 }
 
-enum AnimalType {
-  COW
-}
-
 enum MedicalEventType {
   VACCINATION
   TREATMENT
@@ -212,7 +213,21 @@ model Zone {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  farm    Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  animals Animal[]
 
   @@map("zone")
+}
+
+model AnimalType {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  species     String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  animals Animal[]
+
+  @@map("animal_type")
 }
