@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 interface Farm {
   id: string;
@@ -59,20 +59,20 @@ interface Animal {
 export default function AnimalsListPage() {
   const { getToken } = useAuth();
   const [farms, setFarms] = useState<Farm[]>([]);
-  const [selectedFarm, setSelectedFarm] = useState<string>("");
+  const [selectedFarm, setSelectedFarm] = useState<string>('');
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
   const [farmZones, setFarmZones] = useState<Zone[]>([]);
-  
+
   const [loading, setLoading] = useState(false);
   const [fetchingFarms, setFetchingFarms] = useState(true);
 
   // Filters State
   const [filters, setFilters] = useState({
-    animalType: "",
-    collarStatus: "",
-    healthStatus: "",
-    status: "ACTIVE",
+    animalType: '',
+    collarStatus: '',
+    healthStatus: '',
+    status: 'ACTIVE',
   });
 
   // Modal State
@@ -80,13 +80,13 @@ export default function AnimalsListPage() {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    tag: "",
-    breed: "",
-    weightKg: "",
-    ageMonths: "12",
-    collarMacAddress: "",
-    animalTypeId: "",
-    zoneId: "",
+    tag: '',
+    breed: '',
+    weightKg: '',
+    ageMonths: '12',
+    collarMacAddress: '',
+    animalTypeId: '',
+    zoneId: '',
   });
 
   // Load farms and animal types on mount
@@ -94,12 +94,12 @@ export default function AnimalsListPage() {
     async function loadInitialData() {
       try {
         const token = await getToken();
-        
+
         // Fetch Farms
-        const farmsRes = await fetch("http://localhost:3001/farms", {
+        const farmsRes = await fetch('http://localhost:3001/farms', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (!farmsRes.ok) throw new Error("Error al obtener campos");
+        if (!farmsRes.ok) throw new Error('Error al obtener campos');
         const farmsData = await farmsRes.json();
         setFarms(farmsData);
         if (farmsData.length > 0) {
@@ -107,7 +107,7 @@ export default function AnimalsListPage() {
         }
 
         // Fetch Animal Types
-        const typesRes = await fetch("http://localhost:3001/animal-types", {
+        const typesRes = await fetch('http://localhost:3001/animal-types', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (typesRes.ok) {
@@ -115,7 +115,7 @@ export default function AnimalsListPage() {
           setAnimalTypes(typesData);
         }
       } catch (error) {
-        console.error("Error loading initial data:", error);
+        console.error('Error loading initial data:', error);
       } finally {
         setFetchingFarms(false);
       }
@@ -140,7 +140,7 @@ export default function AnimalsListPage() {
           setFarmZones(data);
         }
       } catch (error) {
-        console.error("Error loading zones:", error);
+        console.error('Error loading zones:', error);
       }
     }
     loadZones();
@@ -163,11 +163,11 @@ export default function AnimalsListPage() {
       const res = await fetch(`http://localhost:3001/animals?${queryParams.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error("Error al obtener listado de animales");
+      if (!res.ok) throw new Error('Error al obtener listado de animales');
       const data = await res.json();
       setAnimals(data);
     } catch (error) {
-      console.error("Error cargando animales:", error);
+      console.error('Error cargando animales:', error);
     } finally {
       setLoading(false);
     }
@@ -183,14 +183,19 @@ export default function AnimalsListPage() {
 
   const handleArchive = async (animalId: string, reason: string) => {
     if (!reason) return;
-    if (!confirm(`¿Estás seguro de archivar este animal como ${reason === "SOLD" ? "Vendido" : "Muerto"}? Se desvincularán sus collares y zonas activas.`)) return;
+    if (
+      !confirm(
+        `¿Estás seguro de archivar este animal como ${reason === 'SOLD' ? 'Vendido' : 'Muerto'}? Se desvincularán sus collares y zonas activas.`
+      )
+    )
+      return;
 
     try {
       const token = await getToken();
       const res = await fetch(`http://localhost:3001/animals/${animalId}/archive`, {
-        method: "PATCH",
+        method: 'PATCH',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: reason }),
@@ -198,10 +203,10 @@ export default function AnimalsListPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Error al archivar el animal");
+        throw new Error(errorData.message || 'Error al archivar el animal');
       }
 
-      alert("Animal archivado con éxito");
+      alert('Animal archivado con éxito');
       loadAnimals();
     } catch (error: any) {
       alert(error.message);
@@ -227,10 +232,10 @@ export default function AnimalsListPage() {
         zoneId: formData.zoneId || undefined,
       };
 
-      const res = await fetch("http://localhost:3001/animals", {
-        method: "POST",
+      const res = await fetch('http://localhost:3001/animals', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
@@ -238,19 +243,19 @@ export default function AnimalsListPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Error al registrar el animal");
+        throw new Error(errorData.message || 'Error al registrar el animal');
       }
 
-      alert("Animal registrado con éxito");
+      alert('Animal registrado con éxito');
       setIsModalOpen(false);
       setFormData({
-        tag: "",
-        breed: "",
-        weightKg: "",
-        ageMonths: "12",
-        collarMacAddress: "",
-        animalTypeId: "",
-        zoneId: "",
+        tag: '',
+        breed: '',
+        weightKg: '',
+        ageMonths: '12',
+        collarMacAddress: '',
+        animalTypeId: '',
+        zoneId: '',
       });
       loadAnimals();
     } catch (err: any) {
@@ -262,32 +267,53 @@ export default function AnimalsListPage() {
 
   const getHealthBadge = (animal: Animal) => {
     const latestEvent = animal.medicalEvents[0];
-    if (!latestEvent) return { label: "Saludable", class: "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30" };
+    if (!latestEvent)
+      return {
+        label: 'Saludable',
+        class:
+          'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30',
+      };
 
     switch (latestEvent.type) {
-      case "TREATMENT":
-        if (latestEvent.description.includes("archivado") || latestEvent.description.includes("Baja")) {
-          return { label: "Archivado", class: "bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/30" };
+      case 'TREATMENT':
+        if (latestEvent.description.includes('archivado') || latestEvent.description.includes('Baja')) {
+          return {
+            label: 'Archivado',
+            class:
+              'bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/30',
+          };
         }
-        return { label: "Bajo Tratamiento", class: "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30" };
-      case "SURGERY":
-        return { label: "Post-Operación", class: "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30" };
-      case "VACCINATION":
-        return { label: "Vacunado reciente", class: "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/30" };
+        return {
+          label: 'Bajo Tratamiento',
+          class:
+            'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30',
+        };
+      case 'SURGERY':
+        return {
+          label: 'Post-Operación',
+          class: 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30',
+        };
+      case 'VACCINATION':
+        return {
+          label: 'Vacunado reciente',
+          class:
+            'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/30',
+        };
       default:
-        return { label: "Saludable", class: "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30" };
+        return {
+          label: 'Saludable',
+          class:
+            'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30',
+        };
     }
   };
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Monitoreo de Hacienda
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Monitoreo de Hacienda</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             Visualización y administración de los animales activos y sus collares vinculados.
           </p>
@@ -302,7 +328,7 @@ export default function AnimalsListPage() {
           <button
             onClick={() => {
               if (farms.length === 0) {
-                alert("Debes registrar un campo antes de añadir animales.");
+                alert('Debes registrar un campo antes de añadir animales.');
                 return;
               }
               // Set default animal type if available
@@ -324,7 +350,9 @@ export default function AnimalsListPage() {
         </div>
       ) : farms.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Aún no has configurado ningún establecimiento en DAMP.</p>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+            Aún no has configurado ningún establecimiento en DAMP.
+          </p>
           <Link
             href="/farms/new"
             className="inline-block bg-green-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all shadow-sm cursor-pointer"
@@ -336,7 +364,6 @@ export default function AnimalsListPage() {
         <>
           {/* Filters Panel */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            
             {/* Campo Selector */}
             <div className="flex flex-col gap-1.5 lg:col-span-1">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>
@@ -426,7 +453,9 @@ export default function AnimalsListPage() {
             </div>
           ) : animals.length === 0 ? (
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-16 rounded-xl text-center shadow-sm">
-              <p className="text-zinc-400 dark:text-zinc-500 text-sm">No se encontraron animales con los filtros seleccionados.</p>
+              <p className="text-zinc-400 dark:text-zinc-500 text-sm">
+                No se encontraron animales con los filtros seleccionados.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -445,14 +474,18 @@ export default function AnimalsListPage() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-                            {animal.animalType?.name || "Sin Clasificar"} &bull; {animal.breed}
+                            {animal.animalType?.name || 'Sin Clasificar'} &bull; {animal.breed}
                           </span>
                           <h3 className="text-lg font-bold text-zinc-900 dark:text-white mt-0.5">
                             {animal.tag || `Animal (${animal.id.slice(0, 5)})`}
                           </h3>
                         </div>
                         <span className={`px-2 py-0.5 text-xs font-semibold border rounded-full ${health.class}`}>
-                          {animal.status !== "ACTIVE" ? (animal.status === "SOLD" ? "Vendido" : "Fallecido") : health.label}
+                          {animal.status !== 'ACTIVE'
+                            ? animal.status === 'SOLD'
+                              ? 'Vendido'
+                              : 'Fallecido'
+                            : health.label}
                         </span>
                       </div>
 
@@ -467,7 +500,9 @@ export default function AnimalsListPage() {
                           <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
                             {collar ? (
                               <span className="flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${collar.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${collar.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}
+                                ></span>
                                 {collar.serialNumber}
                               </span>
                             ) : (
@@ -477,7 +512,9 @@ export default function AnimalsListPage() {
                         </div>
                         {collar && (
                           <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg border border-zinc-100 dark:border-zinc-850 mt-1">
-                            <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-medium">Lectura IoT</span>
+                            <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-medium">
+                              Lectura IoT
+                            </span>
                             <span className="text-[11px] font-semibold text-zinc-750 dark:text-zinc-350">
                               {collar.telemetryReadings?.[0] ? (
                                 <span className="flex items-center gap-2">
@@ -494,7 +531,9 @@ export default function AnimalsListPage() {
                         <div className="flex justify-between">
                           <span>Zona / Potrero</span>
                           <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
-                            {animal.zone?.name || sector?.name || <span className="text-zinc-400 dark:text-zinc-650">Sin asignar</span>}
+                            {animal.zone?.name || sector?.name || (
+                              <span className="text-zinc-400 dark:text-zinc-650">Sin asignar</span>
+                            )}
                           </span>
                         </div>
                       </div>
@@ -502,31 +541,33 @@ export default function AnimalsListPage() {
 
                     {/* Bottom actions */}
                     <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800 pt-4">
-                      {animal.status === "ACTIVE" ? (
+                      {animal.status === 'ACTIVE' ? (
                         <div className="flex justify-between items-center gap-2">
                           <span className="text-[10px] text-zinc-400">
                             Reg: {new Date(animal.createdAt).toLocaleDateString()}
                           </span>
-                          
+
                           {/* Selector de Baja */}
                           <select
                             defaultValue=""
                             onChange={(e) => {
                               if (e.target.value) {
                                 handleArchive(animal.id, e.target.value);
-                                e.target.value = "";
+                                e.target.value = '';
                               }
                             }}
                             className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-300 rounded px-2.5 py-1 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
                           >
-                            <option value="" disabled>Dar de Baja...</option>
+                            <option value="" disabled>
+                              Dar de Baja...
+                            </option>
                             <option value="SOLD">Vendido</option>
                             <option value="DEAD">Fallecido</option>
                           </select>
                         </div>
                       ) : (
                         <div className="flex flex-col gap-0.5 text-[10px] text-zinc-450 dark:text-zinc-500">
-                          <span>Estado: {animal.status === "SOLD" ? "Vendido" : "Fallecido"}</span>
+                          <span>Estado: {animal.status === 'SOLD' ? 'Vendido' : 'Fallecido'}</span>
                           <span>Baja registrada (Historial conservado)</span>
                         </div>
                       )}
@@ -560,11 +601,12 @@ export default function AnimalsListPage() {
             )}
 
             <form onSubmit={handleModalSubmit} className="p-6 space-y-4">
-              
               {/* Tag and Breed */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">Identificador (Tag)</label>
+                  <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
+                    Identificador (Tag)
+                  </label>
                   <input
                     required
                     type="text"
@@ -622,7 +664,9 @@ export default function AnimalsListPage() {
                   onChange={(e) => setFormData({ ...formData, animalTypeId: e.target.value })}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
                 >
-                  <option value="" disabled>Seleccionar tipo...</option>
+                  <option value="" disabled>
+                    Seleccionar tipo...
+                  </option>
                   {animalTypes.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name} ({t.species})
@@ -650,7 +694,9 @@ export default function AnimalsListPage() {
 
               {/* Collar MAC */}
               <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">MAC Collar IoT (Opcional)</label>
+                <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
+                  MAC Collar IoT (Opcional)
+                </label>
                 <input
                   type="text"
                   value={formData.collarMacAddress}
@@ -677,7 +723,7 @@ export default function AnimalsListPage() {
                   {modalLoading ? (
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                   ) : (
-                    "Guardar Animal"
+                    'Guardar Animal'
                   )}
                 </button>
               </div>

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 interface Farm {
   id: string;
@@ -19,12 +19,12 @@ export default function NewAnimalPage() {
   const [fetchingFarms, setFetchingFarms] = useState(true);
 
   const [formData, setFormData] = useState({
-    farmId: "",
-    tag: "",
-    breed: "",
-    weightKg: "",
-    ageMonths: "",
-    collarMacAddress: "",
+    farmId: '',
+    tag: '',
+    breed: '',
+    weightKg: '',
+    ageMonths: '',
+    collarMacAddress: '',
   });
 
   // Cargar las granjas disponibles al montar la página
@@ -32,12 +32,12 @@ export default function NewAnimalPage() {
     async function fetchFarms() {
       try {
         const token = await getToken();
-        const res = await fetch("http://localhost:3001/farms", {
+        const res = await fetch('http://localhost:3001/farms', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!res.ok) throw new Error("No se pudieron cargar los campos");
+        if (!res.ok) throw new Error('No se pudieron cargar los campos');
         const data = await res.json();
         setFarms(data);
         if (data.length > 0) {
@@ -45,7 +45,7 @@ export default function NewAnimalPage() {
         }
       } catch (err: any) {
         console.error(err);
-        setError("Error al cargar los campos registrados. Por favor crea uno primero.");
+        setError('Error al cargar los campos registrados. Por favor crea uno primero.');
       } finally {
         setFetchingFarms(false);
       }
@@ -60,7 +60,7 @@ export default function NewAnimalPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.farmId) {
-      setError("Debes seleccionar o registrar un campo primero");
+      setError('Debes seleccionar o registrar un campo primero');
       return;
     }
 
@@ -77,19 +77,19 @@ export default function NewAnimalPage() {
         collarMacAddress: formData.collarMacAddress || undefined,
       };
 
-      const res = await fetch("http://localhost:3001/animals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('http://localhost:3001/animals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Error al registrar el animal");
+        throw new Error(errorData.message || 'Error al registrar el animal');
       }
 
-      alert("Animal registrado con éxito");
-      router.push("/");
+      alert('Animal registrado con éxito');
+      router.push('/');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -100,15 +100,15 @@ export default function NewAnimalPage() {
   return (
     <div className="py-10 px-4 md:px-8 max-w-2xl mx-auto">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-6 md:p-8">
-        
         {/* Header */}
         <div className="mb-8">
-          <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4">
+          <Link
+            href="/"
+            className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4"
+          >
             &larr; Volver al Dashboard
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Registrar Nuevo Animal
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Registrar Nuevo Animal</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             Añade una nueva vaca al rebaño y vincula su dispositivo collar IoT para iniciar el rastreo.
           </p>
@@ -138,17 +138,13 @@ export default function NewAnimalPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
-              
               {/* Seleccionar Campo */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                     Seleccionar Campo / Establecimiento
                   </label>
-                  <Link
-                    href="/farms/new"
-                    className="text-xs text-green-600 dark:text-green-400 hover:underline"
-                  >
+                  <Link href="/farms/new" className="text-xs text-green-600 dark:text-green-400 hover:underline">
                     + Registrar Nuevo Campo
                   </Link>
                 </div>
@@ -250,7 +246,6 @@ export default function NewAnimalPage() {
                   />
                 </div>
               </div>
-
             </div>
 
             <div className="pt-4">
@@ -262,7 +257,7 @@ export default function NewAnimalPage() {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  "Registrar Animal"
+                  'Registrar Animal'
                 )}
               </button>
             </div>

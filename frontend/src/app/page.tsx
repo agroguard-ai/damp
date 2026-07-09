@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
+import { Globe, AlertTriangle, Smartphone, PlusCircle, BarChart3 } from 'lucide-react';
 
 interface Farm {
   id: string;
@@ -34,7 +35,7 @@ export default function Home() {
   const { getToken } = useAuth();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  
+
   const [loadingFarms, setLoadingFarms] = useState(true);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
 
@@ -43,16 +44,16 @@ export default function Home() {
     async function loadFarms() {
       try {
         const token = await getToken();
-        const res = await fetch("http://localhost:3001/farms", {
+        const res = await fetch('http://localhost:3001/farms', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        if (!res.ok) throw new Error("Error fetching farms");
+        if (!res.ok) throw new Error('Error fetching farms');
         const data = await res.json();
         setFarms(data);
       } catch (err) {
-        console.error("Error loading farms:", err);
+        console.error('Error loading farms:', err);
       } finally {
         setLoadingFarms(false);
       }
@@ -64,16 +65,16 @@ export default function Home() {
   const loadAlerts = async () => {
     try {
       const token = await getToken();
-      const res = await fetch("http://localhost:3001/alerts", {
+      const res = await fetch('http://localhost:3001/alerts', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!res.ok) throw new Error("Error fetching alerts");
+      if (!res.ok) throw new Error('Error fetching alerts');
       const data = await res.json();
       setAlerts(data);
     } catch (err) {
-      console.error("Error loading alerts:", err);
+      console.error('Error loading alerts:', err);
     } finally {
       setLoadingAlerts(false);
     }
@@ -88,17 +89,17 @@ export default function Home() {
     try {
       const token = await getToken();
       const res = await fetch(`http://localhost:3001/alerts/${id}/resolve`, {
-        method: "PATCH",
+        method: 'PATCH',
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!res.ok) throw new Error("Error resolving alert");
+      if (!res.ok) throw new Error('Error resolving alert');
       // Reload alerts
       loadAlerts();
     } catch (err) {
-      console.error("Error resolving alert:", err);
-      alert("No se pudo resolver la alerta");
+      console.error('Error resolving alert:', err);
+      alert('No se pudo resolver la alerta');
     }
   };
 
@@ -110,10 +111,8 @@ export default function Home() {
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Bienvenido, Productor
-          </h1>
-          <p className="text-zinc-500 dark:text-zinc-400 mt-1.5 text-sm">
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Bienvenido, Productor</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-1.5">
             Resumen de actividad y estado de dispositivos IoT de tus establecimientos.
           </p>
         </div>
@@ -134,17 +133,15 @@ export default function Home() {
           <div>
             <div className="flex justify-between items-center text-zinc-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider">
               <span>Campos Activos</span>
-              <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 002 2h2.5M15 21v-1.5a2.5 2.5 0 00-2.5-2.5h-.5A2 2 0 0110 15z" />
-              </svg>
+              <Globe className="w-5 h-5 text-zinc-400" />
             </div>
             <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
-              {loadingFarms ? "..." : farms.length}
+              {loadingFarms ? '...' : farms.length}
             </div>
           </div>
           <div className="mt-4 text-xs flex items-center gap-1.5 text-green-600 dark:text-green-400">
             <span className="bg-green-100 dark:bg-green-950/50 px-2 py-0.5 rounded font-medium">
-              {loadingFarms ? "..." : `${totalHectares} Ha`}
+              {loadingFarms ? '...' : `${totalHectares} Ha`}
             </span>
             <span className="text-zinc-500">Superficie administrada</span>
           </div>
@@ -155,17 +152,16 @@ export default function Home() {
           <div>
             <div className="flex justify-between items-center text-zinc-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider">
               <span>Alertas Activas</span>
-              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+              <AlertTriangle className="w-5 h-5 text-red-500" />
             </div>
+            <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">2</div>
             <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
-              {loadingAlerts ? "..." : alerts.length}
+              {loadingAlerts ? '...' : alerts.length}
             </div>
           </div>
           <div className="mt-4 text-xs flex items-center gap-1.5 text-red-650 dark:text-red-400">
             <span className="bg-red-100 dark:bg-red-950/50 px-2 py-0.5 rounded font-medium">
-              {alerts.length > 0 ? "Urgente" : "Ok"}
+              {alerts.length > 0 ? 'Urgente' : 'Ok'}
             </span>
             <span className="text-zinc-500">Fuera de geocerca</span>
           </div>
@@ -176,13 +172,9 @@ export default function Home() {
           <div>
             <div className="flex justify-between items-center text-zinc-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider">
               <span>Collares Offline</span>
-              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+              <Smartphone className="w-5 h-5 text-amber-500" />
             </div>
-            <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">
-              1
-            </div>
+            <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">1</div>
           </div>
           <div className="mt-4 text-xs flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
             <span className="bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded font-medium">Revisar</span>
@@ -193,155 +185,122 @@ export default function Home() {
 
       {/* Main Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Side: Fields list & Active Alerts list */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* Tus Campos (Dynamic list) */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-lg text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              Tus Campos Registrados
-            </h3>
-            {loadingFarms ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-              </div>
-            ) : farms.length === 0 ? (
-              <div className="text-center py-8 space-y-4">
-                <p className="text-zinc-500 dark:text-zinc-400 text-sm">No tienes campos registrados aún en tu cuenta.</p>
-                <Link
-                  href="/farms/new"
-                  className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all"
-                >
-                  Registrar Primer Campo
-                </Link>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {farms.map((farm) => (
-                  <div
-                    key={farm.id}
-                    className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 bg-zinc-50/50 dark:bg-zinc-950/50 hover:shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
-                  >
-                    <div>
-                      <h4 className="font-bold text-zinc-900 dark:text-white text-base">
-                        {farm.name}
-                      </h4>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {farm.address}, {farm.province}
-                      </p>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-zinc-200/50 dark:border-zinc-850 flex justify-between items-center text-xs">
-                      <span className="text-zinc-500">Superficie</span>
-                      <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                        {farm.totalAreaHa} Ha
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Active Alerts in Real Time */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="font-bold text-lg text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3 flex justify-between items-center">
-              <span>Alertas Activas en Vivo</span>
-              {alerts.length > 0 && (
-                <span className="bg-red-100 dark:bg-red-950/40 text-red-750 dark:text-red-400 px-2.5 py-0.5 rounded-full text-xs font-semibold animate-pulse">
-                  {alerts.length} Críticas
-                </span>
-              )}
-            </h3>
-            
-            {loadingAlerts ? (
-              <div className="flex justify-center items-center py-10">
-                <div className="w-6 h-6 border-2 border-red-500/20 border-t-red-600 rounded-full animate-spin"></div>
-              </div>
-            ) : alerts.length === 0 ? (
-              <div className="text-center py-10">
-                <p className="text-zinc-400 dark:text-zinc-500 text-sm">No hay alertas activas en tus establecimientos. ¡Todo bajo control!</p>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="p-4 border border-red-100 dark:border-red-950/30 bg-red-50/10 dark:bg-red-950/10 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                        <h4 className="font-bold text-sm text-zinc-900 dark:text-white">
-                          Fuga Detectada &bull; {alert.animal?.tag || `Caravana (${alert.animalId.slice(0, 5)})`}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-zinc-650 dark:text-zinc-400 pr-2">
-                        {alert.message}
-                      </p>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500">
-                        Detectado: {new Date(alert.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => handleResolveAlert(alert.id)}
-                      className="bg-zinc-900 dark:bg-zinc-150 hover:bg-zinc-800 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-semibold px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex-shrink-0"
-                    >
-                      Resolver
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Side: Quick Actions Panel */}
-        <div className="lg:col-span-1">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 sticky top-6">
-            <h3 className="font-bold text-lg text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              Acciones Rápidas
-            </h3>
-            <div className="flex flex-col gap-3">
+        {/* Tus Campos (Dynamic list) */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 lg:col-span-2">
+          <h3 className="font-bold text-lg text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3">
+            Tus Campos Registrados
+          </h3>
+          {loadingFarms ? (
+            <div className="flex justify-center items-center py-10">
+              <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
+            </div>
+          ) : farms.length === 0 ? (
+            <div className="text-center py-8 space-y-4">
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm">No tienes campos registrados aún en tu cuenta.</p>
               <Link
                 href="/farms/new"
-                className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
+                className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all"
               >
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Registrar Campo</span>
-                </div>
-                <span className="text-xs text-zinc-400">&rarr;</span>
-              </Link>
-
-              <Link
-                href="/animals/new"
-                className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Registrar Nuevo Animal</span>
-                </div>
-                <span className="text-xs text-zinc-400">&rarr;</span>
-              </Link>
-
-              <Link
-                href="/animals"
-                className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
-              >
-                <div className="flex items-center gap-3">
-                  <svg className="w-5 h-5 text-green-600 dark:text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  <span>Ver Panel de Monitoreo</span>
-                </div>
-                <span className="text-xs text-zinc-400">&rarr;</span>
+                Registrar Primer Campo
               </Link>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {farms.map((farm) => (
+                <div
+                  key={farm.id}
+                  className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 bg-zinc-50/50 dark:bg-zinc-950/50 hover:shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <h4 className="font-bold text-zinc-900 dark:text-white text-base">{farm.name}</h4>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {farm.address}, {farm.province}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-zinc-200/50 dark:border-zinc-850 flex justify-between items-center text-xs">
+                    <span className="text-zinc-500">Superficie</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{farm.totalAreaHa} Ha</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quick Actions Panel */}
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 lg:col-span-1">
+          <h3 className="font-bold text-lg text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-3">
+            Acciones Rápidas
+          </h3>
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/farms/new"
+              className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
+            >
+              <div className="flex items-center gap-3">
+                <svg
+                  className="w-5 h-5 text-green-600 dark:text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Registrar Campo</span>
+              </div>
+              <span className="text-xs text-zinc-400">&rarr;</span>
+            </Link>
+
+            <Link
+              href="/animals/new"
+              className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
+            >
+              <div className="flex items-center gap-3">
+                <svg
+                  className="w-5 h-5 text-green-600 dark:text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>Registrar Nuevo Animal</span>
+              </div>
+              <span className="text-xs text-zinc-400">&rarr;</span>
+            </Link>
+
+            <Link
+              href="/animals"
+              className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all font-medium text-sm text-zinc-900 dark:text-zinc-100"
+            >
+              <div className="flex items-center gap-3">
+                <svg
+                  className="w-5 h-5 text-green-600 dark:text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                <span>Ver Panel de Monitoreo</span>
+              </div>
+              <span className="text-xs text-zinc-400">&rarr;</span>
+            </Link>
           </div>
         </div>
       </div>

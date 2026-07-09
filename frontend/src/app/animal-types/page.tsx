@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
 interface AnimalType {
   id: string;
@@ -19,25 +19,25 @@ export default function AnimalTypesPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Form State
-  const [name, setName] = useState("");
-  const [species, setSpecies] = useState("Bovino");
-  const [description, setDescription] = useState("");
+  const [name, setName] = useState('');
+  const [species, setSpecies] = useState('Bovino');
+  const [description, setDescription] = useState('');
 
   const loadTypes = async () => {
     setLoading(true);
     try {
       const token = await getToken();
-      const res = await fetch("http://localhost:3001/animal-types", {
+      const res = await fetch('http://localhost:3001/animal-types', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      if (!res.ok) throw new Error("Error al obtener los tipos de animales");
+      if (!res.ok) throw new Error('Error al obtener los tipos de animales');
       const data = await res.json();
       setTypes(data);
     } catch (err: any) {
       console.error(err);
-      setError("Error al cargar la lista de tipos de animales.");
+      setError('Error al cargar la lista de tipos de animales.');
     } finally {
       setLoading(false);
     }
@@ -54,10 +54,10 @@ export default function AnimalTypesPage() {
 
     try {
       const token = await getToken();
-      const res = await fetch("http://localhost:3001/animal-types", {
-        method: "POST",
+      const res = await fetch('http://localhost:3001/animal-types', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
@@ -69,12 +69,12 @@ export default function AnimalTypesPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.message || "Error al crear tipo de animal");
+        throw new Error(errData.message || 'Error al crear tipo de animal');
       }
 
-      setName("");
-      setDescription("");
-      alert("Tipo de animal registrado con éxito");
+      setName('');
+      setDescription('');
+      alert('Tipo de animal registrado con éxito');
       loadTypes();
     } catch (err: any) {
       setError(err.message);
@@ -84,12 +84,12 @@ export default function AnimalTypesPage() {
   };
 
   const handleDelete = async (typeId: string) => {
-    if (!confirm("¿Estás seguro de eliminar este tipo de animal?")) return;
+    if (!confirm('¿Estás seguro de eliminar este tipo de animal?')) return;
 
     try {
       const token = await getToken();
       const res = await fetch(`http://localhost:3001/animal-types/${typeId}`, {
-        method: "DELETE",
+        method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -97,10 +97,10 @@ export default function AnimalTypesPage() {
 
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.message || "Error al eliminar el tipo de animal");
+        throw new Error(errData.message || 'Error al eliminar el tipo de animal');
       }
 
-      alert("Tipo de animal eliminado con éxito");
+      alert('Tipo de animal eliminado con éxito');
       loadTypes();
     } catch (err: any) {
       alert(err.message);
@@ -109,7 +109,6 @@ export default function AnimalTypesPage() {
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -129,7 +128,6 @@ export default function AnimalTypesPage() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         {/* Left Panel: Types list */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-6 space-y-4">
@@ -166,7 +164,7 @@ export default function AnimalTypesPage() {
                           </span>
                         </td>
                         <td className="py-3.5 text-zinc-500 dark:text-zinc-400 max-w-[200px] truncate">
-                          {type.description || "-"}
+                          {type.description || '-'}
                         </td>
                         <td className="py-3.5 text-right">
                           <button
@@ -189,9 +187,7 @@ export default function AnimalTypesPage() {
         <div className="lg:col-span-1">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-6 sticky top-6">
             <div>
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                Agregar Tipo de Animal
-              </h3>
+              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Agregar Tipo de Animal</h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-450 mt-1">
                 Registra una nueva categoría de ganado para tu hacienda.
               </p>
@@ -251,14 +247,13 @@ export default function AnimalTypesPage() {
                   {submitting ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                   ) : (
-                    "Guardar Tipo"
+                    'Guardar Tipo'
                   )}
                 </button>
               </div>
             </form>
           </div>
         </div>
-
       </div>
     </div>
   );

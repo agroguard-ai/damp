@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker icons in Next.js
-if (typeof window !== "undefined") {
+if (typeof window !== 'undefined') {
   // @ts-ignore
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   });
 }
 
 // Standard blue marker for animals with normal status
 const normalIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
@@ -29,7 +29,7 @@ const normalIcon = new L.Icon({
 
 // Red marker for animals with an active escape alert
 const alertIcon = new L.DivIcon({
-  className: "alert-marker",
+  className: 'alert-marker',
   html: `
     <div style="position:relative;width:30px;height:42px;">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="42">
@@ -45,7 +45,7 @@ const alertIcon = new L.DivIcon({
   popupAnchor: [0, -36],
 });
 
-const getAnimalIcon = (hasAlert: boolean) => hasAlert ? alertIcon : normalIcon;
+const getAnimalIcon = (hasAlert: boolean) => (hasAlert ? alertIcon : normalIcon);
 
 interface Zone {
   id: string;
@@ -82,9 +82,8 @@ function MapAutoBounds({ zones, animals }: { zones: Zone[]; animals: AnimalLocat
     const coords: [number, number][] = [];
     zones.forEach((zone) => {
       try {
-        const poly = typeof zone.polygonCoordinates === "string"
-          ? JSON.parse(zone.polygonCoordinates)
-          : zone.polygonCoordinates;
+        const poly =
+          typeof zone.polygonCoordinates === 'string' ? JSON.parse(zone.polygonCoordinates) : zone.polygonCoordinates;
         if (Array.isArray(poly)) {
           poly.forEach((pt) => {
             if (Array.isArray(pt) && pt.length === 2) {
@@ -114,11 +113,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
 
   return (
     <div className="w-full h-[550px] rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner">
-      <MapContainer
-        center={center}
-        zoom={13}
-        className="w-full h-full"
-      >
+      <MapContainer center={center} zoom={13} className="w-full h-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -128,16 +123,17 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
         {zones.map((zone) => {
           if (!zone.polygonCoordinates) return null;
           try {
-            const coords = typeof zone.polygonCoordinates === "string"
-              ? JSON.parse(zone.polygonCoordinates)
-              : zone.polygonCoordinates;
-            
+            const coords =
+              typeof zone.polygonCoordinates === 'string'
+                ? JSON.parse(zone.polygonCoordinates)
+                : zone.polygonCoordinates;
+
             if (Array.isArray(coords) && coords.length > 0) {
               return (
                 <Polygon
                   key={zone.id}
                   positions={coords}
-                  pathOptions={{ color: "#16a34a", fillColor: "#22c55e", fillOpacity: 0.1 }}
+                  pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.1 }}
                 />
               );
             }
@@ -151,24 +147,28 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
           const { latitude, longitude, temperature, batteryLevel } = animal.latestReading;
 
           return (
-            <Marker
-              key={animal.id}
-              position={[latitude, longitude]}
-              icon={getAnimalIcon(!!animal.hasActiveAlert)}
-            >
+            <Marker key={animal.id} position={[latitude, longitude]} icon={animalIcon(animal.status)}>
               <Popup>
                 <div className="p-2 space-y-2 text-xs min-w-[180px] text-zinc-900">
                   {animal.hasActiveAlert && (
-                    <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:"6px",padding:"4px 8px",marginBottom:"4px"}}>
-                      <span style={{color:"#dc2626",fontWeight:"bold",fontSize:"11px"}}>⚠ ALERTA: Fuera de geocerca</span>
+                    <div
+                      style={{
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      <span style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '11px' }}>
+                        ⚠ ALERTA: Fuera de geocerca
+                      </span>
                     </div>
                   )}
                   <div className="border-b pb-1">
-                    <h4 className="font-bold text-zinc-900 text-sm">
-                      {animal.tag || "Animal Sin Identificador"}
-                    </h4>
+                    <h4 className="font-bold text-zinc-900 text-sm">{animal.tag || 'Animal Sin Identificador'}</h4>
                     <p className="text-[10px] text-zinc-500 mt-0.5">
-                      {animal.animalType?.name || "Sin Clasificar"} &bull; {animal.breed}
+                      {animal.animalType?.name || 'Sin Clasificar'} &bull; {animal.breed}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -182,7 +182,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Zona actual:</span>
-                      <span className="font-semibold text-zinc-800">{animal.zone?.name || "Campo Abierto"}</span>
+                      <span className="font-semibold text-zinc-800">{animal.zone?.name || 'Campo Abierto'}</span>
                     </div>
                   </div>
                 </div>

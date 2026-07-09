@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@clerk/nextjs';
 
 export default function NewFarmPage() {
   const router = useRouter();
@@ -12,10 +12,10 @@ export default function NewFarmPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    province: "",
-    totalAreaHa: "",
+    name: '',
+    address: '',
+    province: '',
+    totalAreaHa: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,10 +36,10 @@ export default function NewFarmPage() {
         totalAreaHa: Number(formData.totalAreaHa),
       };
 
-      const res = await fetch("http://localhost:3001/farms", {
-        method: "POST",
+      const res = await fetch('http://localhost:3001/farms', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
@@ -47,11 +47,11 @@ export default function NewFarmPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.message || "Error al registrar el campo");
+        throw new Error(errorData.message || 'Error al registrar el campo');
       }
 
-      alert("Campo/Granja registrado con éxito");
-      router.push("/animals/new"); // Ir directo a registrar un animal ya con la granja creada
+      alert('Campo/Granja registrado con éxito');
+      router.push('/animals/new'); // Ir directo a registrar un animal ya con la granja creada
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -62,15 +62,15 @@ export default function NewFarmPage() {
   return (
     <div className="py-10 px-4 md:px-8 max-w-2xl mx-auto">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-6 md:p-8">
-        
         {/* Header */}
         <div className="mb-8">
-          <Link href="/" className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4">
+          <Link
+            href="/"
+            className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4"
+          >
             &larr; Volver al Dashboard
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            Registrar Nuevo Campo
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Registrar Nuevo Campo</h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             Añade un nuevo establecimiento agropecuario al sistema para iniciar el monitoreo de hacienda.
           </p>
@@ -162,7 +162,7 @@ export default function NewFarmPage() {
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
               ) : (
-                "Registrar Campo"
+                'Registrar Campo'
               )}
             </button>
           </div>
