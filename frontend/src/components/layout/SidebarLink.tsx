@@ -16,8 +16,8 @@ export function SidebarLink({ href, label, logo, isCollapsed }: SidebarLinkProps
 
   // Determine if active based on current pathname
   let isActive = false;
-  if (href === '/') {
-    isActive = pathname === '/';
+  if (href === '/dashboard') {
+    isActive = pathname === '/dashboard';
   } else if (href === '/farms/new') {
     // Campos is at /farms/new but checks for /farms base route
     isActive = pathname.startsWith('/farms');
@@ -34,15 +34,15 @@ export function SidebarLink({ href, label, logo, isCollapsed }: SidebarLinkProps
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 py-2.5 rounded-r-lg rounded-l-none text-sm font-medium transition-all ${
-        isCollapsed ? 'justify-center px-0' : 'px-3'
+      className={`flex items-center py-2.5 rounded-r-lg rounded-l-none text-sm font-medium transition-all pl-2 ${
+        isCollapsed ? 'pr-2' : 'pr-3'
       } ${isActive ? activeClasses : inactiveClasses}`}
       title={isCollapsed ? label : undefined}
     >
-      <span className="shrink-0">{logo}</span>
+      <span className="shrink-0 w-6 h-6 flex items-center justify-center">{logo}</span>
       <span
-        className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
-          isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-auto'
+        className={`transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ${
+          isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-40 ml-3 text-base'
         }`}
       >
         {label}

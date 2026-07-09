@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { SidebarLink } from './SidebarLink';
-import { Hexagon, Menu, LayoutDashboard, Globe, Map, ClipboardList, MapPin, Tags } from 'lucide-react';
+import { SidebarLink } from '@/components/layout/SidebarLink';
+import { Hexagon, Menu, LayoutDashboard, Tractor, Map, ClipboardList, MapPin, Tags } from 'lucide-react';
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -14,70 +14,53 @@ export default function Sidebar() {
       }`}
     >
       {/* Brand Header */}
-      <div
-        className={`h-16 flex items-center border-b border-zinc-800 transition-all duration-300 ${
-          isCollapsed ? 'justify-center px-0' : 'px-6'
-        }`}
-      >
+      <div className="h-16 flex items-center border-b border-zinc-800 px-5 shrink-0">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center gap-2.5 font-bold text-lg tracking-tight text-white transition-colors focus:outline-none"
+          className="w-full flex items-center font-bold text-lg tracking-tight text-white transition-colors focus:outline-none cursor-pointer"
           title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
-          {isCollapsed ? (
-            <Menu className="w-6 h-6 text-green-600 dark:text-green-500 transition-all duration-300" />
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <Hexagon className="w-6 h-6 text-green-600 dark:text-green-500" />
-              <span className="whitespace-nowrap transition-all duration-300">DAMP Agro</span>
-            </div>
-          )}
+          <div className="relative w-6 h-6 shrink-0 flex items-center justify-center">
+            <Hexagon
+              className={`absolute w-6 h-6 text-green-600 dark:text-green-500 transition-all duration-300 ${
+                isCollapsed ? 'opacity-0 scale-75 rotate-90' : 'opacity-100 scale-100 rotate-0'
+              }`}
+            />
+            <Menu
+              className={`absolute w-6 h-6 text-green-600 dark:text-green-500 transition-all duration-300 ${
+                isCollapsed ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-75 -rotate-90'
+              }`}
+            />
+          </div>
+          <span
+            className={`transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden text-left ${
+              isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-40 ml-2.5'
+            }`}
+          >
+            DAMP Agro
+          </span>
         </button>
       </div>
 
       {/* Navigation Items */}
-      <nav
-        className={`flex-1 py-6 space-y-1.5 overflow-y-auto transition-all duration-300 ${
-          isCollapsed ? 'px-2' : 'px-4'
-        }`}
-      >
+      <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
         {/* Dashboard */}
-        <SidebarLink
-          href="/"
-          label="Dashboard"
-          logo={<LayoutDashboard className="w-5 h-5" />}
-          isCollapsed={isCollapsed}
-        />
+        <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
 
         {/* Campos */}
-        <SidebarLink href="/farms/new" label="Campos" logo={<Globe className="w-5 h-5" />} isCollapsed={isCollapsed} />
+        <SidebarLink href="/farms/new" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
 
         {/* Zonas */}
-        <SidebarLink href="/zonas" label="Zonas" logo={<Map className="w-5 h-5" />} isCollapsed={isCollapsed} />
+        <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
 
         {/* Hacienda */}
-        <SidebarLink
-          href="/animals"
-          label="Hacienda"
-          logo={<ClipboardList className="w-5 h-5" />}
-          isCollapsed={isCollapsed}
-        />
+        <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
 
         {/* Geolocalización */}
-        <SidebarLink
-          href="/geolocalizacion"
-          label="Geolocalización"
-          logo={<MapPin className="w-5 h-5" />}
-          isCollapsed={isCollapsed}
-        />
+        <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
 
         {/* Tipos de Animal */}
-        <SidebarLink
-          href="/animal-types"
-          label="Tipos de Animal"
-          logo={<Tags className="w-5 h-5" />}
-          isCollapsed={isCollapsed}
-        />
+        <SidebarLink href="/animal-types" label="Tipos de Animal" logo={<Tags />} isCollapsed={isCollapsed} />
       </nav>
     </aside>
   );
