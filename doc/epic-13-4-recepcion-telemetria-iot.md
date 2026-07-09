@@ -25,23 +25,32 @@ Esta Epic define la arquitectura para recibir lecturas de sensores GPS y de temp
 
 ## 2. Contrato de Ingesta (API del Gateway)
 * **Endpoint**: `POST http://localhost:3001/api/iot/telemetry`
-* **Request Body (JSON)**:
+* **Request Body (JSON - Batch Array)**:
   ```json
-  {
-    "mac_id": "00:1B:44:11:3A:B7",
-    "lat": -34.6037,
-    "lng": -58.3816,
-    "temp": 38.6,
-    "battery": 92.5
-  }
+  [
+    {
+      "mac_id": "00:1B:44:11:3A:B7",
+      "lat": -34.6037,
+      "lng": -58.3816,
+      "temp": 38.6,
+      "battery": 92.5
+    },
+    {
+      "mac_id": "00:1B:44:11:3A:B8",
+      "lat": -34.6045,
+      "lng": -58.3820,
+      "temp": 38.2,
+      "battery": 91.0
+    }
+  ]
   ```
 * **Respuesta Exitosa (201 Created)**:
   ```json
   {
     "status": "success",
-    "message": "Telemetry registered successfully",
-    "readingId": "UUID_DE_LECTURA",
-    "animalId": "UUID_DEL_ANIMAL"
+    "message": "Processed batch of 2 items. Inserted: 2 readings.",
+    "inserted": 2,
+    "ignored": 0
   }
   ```
 

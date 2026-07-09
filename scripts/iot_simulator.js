@@ -1,35 +1,69 @@
 const http = require('http');
 
-// MAC Address to simulate
-const MAC_ID = process.argv[2] || '00:1B:44:11:3A:B7';
+// MAC Addresses to simulate (passed via CLI args or default list)
+const MAC_IDS = process.argv.length > 2 
+  ? process.argv.slice(2) 
+  : ['00:1B:44:11:3A:B7'];
 
-// Initial coordinates (somewhere in Argentina's Pampas)
-let lat = -34.6037;
-let lng = -58.3816;
-let battery = 100.0;
-
-console.log(`Starting IoT Telemetry Simulator for MAC: ${MAC_ID}...`);
+console.log(`Starting IoT LoRa Gateway Simulator...`);
+console.log(`Simulating collars:`, MAC_IDS);
 console.log('Press Ctrl+C to stop simulation.');
 
-function sendTelemetry() {
+// Keep track of device states in memory to do random walks
+const states = MAC_IDS.map((mac) => ({
+  mac_id: mac,
+  lat: -34.6037 + (Math.random() - 0.5) * 0.01,
+  lng: -58.3816 + (Math.random() - 0.5) * 0.01,
+  battery: 100.0,
+}));
+
+// Buffer in memory
+let telemetryBuffer = [];
+
+// Generate telemetry reading for a device
+function generateReading(state) {
   // Move slightly (random walk)
-  lat += (Math.random() - 0.5) * 0.0005;
-  lng += (Math.random() - 0.5) * 0.0005;
+  state.lat += (Math.random() - 0.5) * 0.0005;
+  state.lng += (Math.random() - 0.5) * 0.0005;
 
   // Temperature between 37.5 and 39.5
   const temp = 37.5 + Math.random() * 2.0;
 
-  // Decrease battery slightly, reset if empty
-  battery -= 0.1;
-  if (battery <= 5.0) battery = 100.0;
+  // Decrease battery slightly
+  state.battery -= 0.05;
+  if (state.battery <= 5.0) state.battery = 100.0;
 
-  const payload = JSON.stringify({
-    mac_id: MAC_ID,
-    lat: parseFloat(lat.toFixed(6)),
-    lng: parseFloat(lng.toFixed(6)),
+  return {
+    mac_id: state.mac_id,
+    lat: parseFloat(state.lat.toFixed(6)),
+    lng: parseFloat(state.lng.toFixed(6)),
     temp: parseFloat(temp.toFixed(1)),
-    battery: parseFloat(battery.toFixed(1)),
+    battery: parseFloat(state.battery.toFixed(1)),
+  };
+}
+
+// Generate readings for all devices every 5 seconds and add to buffer
+setInterval(() => {
+  states.forEach((state) => {
+    const reading = generateReading(state);
+    telemetryBuffer.push(reading);
   });
+  console.log(`[${new Date().toLocaleTimeString()}] Collected LoRa packets from nodes. Buffer size: ${telemetryBuffer.length}`);
+}, 5000);
+
+// Upload batch payload every 30 seconds
+function uploadBatch() {
+  if (telemetryBuffer.length === 0) {
+    console.log(`[${new Date().toLocaleTimeString()}] Telemetry buffer is empty. Skipping upload.`);
+    return;
+  }
+
+  const payload = JSON.stringify(telemetryBuffer);
+  // Clear the buffer immediately to prevent duplicates if requests take long
+  const currentBatch = [...telemetryBuffer];
+  telemetryBuffer = [];
+
+  console.log(`[${new Date().toLocaleTimeString()}] Gateway uploading batch of ${currentBatch.length} readings...`);
 
   const options = {
     hostname: 'localhost',
@@ -48,18 +82,22 @@ function sendTelemetry() {
       data += chunk;
     });
     res.on('end', () => {
-      console.log(`[${new Date().toLocaleTimeString()}] Sent: Temp=${temp.toFixed(1)}°C, Lat=${lat.toFixed(6)}, Lng=${lng.toFixed(6)}, Bat=${battery.toFixed(1)}% | Response: ${res.statusCode} - ${data}`);
+      console.log(`[${new Date().toLocaleTimeString()}] Upload response: ${res.statusCode} - ${data}`);
     });
   });
 
   req.on('error', (e) => {
-    console.error(`[${new Date().toLocaleTimeString()}] Error connecting to gateway API: ${e.message}`);
+    console.error(`[${new Date().toLocaleTimeString()}] Gateway upload error: ${e.message}`);
   });
 
   req.write(payload);
   req.end();
 }
 
-// Send every 8 seconds
-setInterval(sendTelemetry, 8000);
-sendTelemetry();
+// Start batch uploading every 30 seconds
+setInterval(uploadBatch, 30000);
+
+// Generate initial batch readings immediately so first tick isn't empty
+states.forEach((state) => {
+  telemetryBuffer.push(generateReading(state));
+});

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 
@@ -6,58 +6,76 @@ import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 export class IotService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async handleTelemetry(payload: TelemetryPayloadDto) {
-    const { mac_id, lat, lng, temp, battery } = payload;
-
-    // 1. Buscar collar por mac_id (serialNumber)
-    const collar = await this.prisma.collar.findUnique({
-      where: { serialNumber: mac_id },
-    });
-
-    if (!collar) {
-      throw new NotFoundException(`Collar with MAC/Serial Number ${mac_id} not found.`);
+  async handleTelemetryBatch(payloads: TelemetryPayloadDto[]) {
+    if (!payloads || payloads.length === 0) {
+      return {
+        status: 'ignored',
+        message: 'No telemetry payload provided',
+        processed: 0,
+      };
     }
 
-    // 2. Verificar si está asignado a un animal activo
-    const assignment = await this.prisma.animalCollar.findFirst({
+    // 1. Obtener todos los MAC IDs del lote
+    const macIds = payloads.map((p) => p.mac_id);
+
+    // 2. Buscar todos los collares registrados para esos MACs
+    const collars = await this.prisma.collar.findMany({
+      where: { serialNumber: { in: macIds } },
+    });
+
+    const collarMap = new Map(collars.map((c) => [c.serialNumber, c.id]));
+    const collarIds = collars.map((c) => c.id);
+
+    // 3. Buscar asignaciones activas de animales para esos collares
+    const assignments = await this.prisma.animalCollar.findMany({
       where: {
-        collarId: collar.id,
+        collarId: { in: collarIds },
         endAt: null,
       },
     });
 
-    if (!assignment) {
-      return {
-        status: 'ignored',
-        message: `Telemetry ignored: Collar ${mac_id} is not assigned to any active animal.`,
-      };
+    const assignedCollarIds = new Set(assignments.map((a) => a.collarId));
+
+    // 4. Filtrar y preparar lecturas válidas
+    const validReadings: any[] = [];
+    const collarsToUpdate = new Set<string>();
+
+    for (const item of payloads) {
+      const collarId = collarMap.get(item.mac_id);
+      // Validar si existe el collar y si está asignado a un animal activo
+      if (collarId && assignedCollarIds.has(collarId)) {
+        validReadings.push({
+          collarId: collarId,
+          latitude: item.lat,
+          longitude: item.lng,
+          temperature: item.temp,
+          batteryLevel: item.battery,
+          timestamp: new Date(),
+        });
+        collarsToUpdate.add(collarId);
+      }
     }
 
-    // 3. Guardar lectura de telemetría
-    const reading = await this.prisma.telemetryReading.create({
-      data: {
-        collarId: collar.id,
-        latitude: lat,
-        longitude: lng,
-        temperature: temp,
-        batteryLevel: battery,
-        timestamp: new Date(),
-      },
-    });
+    // 5. Inserción masiva si hay lecturas válidas
+    if (validReadings.length > 0) {
+      await this.prisma.telemetryReading.createMany({
+        data: validReadings,
+      });
 
-    // 4. Actualizar last_telemetry_date en el collar
-    await this.prisma.collar.update({
-      where: { id: collar.id },
-      data: {
-        lastTelemetryDate: new Date(),
-      },
-    });
+      // Actualización masiva de lastTelemetryDate en los collares
+      await this.prisma.collar.updateMany({
+        where: { id: { in: Array.from(collarsToUpdate) } },
+        data: {
+          lastTelemetryDate: new Date(),
+        },
+      });
+    }
 
     return {
       status: 'success',
-      message: 'Telemetry registered successfully',
-      readingId: reading.id,
-      animalId: assignment.animalId,
+      message: `Processed batch of ${payloads.length} items. Inserted: ${validReadings.length} readings.`,
+      inserted: validReadings.length,
+      ignored: payloads.length - validReadings.length,
     };
   }
 }
