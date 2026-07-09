@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import dynamic from 'next/dynamic';
 
 // Load Map with SSR disabled
-const LiveTrackingMap = dynamic(() => import('@/components/LiveTrackingMap'), { ssr: false });
+const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
 interface Farm {
   id: string;

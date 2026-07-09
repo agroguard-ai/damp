@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import dynamic from 'next/dynamic';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
-const ZoneMap = dynamic(() => import('@/components/ZoneMap'), { ssr: false });
+const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
 
 interface Farm {
   id: string;
