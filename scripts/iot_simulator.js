@@ -108,19 +108,26 @@ function uploadBatch() {
       try {
         const responseObj = JSON.parse(data);
         if (responseObj.suggestedLocations) {
+          console.log(`[${new Date().toLocaleTimeString()}] Server returned suggested locations:`, JSON.stringify(responseObj.suggestedLocations));
+          console.log(`[${new Date().toLocaleTimeString()}] Current simulator states MACs:`, states.map(s => `'${s.mac_id}'`));
           Object.keys(responseObj.suggestedLocations).forEach((mac) => {
             const state = states.find((s) => s.mac_id === mac);
-            if (state && !state.hasSnapped) {
-              const suggestion = responseObj.suggestedLocations[mac];
-              console.log(`[${new Date().toLocaleTimeString()}] Auto-snapping collar ${mac} to user's farm lot coordinates: ${suggestion.lat}, ${suggestion.lng}`);
-              state.lat = suggestion.lat;
-              state.lng = suggestion.lng;
-              state.hasSnapped = true;
+            if (state) {
+              console.log(`[${new Date().toLocaleTimeString()}] Found matching state for ${mac}. hasSnapped = ${state.hasSnapped}`);
+              if (!state.hasSnapped) {
+                const suggestion = responseObj.suggestedLocations[mac];
+                console.log(`[${new Date().toLocaleTimeString()}] Auto-snapping collar ${mac} to user's farm lot coordinates: ${suggestion.lat}, ${suggestion.lng}`);
+                state.lat = suggestion.lat;
+                state.lng = suggestion.lng;
+                state.hasSnapped = true;
+              }
+            } else {
+              console.log(`[${new Date().toLocaleTimeString()}] Warning: Server suggested location for MAC '${mac}' but it was not found in simulator states.`);
             }
           });
         }
       } catch (e) {
-        // Silently ignore if not JSON
+        console.error(`[${new Date().toLocaleTimeString()}] Error parsing response JSON:`, e.message);
       }
     });
   });
