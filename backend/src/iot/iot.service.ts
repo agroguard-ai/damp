@@ -34,11 +34,44 @@ export class IotService {
         collarId: { in: collarIds },
         endAt: null,
       },
+      include: {
+        collar: true,
+        animal: {
+          include: {
+            farm: {
+              include: {
+                zones: true,
+              },
+            },
+          },
+        },
+      },
     });
     console.log('[Telemetry Ingestion] Found active assignments:', assignments);
 
     const assignedCollarIds = new Set(assignments.map((a) => a.collarId));
     console.log('[Telemetry Ingestion] Active assigned collar IDs:', Array.from(assignedCollarIds));
+
+    // Determinar sugerencias de geolocalización basadas en los lotes del establecimiento
+    const suggestedLocations: Record<string, { lat: number; lng: number }> = {};
+    for (const assignment of assignments) {
+      const zones = assignment.animal.farm.zones;
+      if (zones && zones.length > 0) {
+        try {
+          const coords = typeof zones[0].polygonCoordinates === 'string'
+            ? JSON.parse(zones[0].polygonCoordinates)
+            : zones[0].polygonCoordinates;
+          if (assignment.collar.serialNumber && Array.isArray(coords) && coords.length > 0 && Array.isArray(coords[0]) && coords[0].length === 2) {
+            suggestedLocations[assignment.collar.serialNumber] = {
+              lat: coords[0][0],
+              lng: coords[0][1],
+            };
+          }
+        } catch (e) {
+          console.error('[Telemetry Ingestion] Error parsing zones coordinates:', e);
+        }
+      }
+    }
 
     // 4. Filtrar y preparar lecturas válidas
     const validReadings: any[] = [];
@@ -80,6 +113,7 @@ export class IotService {
       message: `Processed batch of ${payloads.length} items. Inserted: ${validReadings.length} readings.`,
       inserted: validReadings.length,
       ignored: payloads.length - validReadings.length,
+      suggestedLocations,
     };
   }
 }
