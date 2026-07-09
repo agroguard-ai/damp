@@ -41,14 +41,6 @@ export class AnimalsController {
     );
   }
 
-  @Get('/api/animals/locations')
-  getLiveLocations(
-    @CurrentUser('sub') userId: string,
-    @Query('farmId') farmId?: string,
-  ) {
-    return this.animalsService.getLiveLocations(userId, farmId);
-  }
-
   @Get(':id')
   findOne(
     @Param('id') id: string,
