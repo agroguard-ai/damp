@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
+
+// Load Leaflet map with SSR disabled to prevent server compilation crash
+const ZoneMap = dynamic(() => import("@/components/ZoneMap"), { ssr: false });
 
 interface Farm {
   id: string;
@@ -14,7 +18,7 @@ interface Zone {
   name: string;
   pastureType: string | null;
   farmId: string;
-  polygonCoordinates: any[] | null;
+  polygonCoordinates: any;
   createdAt: string;
 }
 
@@ -32,6 +36,7 @@ export default function ZonasPage() {
   // Form State
   const [newZoneName, setNewZoneName] = useState("");
   const [newZonePasture, setNewZonePasture] = useState("");
+  const [newPoints, setNewPoints] = useState<[number, number][]>([]);
 
   // Load farms on mount
   useEffect(() => {
@@ -86,21 +91,29 @@ export default function ZonasPage() {
 
   useEffect(() => {
     loadZones();
+    // Clear drawn points on farm change
+    setNewPoints([]);
   }, [selectedFarm]);
+
+  const handleAddPoint = (point: [number, number]) => {
+    setNewPoints((prev) => [...prev, point]);
+  };
+
+  const handleClearPoints = () => {
+    setNewPoints([]);
+  };
 
   const handleCreateZone = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFarm) return;
+    
+    if (newPoints.length < 3) {
+      setError("Una zona debe tener al menos 3 puntos/coordenadas dibujadas en el mapa.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
-
-    // Mock polygon coordinates for now
-    const mockPolygon = [
-      [-34.6000, -58.4000],
-      [-34.6100, -58.4000],
-      [-34.6100, -58.4100],
-      [-34.6000, -58.4100]
-    ];
 
     try {
       const token = await getToken();
@@ -114,7 +127,7 @@ export default function ZonasPage() {
           name: newZoneName,
           pastureType: newZonePasture || undefined,
           farmId: selectedFarm,
-          polygonCoordinates: mockPolygon,
+          polygonCoordinates: newPoints,
         }),
       });
 
@@ -125,6 +138,7 @@ export default function ZonasPage() {
 
       setNewZoneName("");
       setNewZonePasture("");
+      setNewPoints([]);
       alert("Zona registrada con éxito");
       loadZones(); // Refresh zones list
     } catch (err: any) {
@@ -158,6 +172,21 @@ export default function ZonasPage() {
     }
   };
 
+  // Resolve dynamic map center
+  const getMapCenter = (): [number, number] => {
+    if (zones.length > 0 && zones[0].polygonCoordinates) {
+      try {
+        const coords = typeof zones[0].polygonCoordinates === "string"
+          ? JSON.parse(zones[0].polygonCoordinates)
+          : zones[0].polygonCoordinates;
+        if (Array.isArray(coords) && coords.length > 0) {
+          return [coords[0][0], coords[0][1]];
+        }
+      } catch (e) {}
+    }
+    return [-34.6037, -58.3816];
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-8">
       
@@ -168,7 +197,7 @@ export default function ZonasPage() {
             Gestión de Zonas y Potreros
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Divide tus establecimientos en potreros o parcelas para el pastoreo y delimitación de hacienda.
+            Divide tus establecimientos en potreros o parcelas haciendo clic en el mapa para delimitar su perímetro.
           </p>
         </div>
       </div>
@@ -195,7 +224,7 @@ export default function ZonasPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left panel: Zones list */}
+          {/* Left panel: Map & Zones list */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Selector de Campo */}
@@ -214,6 +243,24 @@ export default function ZonasPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Interactive Map Card */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-4">
+              <div className="flex justify-between items-center pb-2">
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                  Mapa del Establecimiento
+                </h3>
+                <span className="text-[11px] text-zinc-400">
+                  {newPoints.length > 0 ? `Trazando: ${newPoints.length} puntos colocados` : "Haz clic en el mapa para marcar el perímetro"}
+                </span>
+              </div>
+              <ZoneMap
+                zones={zones}
+                newPoints={newPoints}
+                onAddPoint={handleAddPoint}
+                center={getMapCenter()}
+              />
             </div>
 
             {/* Listado de Zonas */}
@@ -242,25 +289,32 @@ export default function ZonasPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {zones.map((zone) => (
-                        <tr key={zone.id} className="text-zinc-800 dark:text-zinc-200">
-                          <td className="py-3.5 font-semibold">{zone.name}</td>
-                          <td className="py-3.5">{zone.pastureType || "No especificado"}</td>
-                          <td className="py-3.5">
-                            <span className="bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded text-xs text-zinc-650 dark:text-zinc-450 font-mono">
-                              {zone.polygonCoordinates ? `${zone.polygonCoordinates.length} Puntos` : "Sin trazar"}
-                            </span>
-                          </td>
-                          <td className="py-3.5 text-right">
-                            <button
-                              onClick={() => handleDeleteZone(zone.id)}
-                              className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
-                            >
-                              Eliminar
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {zones.map((zone) => {
+                        const coords = typeof zone.polygonCoordinates === "string"
+                          ? JSON.parse(zone.polygonCoordinates)
+                          : zone.polygonCoordinates;
+                        const count = Array.isArray(coords) ? coords.length : 0;
+
+                        return (
+                          <tr key={zone.id} className="text-zinc-800 dark:text-zinc-200">
+                            <td className="py-3.5 font-semibold">{zone.name}</td>
+                            <td className="py-3.5">{zone.pastureType || "No especificado"}</td>
+                            <td className="py-3.5">
+                              <span className="bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded text-xs text-zinc-650 dark:text-zinc-450 font-mono">
+                                {count > 0 ? `${count} Vértices` : "Sin coordenadas"}
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-right">
+                              <button
+                                onClick={() => handleDeleteZone(zone.id)}
+                                className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -276,7 +330,7 @@ export default function ZonasPage() {
                   Crear Nueva Zona
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-450 mt-1">
-                  Agrega una parcela de pastoreo al campo seleccionado.
+                  Agrega una parcela de pastoreo delimitando su perímetro sobre el mapa y completando el formulario.
                 </p>
               </div>
 
@@ -306,6 +360,34 @@ export default function ZonasPage() {
                     placeholder="Ej: Alfalfa, Trébol, Pasto natural"
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
+                </div>
+
+                {/* Point Drawing Log */}
+                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold text-zinc-500">Puntos Colocados</span>
+                    {newPoints.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearPoints}
+                        className="text-red-500 hover:text-red-600 font-semibold cursor-pointer"
+                      >
+                        Limpiar Mapa
+                      </button>
+                    )}
+                  </div>
+                  {newPoints.length === 0 ? (
+                    <span className="text-[11px] text-zinc-400 italic">Haz clics sobre el mapa de la izquierda para marcar las esquinas del potrero.</span>
+                  ) : (
+                    <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 font-mono text-[10px] text-zinc-500">
+                      {newPoints.map((pt, idx) => (
+                        <div key={idx} className="flex justify-between border-b border-zinc-100 dark:border-zinc-850 pb-0.5">
+                          <span>Vértice #{idx + 1}</span>
+                          <span>{pt[0].toFixed(5)}, {pt[1].toFixed(5)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2">

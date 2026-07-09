@@ -29,6 +29,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/animals")) return "Hacienda (Monitoreo)";
     if (pathname.startsWith("/zonas")) return "Zonas";
     if (pathname.startsWith("/animal-types")) return "Tipos de Animal";
+    if (pathname.startsWith("/geolocalizacion")) return "Monitoreo Geográfico";
     return "DAMP";
   };
 
@@ -119,19 +120,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             Hacienda
           </Link>
 
-          {/* Collares IoT */}
+          {/* Geolocalización */}
           <Link
-            href="/animals"
+            href="/geolocalizacion"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              pathname.includes("/collares")
+              pathname.includes("/geolocalizacion")
                 ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white"
                 : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-850 hover:text-zinc-900 dark:hover:text-white"
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            Collares IoT
+            Geolocalización
           </Link>
 
           {/* Tipos de Animal */}

@@ -300,4 +300,83 @@ export class AnimalsService {
       animal: updatedAnimal,
     };
   }
+
+  async getLiveLocations(userId: string, farmId?: string) {
+    let farmIds: string[] = [];
+    if (farmId) {
+      const farm = await this.prisma.farm.findFirst({
+        where: { id: farmId, userId },
+      });
+      if (!farm) {
+        throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      }
+      farmIds = [farmId];
+    } else {
+      const userFarms = await this.prisma.farm.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      farmIds = userFarms.map((f) => f.id);
+    }
+
+    const animals = await this.prisma.animal.findMany({
+      where: {
+        farmId: { in: farmIds },
+        isArchived: false,
+      },
+      include: {
+        animalType: true,
+        zone: true,
+        animalCollars: {
+          where: { endAt: null },
+          include: {
+            collar: {
+              include: {
+                telemetryReadings: {
+                  orderBy: { timestamp: 'desc' },
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return animals.map((animal) => {
+      const collar = animal.animalCollars[0]?.collar;
+      const latestReading = collar?.telemetryReadings?.[0] || null;
+
+      return {
+        id: animal.id,
+        tag: animal.tag,
+        breed: animal.breed,
+        weightKg: animal.weightKg,
+        status: animal.status,
+        animalType: animal.animalType ? {
+          id: animal.animalType.id,
+          name: animal.animalType.name,
+          species: animal.animalType.species,
+        } : null,
+        zone: animal.zone ? {
+          id: animal.zone.id,
+          name: animal.zone.name,
+          polygonCoordinates: animal.zone.polygonCoordinates,
+        } : null,
+        collar: collar ? {
+          id: collar.id,
+          serialNumber: collar.serialNumber,
+          status: collar.status,
+        } : null,
+        latestReading: latestReading ? {
+          id: latestReading.id,
+          latitude: latestReading.latitude,
+          longitude: latestReading.longitude,
+          temperature: latestReading.temperature,
+          batteryLevel: latestReading.batteryLevel,
+          timestamp: latestReading.timestamp,
+        } : null,
+      };
+    });
+  }
 }
