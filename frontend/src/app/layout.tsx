@@ -1,7 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import { Inter, DM_Sans } from 'next/font/google';
 import '@/app/globals.css';
-import AppLayout from '@/components/AppLayout';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -23,9 +22,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <ClerkProvider afterSignOutUrl="/">
-          <AppLayout>{children}</AppLayout>
-        </ClerkProvider>
+        <ClerkProvider afterSignOutUrl="/">{children}</ClerkProvider>
       </body>
     </html>
   );
