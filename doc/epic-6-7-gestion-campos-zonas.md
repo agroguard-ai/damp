@@ -16,7 +16,7 @@ Esta Epic incluye la gestión completa de establecimientos agropecuarios (`Farms
 * **Frontend (Next.js 16)**:
   * Formulario de alta de campos adaptado para enviar la cabecera `Authorization: Bearer <token>` de Clerk.
   * Selector dinámico en la vista de Dashboard y Hacienda conectado a la lista de establecimientos del usuario logueado.
-  * Nueva pantalla de **Gestión de Zonas y Potreros** accesible desde el menú lateral (`/zonas`), permitiendo seleccionar el campo, ver su grilla de potreros y registrar nuevos especificando nombre y tipo de pastura (utilizando un trazado inicial simulado).
+  * Nueva pantalla de **Gestión de Zonas y Potreros** accesible desde el menú lateral (`/zonas`), permitiendo seleccionar el campo, ver su mapa interactivo de OpenStreetMap (Leaflet), dibujar perímetros/polígonos haciendo clics directos sobre el mapa para capturar las coordenadas de forma dinámica y registrar el nuevo potrero.
 
 ---
 
