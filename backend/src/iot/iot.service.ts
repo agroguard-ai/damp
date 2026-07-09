@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 
+const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
 @Injectable()
 export class IotService {
   constructor(private readonly prisma: PrismaService) {}
@@ -78,6 +80,8 @@ export class IotService {
     // 4. Filtrar y preparar lecturas válidas
     const validReadings: any[] = [];
     const collarsToUpdate = new Set<string>();
+    // Track which animal IDs received telemetry in this batch (for ML health check)
+    const animalCollarMap = new Map<string, string>(); // animalId -> collarId
 
     for (const item of payloads) {
       const collarId = collarMap.get(item.mac_id);
@@ -93,8 +97,13 @@ export class IotService {
         });
         collarsToUpdate.add(collarId);
 
-        // Control de Cerco Eléctrico Virtual (Geofencing)
+        // Track animal for ML health check
         const assignment = assignments.find((a) => a.collarId === collarId);
+        if (assignment) {
+          animalCollarMap.set(assignment.animal.id, collarId);
+        }
+
+        // Control de Cerco Eléctrico Virtual (Geofencing)
         if (assignment && assignment.animal && assignment.animal.zone) {
           const zone = assignment.animal.zone;
           if (zone.polygonCoordinates) {
@@ -151,6 +160,13 @@ export class IotService {
       });
     }
 
+    // 6. ML Health Check (fire-and-forget, non-blocking)
+    // For each animal that received telemetry, query last 10 readings
+    // and send them to the ML microservice for health prediction.
+    this.runMLHealthChecks(animalCollarMap).catch((err) => {
+      console.error('[ML Health] Error during ML health check (non-blocking):', err.message);
+    });
+
     return {
       status: 'success',
       message: `Processed batch of ${payloads.length} items. Inserted: ${validReadings.length} readings.`,
@@ -158,5 +174,90 @@ export class IotService {
       ignored: payloads.length - validReadings.length,
       suggestedLocations,
     };
+  }
+
+  /**
+   * Queries the last 10 telemetry readings for each animal and sends them
+   * to the ML microservice for health anomaly detection.
+   * If an anomaly is detected, creates a HEALTH alert with a 1-hour cooldown.
+   */
+  private async runMLHealthChecks(animalCollarMap: Map<string, string>) {
+    for (const [animalId, collarId] of animalCollarMap.entries()) {
+      try {
+        // Fetch last 10 readings for this collar
+        const recentReadings = await this.prisma.telemetryReading.findMany({
+          where: { collarId },
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+        });
+
+        if (recentReadings.length < 3) {
+          // Not enough data for a meaningful prediction
+          continue;
+        }
+
+        // Prepare payload for ML service
+        const mlPayload = {
+          animal_id: animalId,
+          readings: recentReadings.map((r) => ({
+            temperature: r.temperature,
+            lat: r.latitude,
+            lng: r.longitude,
+            timestamp: r.timestamp.toISOString(),
+          })),
+        };
+
+        // Call ML microservice
+        const response = await fetch(`${ML_SERVICE_URL}/predict/health`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(mlPayload),
+          signal: AbortSignal.timeout(5000), // 5s timeout
+        });
+
+        if (!response.ok) {
+          console.warn(`[ML Health] ML service returned ${response.status} for animal ${animalId}`);
+          continue;
+        }
+
+        const prediction = await response.json() as {
+          anomaly_detected: boolean;
+          confidence: number;
+          type: string | null;
+          avg_temperature: number | null;
+          position_drift_m: number | null;
+        };
+
+        if (prediction.anomaly_detected) {
+          console.log(`[ML Health] Anomaly detected for animal ${animalId}: ${prediction.type} (confidence: ${prediction.confidence})`);
+
+          // Cooldown check: don't create alert if one was created < 1 hour ago
+          const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+          const recentHealthAlert = await this.prisma.alert.findFirst({
+            where: {
+              animalId,
+              type: 'HEALTH',
+              createdAt: { gte: oneHourAgo },
+            },
+          });
+
+          if (!recentHealthAlert) {
+            await this.prisma.alert.create({
+              data: {
+                type: 'HEALTH',
+                message: `Anomalía de salud detectada: ${prediction.type}. Temperatura promedio: ${prediction.avg_temperature?.toFixed(1)}°C. Confianza del modelo: ${(prediction.confidence * 100).toFixed(0)}%.`,
+                animalId,
+              },
+            });
+            console.log(`[ML Health] Created HEALTH alert for animal ${animalId}`);
+          } else {
+            console.log(`[ML Health] HEALTH alert cooldown active for animal ${animalId}, skipping.`);
+          }
+        }
+      } catch (err: any) {
+        // Non-blocking: log and continue to next animal
+        console.warn(`[ML Health] Failed health check for animal ${animalId}: ${err.message}`);
+      }
+    }
   }
 }
