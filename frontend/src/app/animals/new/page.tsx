@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 
 interface Farm {
   id: string;
@@ -11,6 +12,7 @@ interface Farm {
 
 export default function NewAnimalPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [farms, setFarms] = useState<Farm[]>([]);
@@ -29,7 +31,12 @@ export default function NewAnimalPage() {
   useEffect(() => {
     async function fetchFarms() {
       try {
-        const res = await fetch("http://localhost:3001/farms");
+        const token = await getToken();
+        const res = await fetch("http://localhost:3001/farms", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!res.ok) throw new Error("No se pudieron cargar los campos");
         const data = await res.json();
         setFarms(data);

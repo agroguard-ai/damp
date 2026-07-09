@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 
 interface Farm {
   id: string;
@@ -38,6 +39,7 @@ interface Animal {
 }
 
 export default function AnimalsListPage() {
+  const { getToken } = useAuth();
   const [farms, setFarms] = useState<Farm[]>([]);
   const [selectedFarm, setSelectedFarm] = useState<string>("");
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -56,7 +58,12 @@ export default function AnimalsListPage() {
   useEffect(() => {
     async function loadFarms() {
       try {
-        const res = await fetch("http://localhost:3001/farms");
+        const token = await getToken();
+        const res = await fetch("http://localhost:3001/farms", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         if (!res.ok) throw new Error("Error al obtener campos");
         const data = await res.json();
         setFarms(data);

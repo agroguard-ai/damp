@@ -10,6 +10,10 @@ export class CreateFarmDto {
   @IsString()
   province: string;
 
+  @IsOptional()
+  @IsString()
+  location?: string;
+
   @IsNumber()
   totalAreaHa: number;
 }

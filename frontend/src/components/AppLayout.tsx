@@ -27,6 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/farms")) return "Campos";
     if (pathname.startsWith("/animals/new")) return "Registrar Animal";
     if (pathname.startsWith("/animals")) return "Hacienda (Monitoreo)";
+    if (pathname.startsWith("/zonas")) return "Zonas";
     return "DAMP";
   };
 
@@ -87,9 +88,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             Campos
           </Link>
 
-          {/* Zonas (Placeholder to Hacienda list for now) */}
+          {/* Zonas */}
           <Link
-            href="/animals"
+            href="/zonas"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
               pathname.includes("/zonas")
                 ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white"

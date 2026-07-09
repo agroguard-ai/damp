@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 
 export default function NewFarmPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +28,7 @@ export default function NewFarmPage() {
     setError(null);
 
     try {
+      const token = await getToken();
       const payload = {
         name: formData.name,
         address: formData.address,
@@ -35,7 +38,10 @@ export default function NewFarmPage() {
 
       const res = await fetch("http://localhost:3001/farms", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
 

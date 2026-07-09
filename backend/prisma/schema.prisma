@@ -34,12 +34,15 @@ model Farm {
   name        String?
   address     String?
   province    String?
+  location    String?
   totalAreaHa Float?   @map("total_area_ha")
+  userId      String?  @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
   farmUsers FarmUser[]
   sectors   Sector[]
   animals   Animal[]
+  zones     Zone[]
 
   @@map("farm")
 }
@@ -198,4 +201,18 @@ enum MedicalEventType {
   VACCINATION
   TREATMENT
   SURGERY
+}
+
+model Zone {
+  id                 String   @id @default(uuid())
+  name               String
+  pastureType        String?  @map("pasture_type")
+  farmId             String   @map("farm_id")
+  polygonCoordinates Json?    @map("polygon_coordinates")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@map("zone")
 }
