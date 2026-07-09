@@ -17,11 +17,13 @@ export class IotService {
 
     // 1. Obtener todos los MAC IDs del lote
     const macIds = payloads.map((p) => p.mac_id);
+    console.log('[Telemetry Ingestion] Received MACs:', macIds);
 
     // 2. Buscar todos los collares registrados para esos MACs
     const collars = await this.prisma.collar.findMany({
       where: { serialNumber: { in: macIds } },
     });
+    console.log('[Telemetry Ingestion] Found registered collars:', collars);
 
     const collarMap = new Map(collars.map((c) => [c.serialNumber, c.id]));
     const collarIds = collars.map((c) => c.id);
@@ -33,8 +35,10 @@ export class IotService {
         endAt: null,
       },
     });
+    console.log('[Telemetry Ingestion] Found active assignments:', assignments);
 
     const assignedCollarIds = new Set(assignments.map((a) => a.collarId));
+    console.log('[Telemetry Ingestion] Active assigned collar IDs:', Array.from(assignedCollarIds));
 
     // 4. Filtrar y preparar lecturas válidas
     const validReadings: any[] = [];
