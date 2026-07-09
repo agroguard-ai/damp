@@ -327,6 +327,13 @@ export class AnimalsService {
       include: {
         animalType: true,
         zone: true,
+        alerts: {
+          where: {
+            type: 'ESCAPE',
+            isResolved: false,
+          },
+          take: 1,
+        },
         animalCollars: {
           where: { endAt: null },
           include: {
@@ -353,6 +360,7 @@ export class AnimalsService {
         breed: animal.breed,
         weightKg: animal.weightKg,
         status: animal.status,
+        hasActiveAlert: animal.alerts.length > 0,
         animalType: animal.animalType ? {
           id: animal.animalType.id,
           name: animal.animalType.name,

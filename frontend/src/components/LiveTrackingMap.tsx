@@ -16,18 +16,36 @@ if (typeof window !== "undefined") {
   });
 }
 
-// Custom cow icon or marker icon for animals
-const animalIcon = (status: string) => {
-  return new L.Icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41],
-  });
-};
+// Standard blue marker for animals with normal status
+const normalIcon = new L.Icon({
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+// Red marker for animals with an active escape alert
+const alertIcon = new L.DivIcon({
+  className: "alert-marker",
+  html: `
+    <div style="position:relative;width:30px;height:42px;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="42">
+        <path d="M12 0C5.383 0 0 5.383 0 12c0 9 12 24 12 24s12-15 12-24c0-6.617-5.383-12-12-12z" fill="#dc2626"/>
+        <circle cx="12" cy="12" r="6" fill="white"/>
+        <text x="12" y="15" text-anchor="middle" fill="#dc2626" font-size="10" font-weight="bold">!</text>
+      </svg>
+      <div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;background:#ef4444;border-radius:50%;animation:pulse-alert 1s ease-in-out infinite;"></div>
+    </div>
+  `,
+  iconSize: [30, 42],
+  iconAnchor: [15, 42],
+  popupAnchor: [0, -36],
+});
+
+const getAnimalIcon = (hasAlert: boolean) => hasAlert ? alertIcon : normalIcon;
 
 interface Zone {
   id: string;
@@ -41,6 +59,7 @@ interface AnimalLocation {
   breed: string;
   weightKg: number;
   status: string;
+  hasActiveAlert?: boolean;
   animalType: { name: string; species: string } | null;
   zone: { name: string } | null;
   latestReading: {
@@ -135,10 +154,15 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
             <Marker
               key={animal.id}
               position={[latitude, longitude]}
-              icon={animalIcon(animal.status)}
+              icon={getAnimalIcon(!!animal.hasActiveAlert)}
             >
               <Popup>
-                <div className="p-2 space-y-2 text-xs min-w-[160px] text-zinc-900">
+                <div className="p-2 space-y-2 text-xs min-w-[180px] text-zinc-900">
+                  {animal.hasActiveAlert && (
+                    <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:"6px",padding:"4px 8px",marginBottom:"4px"}}>
+                      <span style={{color:"#dc2626",fontWeight:"bold",fontSize:"11px"}}>⚠ ALERTA: Fuera de geocerca</span>
+                    </div>
+                  )}
                   <div className="border-b pb-1">
                     <h4 className="font-bold text-zinc-900 text-sm">
                       {animal.tag || "Animal Sin Identificador"}

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
+import { isPointInPolygon } from './utils/geofencing.utils';
 
 @Injectable()
 export class IotService {
@@ -38,6 +39,7 @@ export class IotService {
         collar: true,
         animal: {
           include: {
+            zone: true,
             farm: {
               include: {
                 zones: true,
@@ -90,6 +92,47 @@ export class IotService {
           timestamp: new Date(),
         });
         collarsToUpdate.add(collarId);
+
+        // Control de Cerco Eléctrico Virtual (Geofencing)
+        const assignment = assignments.find((a) => a.collarId === collarId);
+        if (assignment && assignment.animal && assignment.animal.zone) {
+          const zone = assignment.animal.zone;
+          if (zone.polygonCoordinates) {
+            try {
+              const polyCoords = typeof zone.polygonCoordinates === 'string'
+                ? JSON.parse(zone.polygonCoordinates)
+                : zone.polygonCoordinates;
+              
+              if (Array.isArray(polyCoords) && polyCoords.length > 0) {
+                const isInside = isPointInPolygon([item.lat, item.lng], polyCoords);
+                
+                if (!isInside) {
+                  // Buscar si ya existe una alerta de escape activa para este animal
+                  const activeAlert = await this.prisma.alert.findFirst({
+                    where: {
+                      animalId: assignment.animal.id,
+                      type: 'ESCAPE',
+                      isResolved: false,
+                    },
+                  });
+
+                  if (!activeAlert) {
+                    await this.prisma.alert.create({
+                      data: {
+                        type: 'ESCAPE',
+                        message: `El animal con caravana "${assignment.animal.tag || assignment.animal.id.slice(0, 5)}" ha traspasado los límites del potrero "${zone.name}".`,
+                        animalId: assignment.animal.id,
+                      },
+                    });
+                    console.log(`[Geofencing Alert] Created ESCAPE alert for animal ${assignment.animal.tag || assignment.animal.id}`);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error('[Geofencing] Error during polygon validation:', e);
+            }
+          }
+        }
       }
     }
 

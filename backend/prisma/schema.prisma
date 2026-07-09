@@ -115,6 +115,7 @@ model Animal {
   telemetry       TelemetryRecord[]
   animalGeofences AnimalGeofence[]
   animalCollars   AnimalCollar[]
+  alerts          Alert[]
 
   @@map("animal")
 }
@@ -246,4 +247,23 @@ model TelemetryReading {
   collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
 
   @@map("telemetry_reading")
+}
+
+enum AlertType {
+  ESCAPE
+  HEALTH
+  SYSTEM
+}
+
+model Alert {
+  id         String    @id @default(uuid())
+  type       AlertType
+  message    String
+  animalId   String    @map("animal_id")
+  isResolved Boolean   @default(false) @map("is_resolved")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+
+  @@map("alert")
 }

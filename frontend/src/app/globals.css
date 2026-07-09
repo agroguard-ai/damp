@@ -1,2 +1,13 @@
 @import 'tailwindcss';
 @import '../styles/index.css';
+
+/* Geofencing alert marker pulse animation */
+@keyframes pulse-alert {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+.alert-marker {
+  background: transparent !important;
+  border: none !important;
+}
