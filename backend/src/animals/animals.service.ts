@@ -159,7 +159,14 @@ export class AnimalsService {
         animalCollars: {
           where: { endAt: null },
           include: {
-            collar: true,
+            collar: {
+              include: {
+                telemetryReadings: {
+                  orderBy: { timestamp: 'desc' },
+                  take: 1,
+                },
+              },
+            },
           },
         },
         animalGeofences: {
@@ -188,7 +195,16 @@ export class AnimalsService {
         animalType: true,
         zone: true,
         animalCollars: {
-          include: { collar: true },
+          include: {
+            collar: {
+              include: {
+                telemetryReadings: {
+                  orderBy: { timestamp: 'desc' },
+                  take: 1,
+                },
+              },
+            },
+          },
         },
         animalGeofences: {
           include: {

@@ -9,6 +9,7 @@ import { AnimalsModule } from './animals/animals.module';
 import { FarmsModule } from './farms/farms.module';
 import { ZonesModule } from './zones/zones.module';
 import { AnimalTypesModule } from './animal-types/animal-types.module';
+import { IotModule } from './iot/iot.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AnimalTypesModule } from './animal-types/animal-types.module';
     FarmsModule,
     ZonesModule,
     AnimalTypesModule,
+    IotModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -34,6 +34,12 @@ interface Animal {
     collar: {
       serialNumber: string;
       status: string;
+      telemetryReadings?: Array<{
+        id: string;
+        temperature: number;
+        batteryLevel: number;
+        timestamp: string;
+      }>;
     };
   }>;
   animalGeofences: Array<{
@@ -469,6 +475,22 @@ export default function AnimalsListPage() {
                             )}
                           </span>
                         </div>
+                        {collar && (
+                          <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-950 p-2 rounded-lg border border-zinc-100 dark:border-zinc-850 mt-1">
+                            <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-medium">Lectura IoT</span>
+                            <span className="text-[11px] font-semibold text-zinc-750 dark:text-zinc-350">
+                              {collar.telemetryReadings?.[0] ? (
+                                <span className="flex items-center gap-2">
+                                  <span>🌡️ {collar.telemetryReadings[0].temperature.toFixed(1)}°C</span>
+                                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                                  <span>🔋 {collar.telemetryReadings[0].batteryLevel.toFixed(0)}%</span>
+                                </span>
+                              ) : (
+                                <span className="text-zinc-400 dark:text-zinc-650 italic">Esperando señal...</span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span>Zona / Potrero</span>
                           <span className="text-zinc-800 dark:text-zinc-200 font-semibold">

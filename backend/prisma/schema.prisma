@@ -120,13 +120,15 @@ model Animal {
 }
 
 model Collar {
-  id              String        @id @default(uuid())
-  serialNumber    String?       @unique @map("serial_number")
-  status          String?
-  firmwareVersion String?       @map("firmware_version")
+  id                String             @id @default(uuid())
+  serialNumber      String?            @unique @map("serial_number")
+  status            String?
+  firmwareVersion   String?            @map("firmware_version")
+  lastTelemetryDate DateTime?          @map("last_telemetry_date")
 
-  telemetry     TelemetryRecord[]
-  animalCollars AnimalCollar[]
+  telemetry         TelemetryRecord[]
+  animalCollars     AnimalCollar[]
+  telemetryReadings TelemetryReading[]
 
   @@map("collar")
 }
@@ -230,4 +232,18 @@ model AnimalType {
   animals Animal[]
 
   @@map("animal_type")
+}
+
+model TelemetryReading {
+  id           String   @id @default(uuid())
+  collarId     String   @map("collar_id")
+  latitude     Float
+  longitude    Float
+  temperature  Float
+  batteryLevel Float    @map("battery_level")
+  timestamp    DateTime @default(now())
+
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+
+  @@map("telemetry_reading")
 }
