@@ -1,22 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
-
-interface Farm {
-  id: string;
-  name: string;
-}
+import { useApi } from '@/hooks/useApi';
+import { useMutation } from '@/hooks/useMutation';
+import { farmsApi } from '@/lib/api/farms';
+import { animalsApi } from '@/lib/api/animals';
+import { useToast } from '@/context/ToastContext';
 
 export default function NewAnimalPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [farms, setFarms] = useState<Farm[]>([]);
-  const [fetchingFarms, setFetchingFarms] = useState(true);
+  const { toast } = useToast();
+
+  const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
+  const { mutate: createAnimal, loading, error, reset } = useMutation(animalsApi.create);
 
   const [formData, setFormData] = useState({
     farmId: '',
@@ -27,74 +25,28 @@ export default function NewAnimalPage() {
     collarMacAddress: '',
   });
 
-  // Cargar las granjas disponibles al montar la página
-  useEffect(() => {
-    async function fetchFarms() {
-      try {
-        const token = await getToken();
-        const res = await fetch('http://localhost:3001/farms', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error('No se pudieron cargar los campos');
-        const data = await res.json();
-        setFarms(data);
-        if (data.length > 0) {
-          setFormData((prev) => ({ ...prev, farmId: data[0].id }));
-        }
-      } catch (err: any) {
-        console.error(err);
-        setError('Error al cargar los campos registrados. Por favor crea uno primero.');
-      } finally {
-        setFetchingFarms(false);
-      }
-    }
-    fetchFarms();
-  }, []);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) reset();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.farmId) {
-      setError('Debes seleccionar o registrar un campo primero');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
+    const finalFarmId = formData.farmId || farms[0]?.id;
+    if (!finalFarmId) return;
 
     try {
-      const payload = {
-        farmId: formData.farmId,
+      await createAnimal({
+        farmId: finalFarmId,
         tag: formData.tag,
         breed: formData.breed,
         weightKg: Number(formData.weightKg),
         ageMonths: Number(formData.ageMonths),
         collarMacAddress: formData.collarMacAddress || undefined,
-      };
-
-      const res = await fetch('http://localhost:3001/animals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Error al registrar el animal');
-      }
-
-      alert('Animal registrado con éxito');
+      toast.success('Animal registrado con éxito');
       router.push('/');
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
   };
 
   return (
@@ -150,7 +102,7 @@ export default function NewAnimalPage() {
                 </div>
                 <select
                   name="farmId"
-                  value={formData.farmId}
+                  value={formData.farmId || farms[0]?.id || ''}
                   onChange={handleChange}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
                 >
