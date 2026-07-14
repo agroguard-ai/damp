@@ -3,13 +3,15 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
+import { useMutation } from '@/hooks/useMutation';
+import { farmsApi } from '@/lib/api/farms';
+
+import { useToast } from '@/context/ToastContext';
 
 export default function NewFarmPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { mutate: createFarm, loading, error } = useMutation(farmsApi.create);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,38 +26,17 @@ export default function NewFarmPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
     try {
-      const token = await getToken();
-      const payload = {
+      await createFarm({
         name: formData.name,
         address: formData.address,
         province: formData.province,
         totalAreaHa: Number(formData.totalAreaHa),
-      };
-
-      const res = await fetch('http://localhost:3001/farms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Error al registrar el campo');
-      }
-
-      alert('Campo/Granja registrado con éxito');
-      router.push('/animals/new'); // Ir directo a registrar un animal ya con la granja creada
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      toast.success('Establecimiento registrado con éxito');
+      router.push('/animals/new');
+    } catch {
+      // Error is already captured in the mutation state
     }
   };
 
