@@ -1,73 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
-
-interface Farm {
-  id: string;
-  name: string;
-}
-
-interface AnimalType {
-  id: string;
-  name: string;
-  species: string;
-}
-
-interface Zone {
-  id: string;
-  name: string;
-}
-
-interface Animal {
-  id: string;
-  tag: string | null;
-  breed: string;
-  weightKg: number;
-  birthDate: string;
-  status: string;
-  createdAt: string;
-  animalType: AnimalType | null;
-  zone: Zone | null;
-  animalCollars: Array<{
-    collar: {
-      serialNumber: string;
-      status: string;
-      telemetryReadings?: Array<{
-        id: string;
-        temperature: number;
-        batteryLevel: number;
-        timestamp: string;
-      }>;
-    };
-  }>;
-  animalGeofences: Array<{
-    geofence: {
-      name: string;
-      sector: {
-        name: string;
-      };
-    };
-  }>;
-  medicalEvents: Array<{
-    type: string;
-    description: string;
-  }>;
-}
+import { useToast } from '@/context/ToastContext';
+import { useApi } from '@/hooks/useApi';
+import { useMutation } from '@/hooks/useMutation';
+import { farmsApi } from '@/lib/api/farms';
+import { animalTypesApi } from '@/lib/api/animal-types';
+import { zonesApi } from '@/lib/api/zones';
+import { animalsApi, type Animal } from '@/lib/api/animals';
 
 export default function AnimalsListPage() {
-  const { getToken } = useAuth();
-  const [farms, setFarms] = useState<Farm[]>([]);
+  const { toast } = useToast();
+  const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
+  const { data: animalTypes = [] } = useApi(animalTypesApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
-  const [animals, setAnimals] = useState<Animal[]>([]);
-  const [animalTypes, setAnimalTypes] = useState<AnimalType[]>([]);
-  const [farmZones, setFarmZones] = useState<Zone[]>([]);
+  const activeFarmId = selectedFarm || farms[0]?.id || '';
 
-  const [loading, setLoading] = useState(false);
-  const [fetchingFarms, setFetchingFarms] = useState(true);
+  const fetchZones = useCallback(
+    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+    [activeFarmId]
+  );
+  const { data: farmZones = [] } = useApi(fetchZones, [activeFarmId]);
 
-  // Filters State
   const [filters, setFilters] = useState({
     animalType: '',
     collarStatus: '',
@@ -75,10 +30,31 @@ export default function AnimalsListPage() {
     status: 'ACTIVE',
   });
 
-  // Modal State
+  const fetchAnimals = useCallback(
+    () =>
+      activeFarmId
+        ? animalsApi.getAll({
+            farmId: activeFarmId,
+            ...(filters.animalType && { animalType: filters.animalType }),
+            ...(filters.collarStatus && { collarStatus: filters.collarStatus }),
+            ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
+            status: filters.status,
+          })
+        : Promise.resolve([]),
+    [activeFarmId, filters]
+  );
+  const { data: animals = [], loading, refetch: refetchAnimals } = useApi(fetchAnimals, [activeFarmId, filters]);
+
+  // Mutations
+  const { mutate: archiveAnimal } = useMutation(animalsApi.archive);
+  const {
+    mutate: createAnimal,
+    loading: modalLoading,
+    error: modalError,
+    reset: resetModal,
+  } = useMutation(animalsApi.create);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     tag: '',
     breed: '',
@@ -88,94 +64,6 @@ export default function AnimalsListPage() {
     animalTypeId: '',
     zoneId: '',
   });
-
-  // Load farms and animal types on mount
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        const token = await getToken();
-
-        // Fetch Farms
-        const farmsRes = await fetch('http://localhost:3001/farms', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!farmsRes.ok) throw new Error('Error al obtener campos');
-        const farmsData = await farmsRes.json();
-        setFarms(farmsData);
-        if (farmsData.length > 0) {
-          setSelectedFarm(farmsData[0].id);
-        }
-
-        // Fetch Animal Types
-        const typesRes = await fetch('http://localhost:3001/animal-types', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (typesRes.ok) {
-          const typesData = await typesRes.json();
-          setAnimalTypes(typesData);
-        }
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-      } finally {
-        setFetchingFarms(false);
-      }
-    }
-    loadInitialData();
-  }, []);
-
-  // Fetch zones for the selected farm
-  useEffect(() => {
-    async function loadZones() {
-      if (!selectedFarm) {
-        setFarmZones([]);
-        return;
-      }
-      try {
-        const token = await getToken();
-        const res = await fetch(`http://localhost:3001/zones?farmId=${selectedFarm}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setFarmZones(data);
-        }
-      } catch (error) {
-        console.error('Error loading zones:', error);
-      }
-    }
-    loadZones();
-  }, [selectedFarm]);
-
-  // Load animals when selectedFarm or filters change
-  const loadAnimals = async () => {
-    if (!selectedFarm) return;
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const queryParams = new URLSearchParams({
-        farmId: selectedFarm,
-        ...(filters.animalType && { animalType: filters.animalType }),
-        ...(filters.collarStatus && { collarStatus: filters.collarStatus }),
-        ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
-        status: filters.status,
-      });
-
-      const res = await fetch(`http://localhost:3001/animals?${queryParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al obtener listado de animales');
-      const data = await res.json();
-      setAnimals(data);
-    } catch (error) {
-      console.error('Error cargando animales:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAnimals();
-  }, [selectedFarm, filters]);
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -189,40 +77,21 @@ export default function AnimalsListPage() {
       )
     )
       return;
-
     try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:3001/animals/${animalId}/archive`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: reason }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Error al archivar el animal');
-      }
-
-      alert('Animal archivado con éxito');
-      loadAnimals();
-    } catch (error: any) {
-      alert(error.message);
+      await archiveAnimal(animalId, { status: reason as 'SOLD' | 'DEAD' });
+      toast.success('Animal archivado con éxito');
+      refetchAnimals();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
 
   const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFarm) return;
-    setModalLoading(true);
-    setModalError(null);
-
+    if (!activeFarmId) return;
     try {
-      const token = await getToken();
-      const payload = {
-        farmId: selectedFarm,
+      await createAnimal({
+        farmId: activeFarmId,
         tag: formData.tag,
         breed: formData.breed,
         weightKg: Number(formData.weightKg),
@@ -230,23 +99,8 @@ export default function AnimalsListPage() {
         collarMacAddress: formData.collarMacAddress || undefined,
         animalTypeId: formData.animalTypeId || undefined,
         zoneId: formData.zoneId || undefined,
-      };
-
-      const res = await fetch('http://localhost:3001/animals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || 'Error al registrar el animal');
-      }
-
-      alert('Animal registrado con éxito');
+      toast.success('Animal registrado con éxito');
       setIsModalOpen(false);
       setFormData({
         tag: '',
@@ -257,12 +111,8 @@ export default function AnimalsListPage() {
         animalTypeId: '',
         zoneId: '',
       });
-      loadAnimals();
-    } catch (err: any) {
-      setModalError(err.message);
-    } finally {
-      setModalLoading(false);
-    }
+      refetchAnimals();
+    } catch {}
   };
 
   const getHealthBadge = (animal: Animal) => {
@@ -273,16 +123,14 @@ export default function AnimalsListPage() {
         class:
           'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30',
       };
-
     switch (latestEvent.type) {
       case 'TREATMENT':
-        if (latestEvent.description.includes('archivado') || latestEvent.description.includes('Baja')) {
+        if (latestEvent.description?.includes('archivado') || latestEvent.description?.includes('Baja'))
           return {
             label: 'Archivado',
             class:
               'bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/30',
           };
-        }
         return {
           label: 'Bajo Tratamiento',
           class:
@@ -328,10 +176,9 @@ export default function AnimalsListPage() {
           <button
             onClick={() => {
               if (farms.length === 0) {
-                alert('Debes registrar un campo antes de añadir animales.');
+                toast.warning('Debes registrar un campo antes de añadir animales.');
                 return;
               }
-              // Set default animal type if available
               if (animalTypes.length > 0 && !formData.animalTypeId) {
                 setFormData((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
               }
@@ -364,11 +211,10 @@ export default function AnimalsListPage() {
         <>
           {/* Filters Panel */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Campo Selector */}
             <div className="flex flex-col gap-1.5 lg:col-span-1">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>
               <select
-                value={selectedFarm}
+                value={activeFarmId}
                 onChange={(e) => setSelectedFarm(e.target.value)}
                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
               >
@@ -379,8 +225,6 @@ export default function AnimalsListPage() {
                 ))}
               </select>
             </div>
-
-            {/* status Filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Estado Hacienda</label>
               <select
@@ -394,8 +238,6 @@ export default function AnimalsListPage() {
                 <option value="DEAD">Fallecidos</option>
               </select>
             </div>
-
-            {/* AnimalType Filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Tipo de Animal</label>
               <select
@@ -412,8 +254,6 @@ export default function AnimalsListPage() {
                 ))}
               </select>
             </div>
-
-            {/* Collar status Filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Estado Collar</label>
               <select
@@ -427,8 +267,6 @@ export default function AnimalsListPage() {
                 <option value="INACTIVE">Offline</option>
               </select>
             </div>
-
-            {/* Health status Filter */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Estado Salud</label>
               <select
@@ -463,14 +301,12 @@ export default function AnimalsListPage() {
                 const health = getHealthBadge(animal);
                 const collar = animal.animalCollars[0]?.collar;
                 const sector = animal.animalGeofences[0]?.geofence.sector;
-
                 return (
                   <div
                     key={animal.id}
                     className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col justify-between"
                   >
                     <div>
-                      {/* Top Header Card */}
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
@@ -488,8 +324,6 @@ export default function AnimalsListPage() {
                             : health.label}
                         </span>
                       </div>
-
-                      {/* Content details */}
                       <div className="space-y-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4 text-xs text-zinc-500 dark:text-zinc-400">
                         <div className="flex justify-between">
                           <span>Peso</span>
@@ -538,16 +372,12 @@ export default function AnimalsListPage() {
                         </div>
                       </div>
                     </div>
-
-                    {/* Bottom actions */}
                     <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800 pt-4">
                       {animal.status === 'ACTIVE' ? (
                         <div className="flex justify-between items-center gap-2">
                           <span className="text-[10px] text-zinc-400">
                             Reg: {new Date(animal.createdAt).toLocaleDateString()}
                           </span>
-
-                          {/* Selector de Baja */}
                           <select
                             defaultValue=""
                             onChange={(e) => {
@@ -580,28 +410,28 @@ export default function AnimalsListPage() {
         </>
       )}
 
-      {/* Interactive Modal: Add Animal */}
+      {/* Modal: Add Animal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-850 flex justify-between items-center">
               <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Añadir Nuevo Animal</h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetModal();
+                }}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
               >
                 &times;
               </button>
             </div>
-
             {modalError && (
               <div className="mx-6 mt-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-650 dark:text-red-400 p-3 rounded-lg text-xs text-center">
                 {modalError}
               </div>
             )}
-
             <form onSubmit={handleModalSubmit} className="p-6 space-y-4">
-              {/* Tag and Breed */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
@@ -628,8 +458,6 @@ export default function AnimalsListPage() {
                   />
                 </div>
               </div>
-
-              {/* Weight and Age */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">Peso (Kg)</label>
@@ -655,8 +483,6 @@ export default function AnimalsListPage() {
                   />
                 </div>
               </div>
-
-              {/* AnimalType selector */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">Tipo de Animal</label>
                 <select
@@ -674,8 +500,6 @@ export default function AnimalsListPage() {
                   ))}
                 </select>
               </div>
-
-              {/* Zone selector */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">Zona (Opcional)</label>
                 <select
@@ -691,8 +515,6 @@ export default function AnimalsListPage() {
                   ))}
                 </select>
               </div>
-
-              {/* Collar MAC */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
                   MAC Collar IoT (Opcional)
@@ -705,12 +527,13 @@ export default function AnimalsListPage() {
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                 />
               </div>
-
-              {/* Buttons */}
               <div className="pt-4 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetModal();
+                  }}
                   className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-650 dark:text-zinc-350 hover:bg-zinc-50 dark:hover:bg-zinc-850 cursor-pointer font-medium"
                 >
                   Cancelar
