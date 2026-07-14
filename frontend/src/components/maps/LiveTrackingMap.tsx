@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker icons in Next.js
 if (typeof window !== 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error - Merging Leaflet Icon default prototype is required in NextJS environment
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -50,7 +50,7 @@ const getAnimalIcon = (hasAlert: boolean) => (hasAlert ? alertIcon : normalIcon)
 interface Zone {
   id: string;
   name: string;
-  polygonCoordinates: any;
+  polygonCoordinates: unknown;
 }
 
 interface AnimalLocation {
@@ -91,7 +91,7 @@ function MapAutoBounds({ zones, animals }: { zones: Zone[]; animals: AnimalLocat
             }
           });
         }
-      } catch (e) {}
+      } catch {}
     });
 
     animals.forEach((animal) => {
@@ -137,7 +137,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
                 />
               );
             }
-          } catch (e) {}
+          } catch {}
           return null;
         })}
 
@@ -147,7 +147,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
           const { latitude, longitude, temperature, batteryLevel } = animal.latestReading;
 
           return (
-            <Marker key={animal.id} position={[latitude, longitude]} icon={animalIcon(animal.status)}>
+            <Marker key={animal.id} position={[latitude, longitude]} icon={getAnimalIcon(!!animal.hasActiveAlert)}>
               <Popup>
                 <div className="p-2 space-y-2 text-xs min-w-[180px] text-zinc-900">
                   {animal.hasActiveAlert && (
