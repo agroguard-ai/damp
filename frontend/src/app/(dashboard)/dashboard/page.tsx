@@ -1,12 +1,13 @@
 'use client';
 
-import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
 import { KpiGrid } from '@/components/dashboard/KpiGrid';
 import { FarmsPanel } from '@/components/dashboard/FarmsPanel';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { alertsApi } from '@/lib/api/alerts';
+import { CirclePlus } from 'lucide-react';
 
 export default function Home() {
   const { data: farms = [], loading: loadingFarms } = useApi(farmsApi.getAll);
@@ -24,12 +25,9 @@ export default function Home() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Link
-            href="/farms/new"
-            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold shadow-sm cursor-pointer"
-          >
-            + Registrar Campo
-          </Link>
+          <Button href="/farms/new" variant="success" size="md" icon={CirclePlus}>
+            Registrar Campo
+          </Button>
         </div>
       </div>
 

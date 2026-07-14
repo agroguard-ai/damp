@@ -1,5 +1,5 @@
 import { CirclePlus } from 'lucide-react';
-import { QuickActionButton } from './QuickActionButton';
+import { Button } from '../ui/Button';
 
 export function QuickActions() {
   return (
@@ -8,9 +8,30 @@ export function QuickActions() {
         Acciones Rápidas
       </h3>
       <div className="flex flex-col gap-3">
-        <QuickActionButton href="/farms/new" label="Registrar Campo" icon={CirclePlus} />
-        <QuickActionButton href="/animals/new" label="Registrar Nuevo Animal" icon={CirclePlus} />
-        <QuickActionButton href="/animals" label="Ver Panel de Monitoreo" icon={CirclePlus} />
+        <Button
+          href="/farms/new"
+          label="Registrar Campo"
+          icon={CirclePlus}
+          variant="outline"
+          size="md"
+          className="w-full justify-start text-left bg-zinc-150/10 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-[#212124] text-zinc-900 dark:text-white font-medium"
+        />
+        <Button
+          href="/animals/new"
+          label="Registrar Nuevo Animal"
+          icon={CirclePlus}
+          variant="outline"
+          size="md"
+          className="w-full justify-start text-left bg-zinc-150/10 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-[#212124] text-zinc-900 dark:text-white font-medium"
+        />
+        <Button
+          href="/animals"
+          label="Ver Panel de Monitoreo"
+          icon={CirclePlus}
+          variant="outline"
+          size="md"
+          className="w-full justify-start text-left bg-zinc-150/10 dark:bg-[#18181b] border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-[#212124] text-zinc-900 dark:text-white font-medium"
+        />
       </div>
     </div>
   );

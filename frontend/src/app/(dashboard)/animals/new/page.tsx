@@ -97,7 +97,7 @@ export default function NewAnimalPage() {
                     Seleccionar Campo / Establecimiento
                   </label>
                   <Link href="/farms/new" className="text-xs text-green-600 dark:text-green-400 hover:underline">
-                    + Registrar Nuevo Campo
+                    Registrar Nuevo Campo
                   </Link>
                 </div>
                 <select

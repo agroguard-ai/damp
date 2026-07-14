@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
 import { useToast } from '@/context/ToastContext';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
@@ -9,6 +9,7 @@ import { farmsApi } from '@/lib/api/farms';
 import { animalTypesApi } from '@/lib/api/animal-types';
 import { zonesApi } from '@/lib/api/zones';
 import { animalsApi, type Animal } from '@/lib/api/animals';
+import { CirclePlus } from 'lucide-react';
 
 export default function AnimalsListPage() {
   const { toast } = useToast();
@@ -167,13 +168,13 @@ export default function AnimalsListPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Link
-            href="/farms/new"
-            className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-850 transition-colors text-sm font-semibold text-zinc-850 dark:text-zinc-200 cursor-pointer"
-          >
-            + Registrar Campo
-          </Link>
-          <button
+          <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
+            Registrar Campo
+          </Button>
+          <Button
+            variant="success"
+            size="md"
+            icon={CirclePlus}
             onClick={() => {
               if (farms.length === 0) {
                 toast.warning('Debes registrar un campo antes de añadir animales.');
@@ -184,10 +185,9 @@ export default function AnimalsListPage() {
               }
               setIsModalOpen(true);
             }}
-            className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-semibold cursor-pointer shadow-sm"
           >
-            + Añadir Animal
-          </button>
+            Añadir Animal
+          </Button>
         </div>
       </div>
 
@@ -200,12 +200,9 @@ export default function AnimalsListPage() {
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">
             Aún no has configurado ningún establecimiento en DAMP.
           </p>
-          <Link
-            href="/farms/new"
-            className="inline-block bg-green-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all shadow-sm cursor-pointer"
-          >
+          <Button href="/farms/new" variant="success" size="md">
             Crear Mi Primer Campo
-          </Link>
+          </Button>
         </div>
       ) : (
         <>
@@ -528,27 +525,24 @@ export default function AnimalsListPage() {
                 />
               </div>
               <div className="pt-4 flex justify-end gap-3">
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     setIsModalOpen(false);
                     resetModal();
                   }}
-                  className="px-4 py-2 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm text-zinc-650 dark:text-zinc-350 hover:bg-zinc-50 dark:hover:bg-zinc-850 cursor-pointer font-medium"
+                  variant="outline"
+                  size="md"
                 >
                   Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={modalLoading}
-                  className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-semibold flex justify-center items-center gap-2 cursor-pointer"
-                >
+                </Button>
+                <Button type="submit" disabled={modalLoading} variant="success" size="md">
                   {modalLoading ? (
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     'Guardar Animal'
                   )}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
