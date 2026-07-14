@@ -7,13 +7,11 @@ export class AnimalsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAnimalDto: CreateAnimalDto, userId: string) {
-    const { farmId, tag, breed, weightKg, ageMonths, collarMacAddress, animalTypeId, zoneId } = createAnimalDto;
+    const { farmId, tag, breed, weightKg, ageMonths, collarId, animalTypeId, zoneId } = createAnimalDto;
 
-    // Calcular fecha de nacimiento en base a la edad en meses
     const birthDate = new Date();
     birthDate.setMonth(birthDate.getMonth() - ageMonths);
 
-    // 1. Validar que la granja exista y pertenezca al usuario
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
     if (!farm) {
       throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
@@ -22,25 +20,13 @@ export class AnimalsService {
       throw new ForbiddenException('No tienes acceso a este establecimiento.');
     }
 
-    // 2. Si se proporcionó un collar, verificar que exista o crearlo
-    let collarId: string | null = null;
-    if (collarMacAddress) {
-      let collar = await this.prisma.collar.findUnique({
-        where: { serialNumber: collarMacAddress },
-      });
-
+    if (collarId) {
+      const collar = await this.prisma.collar.findUnique({ where: { id: collarId } });
       if (!collar) {
-        collar = await this.prisma.collar.create({
-          data: {
-            serialNumber: collarMacAddress,
-            status: 'ACTIVE',
-          },
-        });
+        throw new NotFoundException(`El collar con ID ${collarId} no existe.`);
       }
-      collarId = collar.id;
     }
 
-    // 3. Crear el registro del animal
     const animal = await this.prisma.animal.create({
       data: {
         farmId,
@@ -50,13 +36,11 @@ export class AnimalsService {
         birthDate,
         animalTypeId: animalTypeId || null,
         zoneId: zoneId || null,
-        collarId: collarId || null,
         status: 'ACTIVE',
         isArchived: false,
       },
     });
 
-    // 4. Vincular el collar al animal en la tabla relacional
     if (collarId) {
       await this.prisma.animalCollar.create({
         data: {
@@ -79,13 +63,12 @@ export class AnimalsService {
       farmId?: string;
       sectorId?: string;
       animalType?: string;
-      collarStatus?: string;
       healthStatus?: string;
       status?: string;
     },
     userId: string,
   ) {
-    const { farmId, sectorId, animalType, collarStatus, healthStatus, status } = query;
+    const { farmId, sectorId, animalType, healthStatus, status } = query;
     const whereClause: any = {};
 
     // Filtrado por establecimiento (farmId) obligatoriamente del usuario autenticado
@@ -124,17 +107,6 @@ export class AnimalsService {
         some: {
           geofence: {
             sectorId: sectorId,
-          },
-          endAt: null,
-        },
-      };
-    }
-
-    if (collarStatus) {
-      whereClause.animalCollars = {
-        some: {
-          collar: {
-            status: collarStatus,
           },
           endAt: null,
         },
@@ -373,15 +345,12 @@ export class AnimalsService {
         } : null,
         collar: collar ? {
           id: collar.id,
-          serialNumber: collar.serialNumber,
-          status: collar.status,
         } : null,
         latestReading: latestReading ? {
           id: latestReading.id,
           latitude: latestReading.latitude,
           longitude: latestReading.longitude,
           temperature: latestReading.temperature,
-          batteryLevel: latestReading.batteryLevel,
           timestamp: latestReading.timestamp,
         } : null,
       };

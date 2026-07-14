@@ -24,7 +24,6 @@ export class AnimalsController {
     @Query('farmId') farmId?: string,
     @Query('sectorId') sectorId?: string,
     @Query('animalType') animalType?: string,
-    @Query('collarStatus') collarStatus?: string,
     @Query('healthStatus') healthStatus?: string,
     @Query('status') status?: string,
   ) {
@@ -33,7 +32,6 @@ export class AnimalsController {
         farmId,
         sectorId,
         animalType,
-        collarStatus,
         healthStatus,
         status,
       },

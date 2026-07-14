@@ -1,9 +1,8 @@
-import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsInt } from 'class-validator';
 
 export class TelemetryPayloadDto {
-  @IsString()
-  @IsNotEmpty()
-  mac_id: string;
+  @IsInt()
+  collar_id: number;
 
   @IsNumber()
   lat: number;
@@ -13,7 +12,4 @@ export class TelemetryPayloadDto {
 
   @IsNumber()
   temp: number;
-
-  @IsNumber()
-  battery: number;
 }

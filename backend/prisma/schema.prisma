@@ -103,7 +103,7 @@ model Animal {
   weightKg     Float?      @map("weight_kg")
   animalTypeId String?     @map("animal_type_id")
   zoneId       String?     @map("zone_id")
-  collarId     String?     @map("collar_id")
+
   isArchived   Boolean     @default(false) @map("is_archived")
   status       String      @default("ACTIVE")
   createdAt    DateTime    @default(now()) @map("created_at")
@@ -112,7 +112,6 @@ model Animal {
   animalType      AnimalType?       @relation(fields: [animalTypeId], references: [id])
   zone            Zone?             @relation(fields: [zoneId], references: [id])
   medicalEvents   MedicalEvent[]
-  telemetry       TelemetryRecord[]
   animalGeofences AnimalGeofence[]
   animalCollars   AnimalCollar[]
   alerts          Alert[]
@@ -121,13 +120,9 @@ model Animal {
 }
 
 model Collar {
-  id                String             @id @default(uuid())
-  serialNumber      String?            @unique @map("serial_number")
-  status            String?
-  firmwareVersion   String?            @map("firmware_version")
-  lastTelemetryDate DateTime?          @map("last_telemetry_date")
+  id                Int                  @id @default(autoincrement())
+  lastTelemetryDate DateTime?            @map("last_telemetry_date")
 
-  telemetry         TelemetryRecord[]
   animalCollars     AnimalCollar[]
   telemetryReadings TelemetryReading[]
 
@@ -135,10 +130,10 @@ model Collar {
 }
 
 model AnimalCollar {
-  id       String    @id @default(uuid())
-  collarId String    @map("collar_id")
-  animalId String    @map("animal_id")
-  startAt  DateTime  @map("start_at")
+  id       String   @id @default(uuid())
+  collarId Int      @map("collar_id")
+  animalId String   @map("animal_id")
+  startAt  DateTime @map("start_at")
   endAt    DateTime? @map("end_at")
 
   collar Collar @relation(fields: [collarId], references: [id])
@@ -158,21 +153,6 @@ model MedicalEvent {
   animal Animal @relation(fields: [animalId], references: [id])
 
   @@map("medical_event")
-}
-
-model TelemetryRecord {
-  id          String   @id @default(uuid())
-  animalId    String   @map("animal_id")
-  collarId    String   @map("collar_id")
-  temperature Float?
-  heartRate   Float?   @map("heart_rate")
-  location    Unsupported("geometry(Polygon, 4326)")?
-  recordedAt  DateTime @map("recorded_at")
-
-  animal Animal @relation(fields: [animalId], references: [id])
-  collar Collar @relation(fields: [collarId], references: [id])
-
-  @@map("telemetry_record")
 }
 
 model AnimalGeofence {
@@ -236,13 +216,12 @@ model AnimalType {
 }
 
 model TelemetryReading {
-  id           String   @id @default(uuid())
-  collarId     String   @map("collar_id")
-  latitude     Float
-  longitude    Float
-  temperature  Float
-  batteryLevel Float    @map("battery_level")
-  timestamp    DateTime @default(now())
+  id          String   @id @default(uuid())
+  collarId    Int      @map("collar_id")
+  latitude    Float
+  longitude   Float
+  temperature Float
+  timestamp   DateTime @default(now())
 
   collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
 
