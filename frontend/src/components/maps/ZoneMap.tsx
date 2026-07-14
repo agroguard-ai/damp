@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker icons in Next.js
 if (typeof window !== 'undefined') {
-  // @ts-ignore
+  // @ts-expect-error - Merging Leaflet Icon default prototype is required in NextJS environment
   delete L.Icon.Default.prototype._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -19,7 +19,7 @@ interface Zone {
   id: string;
   name: string;
   pastureType: string | null;
-  polygonCoordinates: any;
+  polygonCoordinates: unknown;
 }
 
 interface ZoneMapProps {
