@@ -1,36 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
 import dynamic from 'next/dynamic';
+import { useApi } from '@/hooks/useApi';
+import { useMutation } from '@/hooks/useMutation';
+import { farmsApi } from '@/lib/api/farms';
+import { zonesApi } from '@/lib/api/zones';
+import { useToast } from '@/context/ToastContext';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
 
-interface Farm {
-  id: string;
-  name: string;
-}
-
-interface Zone {
-  id: string;
-  name: string;
-  pastureType: string | null;
-  farmId: string;
-  polygonCoordinates: any;
-  createdAt: string;
-}
-
 export default function ZonasPage() {
-  const { getToken } = useAuth();
-  const [farms, setFarms] = useState<Farm[]>([]);
+  const { toast } = useToast();
+  const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
-  const [zones, setZones] = useState<Zone[]>([]);
-
-  const [fetchingFarms, setFetchingFarms] = useState(true);
-  const [fetchingZones, setFetchingZones] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const activeFarmId = selectedFarm || farms[0]?.id || '';
   const [error, setError] = useState<string | null>(null);
 
   // Form State
@@ -38,62 +24,15 @@ export default function ZonasPage() {
   const [newZonePasture, setNewZonePasture] = useState('');
   const [newPoints, setNewPoints] = useState<[number, number][]>([]);
 
-  // Load farms on mount
-  useEffect(() => {
-    async function loadFarms() {
-      try {
-        const token = await getToken();
-        const res = await fetch('http://localhost:3001/farms', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error('Error al obtener campos');
-        const data = await res.json();
-        setFarms(data);
-        if (data.length > 0) {
-          setSelectedFarm(data[0].id);
-        }
-      } catch (err: any) {
-        console.error(err);
-        setError('Error al cargar los establecimientos registrados.');
-      } finally {
-        setFetchingFarms(false);
-      }
-    }
-    loadFarms();
-  }, []);
+  const fetchZones = useCallback(
+    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+    [activeFarmId]
+  );
 
-  // Load zones when selectedFarm changes
-  const loadZones = async () => {
-    if (!selectedFarm) {
-      setZones([]);
-      return;
-    }
-    setFetchingZones(true);
-    try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:3001/zones?farmId=${selectedFarm}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error('Error al obtener zonas');
-      const data = await res.json();
-      setZones(data);
-    } catch (err: any) {
-      console.error(err);
-      setError('Error al cargar las zonas del campo.');
-    } finally {
-      setFetchingZones(false);
-    }
-  };
+  const { data: zones = [], loading: fetchingZones, refetch: refetchZones } = useApi(fetchZones, [activeFarmId]);
 
-  useEffect(() => {
-    loadZones();
-    // Clear drawn points on farm change
-    setNewPoints([]);
-  }, [selectedFarm]);
+  const { mutate: createZone, loading: submitting } = useMutation(zonesApi.create);
+  const { mutate: deleteZone } = useMutation(zonesApi.delete);
 
   const handleAddPoint = (point: [number, number]) => {
     setNewPoints((prev) => [...prev, point]);
@@ -105,70 +44,39 @@ export default function ZonasPage() {
 
   const handleCreateZone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedFarm) return;
+    if (!activeFarmId) return;
 
     if (newPoints.length < 3) {
       setError('Una zona debe tener al menos 3 puntos/coordenadas dibujadas en el mapa.');
       return;
     }
 
-    setSubmitting(true);
     setError(null);
-
     try {
-      const token = await getToken();
-      const res = await fetch('http://localhost:3001/zones', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: newZoneName,
-          pastureType: newZonePasture || undefined,
-          farmId: selectedFarm,
-          polygonCoordinates: newPoints,
-        }),
+      await createZone({
+        name: newZoneName,
+        pastureType: newZonePasture || undefined,
+        farmId: activeFarmId,
+        polygonCoordinates: newPoints,
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Error al crear la zona');
-      }
-
       setNewZoneName('');
       setNewZonePasture('');
       setNewPoints([]);
-      alert('Zona registrada con éxito');
-      loadZones(); // Refresh zones list
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      toast.success('Zona registrada con éxito');
+      refetchZones();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
 
   const handleDeleteZone = async (zoneId: string) => {
     if (!confirm('¿Estás seguro de eliminar esta zona?')) return;
-
     try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:3001/zones/${zoneId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Error al eliminar la zona');
-      }
-
-      alert('Zona eliminada con éxito');
-      loadZones();
-    } catch (err: any) {
-      alert(err.message);
+      await deleteZone(zoneId);
+      toast.success('Zona eliminada con éxito');
+      refetchZones();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
 
@@ -178,15 +86,17 @@ export default function ZonasPage() {
       try {
         const coords =
           typeof zones[0].polygonCoordinates === 'string'
-            ? JSON.parse(zones[0].polygonCoordinates)
+            ? JSON.parse(zones[0].polygonCoordinates as string)
             : zones[0].polygonCoordinates;
         if (Array.isArray(coords) && coords.length > 0) {
           return [coords[0][0], coords[0][1]];
         }
-      } catch (e) {}
+      } catch {}
     }
     return [-34.6037, -58.3816];
   };
+
+  const displayError = farmsError ?? error;
 
   return (
     <div className="p-6 md:p-8 space-y-8">
@@ -202,9 +112,9 @@ export default function ZonasPage() {
         </div>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm text-center">
-          {error}
+          {displayError}
         </div>
       )}
 
@@ -234,8 +144,11 @@ export default function ZonasPage() {
                 Seleccionar Campo / Establecimiento
               </label>
               <select
-                value={selectedFarm}
-                onChange={(e) => setSelectedFarm(e.target.value)}
+                value={activeFarmId}
+                onChange={(e) => {
+                  setSelectedFarm(e.target.value);
+                  setNewPoints([]);
+                }}
                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
               >
                 {farms.map((farm) => (
@@ -288,7 +201,7 @@ export default function ZonasPage() {
                       {zones.map((zone) => {
                         const coords =
                           typeof zone.polygonCoordinates === 'string'
-                            ? JSON.parse(zone.polygonCoordinates)
+                            ? JSON.parse(zone.polygonCoordinates as string)
                             : zone.polygonCoordinates;
                         const count = Array.isArray(coords) ? coords.length : 0;
 
