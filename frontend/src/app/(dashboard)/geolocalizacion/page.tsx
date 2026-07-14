@@ -1,136 +1,51 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@clerk/nextjs';
 import dynamic from 'next/dynamic';
+import { useApi } from '@/hooks/useApi';
+import { farmsApi } from '@/lib/api/farms';
+import { zonesApi } from '@/lib/api/zones';
+import { animalsApi } from '@/lib/api/animals';
 
 // Load Map with SSR disabled
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
-interface Farm {
-  id: string;
-  name: string;
-}
-
-interface Zone {
-  id: string;
-  name: string;
-  polygonCoordinates: any;
-}
-
-interface AnimalLocation {
-  id: string;
-  tag: string | null;
-  breed: string;
-  weightKg: number;
-  status: string;
-  animalType: { name: string; species: string } | null;
-  zone: { name: string } | null;
-  collar: {
-    id: string;
-    serialNumber: string;
-    status: string;
-  } | null;
-  latestReading: {
-    latitude: number;
-    longitude: number;
-    temperature: number;
-    batteryLevel: number;
-    timestamp: string;
-  } | null;
-}
-
 export default function GeolocalizacionPage() {
-  const { getToken } = useAuth();
-  const [farms, setFarms] = useState<Farm[]>([]);
+  const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [animals, setAnimals] = useState<AnimalLocation[]>([]);
+  const activeFarmId = selectedFarm || farms[0]?.id || '';
 
-  const [fetchingFarms, setFetchingFarms] = useState(true);
-  const [loadingMapData, setLoadingMapData] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Zones fetcher — re-runs when activeFarmId changes
+  const fetchZones = useCallback(
+    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+    [activeFarmId]
+  );
 
-  // Load farms on mount
+  // Locations fetcher — re-runs when activeFarmId changes
+  const fetchLocations = useCallback(
+    () => (activeFarmId ? animalsApi.getLocations(activeFarmId) : Promise.resolve([])),
+    [activeFarmId]
+  );
+
+  const { data: zones = [], loading: loadingZones } = useApi(fetchZones, [activeFarmId]);
+
+  const {
+    data: animals = [],
+    loading: loadingAnimals,
+    refetch: refetchLocations,
+  } = useApi(fetchLocations, [activeFarmId]);
+
+  // 30-second polling for live locations
   useEffect(() => {
-    async function loadFarms() {
-      try {
-        const token = await getToken();
-        const res = await fetch('http://localhost:3001/farms', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error('Error al obtener campos');
-        const data = await res.json();
-        setFarms(data);
-        if (data.length > 0) {
-          setSelectedFarm(data[0].id);
-        }
-      } catch (err: any) {
-        console.error(err);
-        setError('Error al cargar los establecimientos.');
-      } finally {
-        setFetchingFarms(false);
-      }
-    }
-    loadFarms();
-  }, []);
-
-  // Fetch Zones & Animals
-  const loadMapData = async () => {
-    if (!selectedFarm) return;
-    setLoadingMapData(true);
-    try {
-      const token = await getToken();
-
-      // Fetch Zones
-      const zonesRes = await fetch(`http://localhost:3001/zones?farmId=${selectedFarm}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!zonesRes.ok) throw new Error('Error al obtener zonas');
-      const zonesData = await zonesRes.json();
-      setZones(zonesData);
-
-      // Fetch Locations
-      const locationsRes = await fetch(`http://localhost:3001/api/animals/locations?farmId=${selectedFarm}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!locationsRes.ok) throw new Error('Error al obtener geolocalizaciones');
-      const locationsData = await locationsRes.json();
-      setAnimals(locationsData);
-    } catch (err: any) {
-      console.error(err);
-      setError('Error al cargar datos geográficos.');
-    } finally {
-      setLoadingMapData(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMapData();
-  }, [selectedFarm]);
-
-  // Set up 30 seconds polling for live locations
-  useEffect(() => {
-    if (!selectedFarm) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const token = await getToken();
-        const res = await fetch(`http://localhost:3001/api/animals/locations?farmId=${selectedFarm}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setAnimals(data);
-        }
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
+    if (!activeFarmId) return;
+    const interval = setInterval(() => {
+      refetchLocations();
     }, 30000);
-
     return () => clearInterval(interval);
-  }, [selectedFarm]);
+  }, [activeFarmId, refetchLocations]);
+
+  const loadingMapData = loadingZones || loadingAnimals;
 
   // Derived statistics
   const activeAnimalsWithGps = animals.filter((a) => a.latestReading !== null);
@@ -149,9 +64,9 @@ export default function GeolocalizacionPage() {
         </div>
       </div>
 
-      {error && (
+      {farmsError && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-650 dark:text-red-400 px-4 py-3 rounded-lg text-sm text-center">
-          {error}
+          {farmsError}
         </div>
       )}
 
@@ -182,7 +97,7 @@ export default function GeolocalizacionPage() {
                   Establecimiento Activo
                 </label>
                 <select
-                  value={selectedFarm}
+                  value={activeFarmId}
                   onChange={(e) => setSelectedFarm(e.target.value)}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-1.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
                 >
