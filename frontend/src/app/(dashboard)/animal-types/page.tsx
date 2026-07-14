@@ -1,111 +1,56 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useState } from 'react';
+import { useApi } from '@/hooks/useApi';
+import { useMutation } from '@/hooks/useMutation';
+import { animalTypesApi } from '@/lib/api/animal-types';
 
-interface AnimalType {
-  id: string;
-  name: string;
-  species: string;
-  description: string | null;
-  createdAt: string;
-}
+import { useToast } from '@/context/ToastContext';
 
 export default function AnimalTypesPage() {
-  const { getToken } = useAuth();
-  const [types, setTypes] = useState<AnimalType[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { data: types = [], loading, error: loadError, refetch } = useApi(animalTypesApi.getAll);
+  const {
+    mutate: createType,
+    loading: submitting,
+    error: createError,
+    reset: resetCreate,
+  } = useMutation(animalTypesApi.create);
+  const { mutate: deleteType } = useMutation(animalTypesApi.delete);
 
-  // Form State
   const [name, setName] = useState('');
   const [species, setSpecies] = useState('Bovino');
   const [description, setDescription] = useState('');
 
-  const loadTypes = async () => {
-    setLoading(true);
-    try {
-      const token = await getToken();
-      const res = await fetch('http://localhost:3001/animal-types', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!res.ok) throw new Error('Error al obtener los tipos de animales');
-      const data = await res.json();
-      setTypes(data);
-    } catch (err: any) {
-      console.error(err);
-      setError('Error al cargar la lista de tipos de animales.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadTypes();
-  }, []);
-
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-
     try {
-      const token = await getToken();
-      const res = await fetch('http://localhost:3001/animal-types', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name,
-          species,
-          description: description || undefined,
-        }),
+      await createType({
+        name,
+        species,
+        description: description || undefined,
       });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Error al crear tipo de animal');
-      }
-
       setName('');
       setDescription('');
-      alert('Tipo de animal registrado con éxito');
-      loadTypes();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      toast.success('Tipo de animal registrado con éxito');
+      refetch();
+    } catch {
+      // Error captured in mutation state
     }
   };
 
   const handleDelete = async (typeId: string) => {
     if (!confirm('¿Estás seguro de eliminar este tipo de animal?')) return;
-
     try {
-      const token = await getToken();
-      const res = await fetch(`http://localhost:3001/animal-types/${typeId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Error al eliminar el tipo de animal');
-      }
-
-      alert('Tipo de animal eliminado con éxito');
-      loadTypes();
-    } catch (err: any) {
-      alert(err.message);
+      await deleteType(typeId);
+      toast.success('Tipo de animal eliminado con éxito');
+      refetch();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
+
+  const formError = createError;
 
   return (
     <div className="p-6 md:p-8 space-y-8">
@@ -121,9 +66,9 @@ export default function AnimalTypesPage() {
         </div>
       </div>
 
-      {error && (
+      {(loadError || formError) && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-650 dark:text-red-400 px-4 py-3 rounded-lg text-sm text-center">
-          {error}
+          {loadError ?? formError}
         </div>
       )}
 
@@ -202,7 +147,10 @@ export default function AnimalTypesPage() {
                   required
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    resetCreate();
+                  }}
                   placeholder="Ej: Aberdeen Angus, Holando"
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                 />
