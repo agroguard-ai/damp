@@ -14,6 +14,8 @@ export class IotService {
    * 3. Busca el animal activo asociado al collar.
    * 4. Devuelve downlink con coordenadas de cerco virtual para el collar.
    */
+
+  //HAY QUE AJUSTAR ESTO, ESTA HARDCODED PARA PROBAR EL FLUJO.
   async handleTelemetry(payload: TelemetryPayloadDto) {
     const collar = await this.prisma.collar.findUnique({
       where: { id: payload.collar_id },
@@ -37,23 +39,12 @@ export class IotService {
       data: { lastTelemetryDate: new Date() },
     });
 
-    const activeAnimalCollar = await this.prisma.animalCollar.findFirst({
-      where: { collarId: payload.collar_id, endAt: null },
-      include: { animal: true },
-    });
-
-    if (!activeAnimalCollar) {
-      return { downlink: 'NONE' };
-    }
-
     const downlink = [
-      [-32.94, -60.67],
-      [-32.94, -60.65],
-      [-32.96, -60.65],
-      [-32.96, -60.67],
-    ]
-      .map((p) => `${p[0]},${p[1]}`)
-      .join(';');
+      [-32.85, -60.75],
+      [-32.85, -60.55],
+      [-33.00, -60.55],
+      [-33.00, -60.75],
+    ].map(p => `${p[0]},${p[1]}`).join(';');
 
     return { downlink };
   }
