@@ -14,10 +14,7 @@ export class AlertsController {
   }
 
   @Patch(':id/resolve')
-  resolveAlert(
-    @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  resolveAlert(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.alertsService.resolveAlert(id, userId);
   }
 }

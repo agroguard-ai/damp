@@ -9,10 +9,7 @@ export class ApiAnimalsController {
   constructor(private readonly animalsService: AnimalsService) {}
 
   @Get('locations')
-  getLiveLocations(
-    @CurrentUser('sub') userId: string,
-    @Query('farmId') farmId?: string,
-  ) {
+  getLiveLocations(@CurrentUser('sub') userId: string, @Query('farmId') farmId?: string) {
     return this.animalsService.getLiveLocations(userId, farmId);
   }
 }

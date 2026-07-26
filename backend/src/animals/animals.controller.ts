@@ -11,10 +11,7 @@ export class AnimalsController {
   constructor(private readonly animalsService: AnimalsService) {}
 
   @Post()
-  create(
-    @Body() createAnimalDto: CreateAnimalDto,
-    @CurrentUser('sub') userId: string,
-  ) {
+  create(@Body() createAnimalDto: CreateAnimalDto, @CurrentUser('sub') userId: string) {
     return this.animalsService.create(createAnimalDto, userId);
   }
 
@@ -25,7 +22,7 @@ export class AnimalsController {
     @Query('sectorId') sectorId?: string,
     @Query('animalType') animalType?: string,
     @Query('healthStatus') healthStatus?: string,
-    @Query('status') status?: string,
+    @Query('status') status?: string
   ) {
     return this.animalsService.findAll(
       {
@@ -35,24 +32,17 @@ export class AnimalsController {
         healthStatus,
         status,
       },
-      userId,
+      userId
     );
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  findOne(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.animalsService.findOne(id, userId);
   }
 
   @Patch(':id/archive')
-  archive(
-    @Param('id') id: string,
-    @Body() archiveAnimalDto: ArchiveAnimalDto,
-    @CurrentUser('sub') userId: string,
-  ) {
+  archive(@Param('id') id: string, @Body() archiveAnimalDto: ArchiveAnimalDto, @CurrentUser('sub') userId: string) {
     return this.animalsService.archive(id, archiveAnimalDto.status, userId);
   }
 }

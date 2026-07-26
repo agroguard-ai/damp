@@ -10,10 +10,7 @@ export class FarmsController {
   constructor(private readonly farmsService: FarmsService) {}
 
   @Post()
-  create(
-    @Body() createFarmDto: CreateFarmDto,
-    @CurrentUser('sub') userId: string,
-  ) {
+  create(@Body() createFarmDto: CreateFarmDto, @CurrentUser('sub') userId: string) {
     return this.farmsService.create(createFarmDto, userId);
   }
 
@@ -23,27 +20,17 @@ export class FarmsController {
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  findOne(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.farmsService.findOne(id, userId);
   }
 
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateFarmDto: Partial<CreateFarmDto>,
-    @CurrentUser('sub') userId: string,
-  ) {
+  update(@Param('id') id: string, @Body() updateFarmDto: Partial<CreateFarmDto>, @CurrentUser('sub') userId: string) {
     return this.farmsService.update(id, updateFarmDto, userId);
   }
 
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  remove(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.farmsService.remove(id, userId);
   }
 }

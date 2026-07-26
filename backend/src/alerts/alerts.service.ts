@@ -27,7 +27,7 @@ export class AlertsService {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        createdAt: 'desc',
       },
     });
   }

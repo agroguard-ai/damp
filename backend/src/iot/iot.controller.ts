@@ -10,12 +10,11 @@ export class IotController {
   /**
    * Recibe una lectura de telemetría desde un collar IoT.
    *
-   * Además de persistir la lectura, busca el animal activo asociado al collar
-   * y devuelve cualquier actualización de límites (BoundaryUpdate) pendiente,
-   * marcándola como INFORMED.
+   * Persiste la lectura y devuelve un downlink con coordenadas
+   * de cerco virtual para enviar al collar por LoRa.
    *
    * @param payload - Datos de telemetría: collar_id, lat, lng, temp
-   * @returns Estado de la operación + boundary updates informados al collar
+   * @returns downlink con coordenadas del cerco virtual
    */
   @Post('telemetry')
   async ingestTelemetry(@Body() payload: TelemetryPayloadDto): Promise<TelemetryResponseDto> {

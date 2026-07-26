@@ -66,7 +66,7 @@ export class AnimalsService {
       healthStatus?: string;
       status?: string;
     },
-    userId: string,
+    userId: string
   ) {
     const { farmId, sectorId, animalType, healthStatus, status } = query;
     const whereClause: any = {};
@@ -333,26 +333,34 @@ export class AnimalsService {
         weightKg: animal.weightKg,
         status: animal.status,
         hasActiveAlert: animal.alerts.length > 0,
-        animalType: animal.animalType ? {
-          id: animal.animalType.id,
-          name: animal.animalType.name,
-          species: animal.animalType.species,
-        } : null,
-        zone: animal.zone ? {
-          id: animal.zone.id,
-          name: animal.zone.name,
-          polygonCoordinates: animal.zone.polygonCoordinates,
-        } : null,
-        collar: collar ? {
-          id: collar.id,
-        } : null,
-        latestReading: latestReading ? {
-          id: latestReading.id,
-          latitude: latestReading.latitude,
-          longitude: latestReading.longitude,
-          temperature: latestReading.temperature,
-          timestamp: latestReading.timestamp,
-        } : null,
+        animalType: animal.animalType
+          ? {
+              id: animal.animalType.id,
+              name: animal.animalType.name,
+              species: animal.animalType.species,
+            }
+          : null,
+        zone: animal.zone
+          ? {
+              id: animal.zone.id,
+              name: animal.zone.name,
+              polygonCoordinates: animal.zone.polygonCoordinates,
+            }
+          : null,
+        collar: collar
+          ? {
+              id: collar.id,
+            }
+          : null,
+        latestReading: latestReading
+          ? {
+              id: latestReading.id,
+              latitude: latestReading.latitude,
+              longitude: latestReading.longitude,
+              temperature: latestReading.temperature,
+              timestamp: latestReading.timestamp,
+            }
+          : null,
       };
     });
   }
