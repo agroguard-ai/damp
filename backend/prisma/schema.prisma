@@ -7,6 +7,11 @@ datasource db {
   provider = "postgresql"
 }
 
+enum GlobalRole {
+  SUPER_ADMIN
+  USER
+}
+
 model Role {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -14,15 +19,16 @@ model Role {
 
   farmUsers FarmUser[]
 
-  @@map("role")
+  @@map("roles")
 }
 
 model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique @map("clerk_id")
-  email     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id         String     @id @default(uuid())
+  clerkId    String     @unique @map("clerk_id")
+  email      String     @unique
+  globalRole GlobalRole @default(USER) @map("global_role")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
 
   farmUsers FarmUser[]
 
@@ -44,7 +50,7 @@ model Farm {
   animals   Animal[]
   zones     Zone[]
 
-  @@map("farm")
+  @@map("farms")
 }
 
 model FarmUser {
@@ -53,12 +59,12 @@ model FarmUser {
   userId String @map("user_id")
   roleId String @map("role_id")
 
-  farm Farm @relation(fields: [farmId], references: [id])
-  user User @relation(fields: [userId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id])
 
   @@unique([farmId, userId])
-  @@map("farm_user")
+  @@map("farm_users")
 }
 
 model Sector {
@@ -74,7 +80,7 @@ model Sector {
   farm      Farm       @relation(fields: [farmId], references: [id])
   geofences Geofence[]
 
-  @@map("sector")
+  @@map("sectors")
 }
 
 model Geofence {
@@ -90,7 +96,7 @@ model Geofence {
   sector          Sector           @relation(fields: [sectorId], references: [id])
   animalGeofences AnimalGeofence[]
 
-  @@map("geofence")
+  @@map("geofences")
 }
 
 model Animal {
@@ -116,7 +122,7 @@ model Animal {
   animalCollars   AnimalCollar[]
   alerts          Alert[]
 
-  @@map("animal")
+  @@map("animals")
 }
 
 model Collar {
@@ -126,7 +132,7 @@ model Collar {
   animalCollars     AnimalCollar[]
   telemetryReadings TelemetryReading[]
 
-  @@map("collar")
+  @@map("collars")
 }
 
 model AnimalCollar {
@@ -139,7 +145,7 @@ model AnimalCollar {
   collar Collar @relation(fields: [collarId], references: [id])
   animal Animal @relation(fields: [animalId], references: [id])
 
-  @@map("animal_collar")
+  @@map("animal_collars")
 }
 
 model MedicalEvent {
@@ -152,7 +158,7 @@ model MedicalEvent {
 
   animal Animal @relation(fields: [animalId], references: [id])
 
-  @@map("medical_event")
+  @@map("medical_events")
 }
 
 model AnimalGeofence {
@@ -165,7 +171,7 @@ model AnimalGeofence {
   animal   Animal   @relation(fields: [animalId], references: [id])
   geofence Geofence @relation(fields: [geofenceId], references: [id])
 
-  @@map("animal_geofence")
+  @@map("animal_geofences")
 }
 
 model spatial_ref_sys {
@@ -199,7 +205,7 @@ model Zone {
   farm    Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
   animals Animal[]
 
-  @@map("zone")
+  @@map("zones")
 }
 
 model AnimalType {
@@ -212,7 +218,7 @@ model AnimalType {
 
   animals Animal[]
 
-  @@map("animal_type")
+  @@map("animal_types")
 }
 
 model TelemetryReading {
@@ -225,7 +231,7 @@ model TelemetryReading {
 
   collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
 
-  @@map("telemetry_reading")
+  @@map("telemetry_readings")
 }
 
 enum AlertType {
@@ -244,5 +250,5 @@ model Alert {
 
   animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
 
-  @@map("alert")
+  @@map("alerts")
 }
