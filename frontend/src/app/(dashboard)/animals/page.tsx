@@ -8,7 +8,10 @@ import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalTypesApi } from '@/lib/api/animal-types';
 import { zonesApi } from '@/lib/api/zones';
+import { collarsApi } from '@/lib/api/collars';
+import { medicalEventsApi } from '@/lib/api/medical-events';
 import { animalsApi, type Animal } from '@/lib/api/animals';
+import type { MedicalEventType } from '@/types';
 import { CirclePlus } from 'lucide-react';
 
 export default function AnimalsListPage() {
@@ -23,6 +26,8 @@ export default function AnimalsListPage() {
     [activeFarmId]
   );
   const { data: farmZones = [] } = useApi(fetchZones, [activeFarmId]);
+  const { data: collars = [] } = useApi(collarsApi.getAll);
+  const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
 
   const [filters, setFilters] = useState({
     animalType: '',
@@ -55,13 +60,48 @@ export default function AnimalsListPage() {
     reset: resetModal,
   } = useMutation(animalsApi.create);
 
+  const [medicalHistoryAnimalId, setMedicalHistoryAnimalId] = useState<string | null>(null);
+  const {
+    data: medicalEvents = [],
+    loading: fetchingMedicalEvents,
+    refetch: refetchMedicalEvents,
+  } = useApi(
+    () => (medicalHistoryAnimalId ? medicalEventsApi.getByAnimal(medicalHistoryAnimalId) : Promise.resolve([])),
+    [medicalHistoryAnimalId]
+  );
+  const { mutate: createMedicalEvent, loading: creatingMedicalEvent } = useMutation(medicalEventsApi.create);
+  const [medicalForm, setMedicalForm] = useState({
+    type: 'VACCINATION' as MedicalEventType,
+    description: '',
+    value: '',
+  });
+
+  const handleAddMedicalEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!medicalHistoryAnimalId) return;
+    try {
+      await createMedicalEvent({
+        animalId: medicalHistoryAnimalId,
+        type: medicalForm.type,
+        description: medicalForm.description || undefined,
+        value: medicalForm.value ? Number(medicalForm.value) : undefined,
+      });
+      setMedicalForm({ type: 'VACCINATION', description: '', value: '' });
+      toast.success('Registro médico agregado');
+      refetchMedicalEvents();
+      refetchAnimals();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error desconocido');
+    }
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     tag: '',
     breed: '',
     weightKg: '',
     ageMonths: '12',
-    collarMacAddress: '',
+    collarId: '',
     animalTypeId: '',
     zoneId: '',
   });
@@ -97,7 +137,7 @@ export default function AnimalsListPage() {
         breed: formData.breed,
         weightKg: Number(formData.weightKg),
         ageMonths: Number(formData.ageMonths),
-        collarMacAddress: formData.collarMacAddress || undefined,
+        collarId: formData.collarId ? Number(formData.collarId) : undefined,
         animalTypeId: formData.animalTypeId || undefined,
         zoneId: formData.zoneId || undefined,
       });
@@ -108,7 +148,7 @@ export default function AnimalsListPage() {
         breed: '',
         weightKg: '',
         ageMonths: '12',
-        collarMacAddress: '',
+        collarId: '',
         animalTypeId: '',
         zoneId: '',
       });
@@ -297,7 +337,7 @@ export default function AnimalsListPage() {
               {animals.map((animal) => {
                 const health = getHealthBadge(animal);
                 const collar = animal.animalCollars[0]?.collar;
-                const sector = animal.animalGeofences[0]?.geofence.sector;
+                const activeGeofence = animal.animalGeofences[0]?.geofence;
                 return (
                   <div
                     key={animal.id}
@@ -332,9 +372,9 @@ export default function AnimalsListPage() {
                             {collar ? (
                               <span className="flex items-center gap-1.5">
                                 <span
-                                  className={`w-1.5 h-1.5 rounded-full ${collar.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${collar.telemetryReadings?.[0] ? 'bg-green-500' : 'bg-red-500'}`}
                                 ></span>
-                                {collar.serialNumber}
+                                Collar #{collar.id}
                               </span>
                             ) : (
                               <span className="text-zinc-400 dark:text-zinc-650">No vinculado</span>
@@ -348,11 +388,7 @@ export default function AnimalsListPage() {
                             </span>
                             <span className="text-[11px] font-semibold text-zinc-750 dark:text-zinc-350">
                               {collar.telemetryReadings?.[0] ? (
-                                <span className="flex items-center gap-2">
-                                  <span>🌡️ {collar.telemetryReadings[0].temperature.toFixed(1)}°C</span>
-                                  <span className="text-zinc-300 dark:text-zinc-700">|</span>
-                                  <span>🔋 {collar.telemetryReadings[0].batteryLevel.toFixed(0)}%</span>
-                                </span>
+                                <span>🌡️ {collar.telemetryReadings[0].temperature.toFixed(1)}°C</span>
                               ) : (
                                 <span className="text-zinc-400 dark:text-zinc-650 italic">Esperando señal...</span>
                               )}
@@ -362,14 +398,28 @@ export default function AnimalsListPage() {
                         <div className="flex justify-between">
                           <span>Zona / Potrero</span>
                           <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
-                            {animal.zone?.name || sector?.name || (
-                              <span className="text-zinc-400 dark:text-zinc-650">Sin asignar</span>
+                            {animal.zone?.name || <span className="text-zinc-400 dark:text-zinc-650">Sin asignar</span>}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Cerco Virtual</span>
+                          <span className="text-zinc-800 dark:text-zinc-200 font-semibold">
+                            {activeGeofence?.name || (
+                              <span className="text-zinc-400 dark:text-zinc-650">Sin cerco activo</span>
                             )}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                    <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                      <button
+                        onClick={() => setMedicalHistoryAnimalId(animal.id)}
+                        className="text-xs font-semibold text-green-600 hover:text-green-700 cursor-pointer"
+                      >
+                        Historial médico
+                      </button>
+                    </div>
+                    <div className="mt-4 border-t border-zinc-100 dark:border-zinc-800 pt-4">
                       {animal.status === 'ACTIVE' ? (
                         <div className="flex justify-between items-center gap-2">
                           <span className="text-[10px] text-zinc-400">
@@ -514,15 +564,25 @@ export default function AnimalsListPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider">
-                  MAC Collar IoT (Opcional)
+                  Collar IoT (Opcional)
                 </label>
-                <input
-                  type="text"
-                  value={formData.collarMacAddress}
-                  onChange={(e) => setFormData({ ...formData, collarMacAddress: e.target.value })}
-                  placeholder="Ej: AA:BB:CC:DD:EE:FF"
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                />
+                <select
+                  value={formData.collarId}
+                  onChange={(e) => setFormData({ ...formData, collarId: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+                >
+                  <option value="">Sin collar</option>
+                  {availableCollars.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.identifier}
+                    </option>
+                  ))}
+                </select>
+                {availableCollars.length === 0 && (
+                  <span className="text-[10px] text-zinc-400 italic mt-0.5">
+                    No hay collares disponibles. Registrá uno en la sección Collares.
+                  </span>
+                )}
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <Button
@@ -544,6 +604,96 @@ export default function AnimalsListPage() {
                   )}
                 </Button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Historial Médico */}
+      {medicalHistoryAnimalId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-850 flex justify-between items-center">
+              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Historial Médico</h3>
+              <button
+                onClick={() => setMedicalHistoryAnimalId(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              {fetchingMedicalEvents ? (
+                <div className="flex justify-center py-8">
+                  <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
+                </div>
+              ) : medicalEvents.length === 0 ? (
+                <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center py-4">
+                  Este animal todavía no tiene registros médicos. Cargá el primero abajo.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {medicalEvents.map((ev) => (
+                    <li
+                      key={ev.id}
+                      className="border border-zinc-100 dark:border-zinc-800 rounded-lg p-3 text-xs flex justify-between items-start"
+                    >
+                      <div>
+                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                          {ev.type ?? 'Otro'}
+                          {ev.value !== null ? ` — ${ev.value}` : ''}
+                        </span>
+                        {ev.description && <p className="text-zinc-500 dark:text-zinc-400 mt-0.5">{ev.description}</p>}
+                      </div>
+                      <span className="text-zinc-400 whitespace-nowrap ml-3">
+                        {new Date(ev.occurredAt).toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <form
+              onSubmit={handleAddMedicalEvent}
+              className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-850"
+            >
+              <div className="grid grid-cols-2 gap-3 pt-4">
+                <select
+                  value={medicalForm.type}
+                  onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
+                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+                >
+                  <option value="VACCINATION">Vacunación</option>
+                  <option value="WEIGHING">Pesaje</option>
+                  <option value="BIRTH">Parto</option>
+                  <option value="TREATMENT">Tratamiento</option>
+                  <option value="SURGERY">Cirugía</option>
+                </select>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder={medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
+                  value={medicalForm.value}
+                  onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
+                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Descripción (opcional)"
+                value={medicalForm.description}
+                onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
+                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+              />
+              <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
+                {creatingMedicalEvent ? (
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  'Agregar Registro'
+                )}
+              </Button>
             </form>
           </div>
         </div>

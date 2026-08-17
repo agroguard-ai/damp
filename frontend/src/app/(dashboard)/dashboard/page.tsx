@@ -12,7 +12,7 @@ import { CirclePlus } from 'lucide-react';
 export default function Home() {
   const { data: farms = [], loading: loadingFarms } = useApi(farmsApi.getAll);
 
-  const { data: alerts = [], loading: loadingAlerts } = useApi(alertsApi.getAll);
+  const { data: alerts = [], loading: loadingAlerts } = useApi(() => alertsApi.getAll({ resolved: false }));
 
   return (
     <div className="p-6 md:p-8 space-y-8">

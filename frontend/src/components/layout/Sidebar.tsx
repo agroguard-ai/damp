@@ -2,7 +2,20 @@
 
 import { useState } from 'react';
 import { SidebarLink } from '@/components/layout/SidebarLink';
-import { Hexagon, Menu, LayoutDashboard, Tractor, Map, ClipboardList, MapPin, Tags } from 'lucide-react';
+import {
+  Hexagon,
+  Menu,
+  LayoutDashboard,
+  Tractor,
+  Map,
+  ClipboardList,
+  MapPin,
+  Tags,
+  Radio,
+  Router,
+  Bell,
+  FileDown,
+} from 'lucide-react';
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -61,6 +74,18 @@ export default function Sidebar() {
 
         {/* Tipos de Animal */}
         <SidebarLink href="/animal-types" label="Tipos de Animal" logo={<Tags />} isCollapsed={isCollapsed} />
+
+        {/* Collares */}
+        <SidebarLink href="/collares" label="Collares" logo={<Radio />} isCollapsed={isCollapsed} />
+
+        {/* Gateways */}
+        <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
+
+        {/* Alertas */}
+        <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
+
+        {/* Reportes */}
+        <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
       </nav>
     </aside>
   );

@@ -66,7 +66,6 @@ interface AnimalLocation {
     latitude: number;
     longitude: number;
     temperature: number;
-    batteryLevel: number;
     timestamp: string;
   } | null;
 }
@@ -144,7 +143,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
         {/* Render Animals pins */}
         {animals.map((animal) => {
           if (!animal.latestReading) return null;
-          const { latitude, longitude, temperature, batteryLevel } = animal.latestReading;
+          const { latitude, longitude, temperature } = animal.latestReading;
 
           return (
             <Marker key={animal.id} position={[latitude, longitude]} icon={getAnimalIcon(!!animal.hasActiveAlert)}>
@@ -175,10 +174,6 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Temperatura:</span>
                       <span className="font-semibold text-zinc-800">🌡️ {temperature.toFixed(1)} °C</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500">Batería:</span>
-                      <span className="font-semibold text-zinc-800">🔋 {batteryLevel.toFixed(0)} %</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Zona actual:</span>

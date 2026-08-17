@@ -214,7 +214,13 @@ export default function ZonasPage() {
                                 {count > 0 ? `${count} Vértices` : 'Sin coordenadas'}
                               </span>
                             </td>
-                            <td className="py-3.5 text-right">
+                            <td className="py-3.5 text-right space-x-3">
+                              <Link
+                                href={`/zonas/${zone.id}/cercos`}
+                                className="text-green-600 hover:text-green-700 text-xs font-semibold cursor-pointer"
+                              >
+                                Cercos
+                              </Link>
                               <button
                                 onClick={() => handleDeleteZone(zone.id)}
                                 className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"

@@ -1,154 +1,75 @@
-# Epic 13 & 4: Ingesta de Telemetría IoT y Simulación de Dispositivos
+# Epic 13 & 4: Ingesta de Telemetría IoT
 
-* **Autor**: Antigravity
+* **Autor**: Antigravity (versión original) — actualizado por Claude (sesión con Santino)
 * **Fecha de Creación**: 09/07/2026
-* **Estado**: Completado
+* **Última actualización**: 17/08/2026
+* **Estado**: Completado — pipeline verificado de punta a punta contra el firmware real
+
+> **Aviso**: la versión anterior de este documento describía un contrato (`mac_id`, arrays batch, `battery`, tabla `BoundaryUpdate`) que **nunca coincidió con el código real** del backend ni con lo que el firmware `agroguard-firmware` efectivamente envía. Esta versión documenta el contrato tal como está implementado y verificado hoy.
 
 ## 1. Resumen de la Solución Técnica
-Esta Epic define la arquitectura para recibir lecturas de sensores GPS y de temperatura/batería de los dispositivos collares IoT. Dado que los dispositivos físicos aún no están terminados, se implementó un script simulador que actúa como Gateway y reporta datos simulados al backend.
 
-* **Prisma Schema**:
-  * Se creó la entidad `TelemetryReading` (id, collar_id, latitude, longitude, temperature, battery_level, timestamp).
-  * Se agregó la columna `last_telemetry_date` al modelo `Collar` para guardar la marca temporal de su última transmisión.
-* **Backend (NestJS + Prisma)**:
-  * `IotModule`: Expone la ruta pública de ingesta `POST /api/iot/telemetry`.
-  * Valida que el `mac_id` enviado pertenezca a un collar registrado.
-  * Verifica si el collar tiene una vinculación activa con un animal (en `AnimalCollar` con `endAt: null`). Si no está asignado, descarta la telemetría para evitar almacenar datos sin sentido.
-  * Registra la lectura en `TelemetryReading` y actualiza la fecha `lastTelemetryDate` en el collar.
-  * **Nuevo**: Al recibir una lectura, busca el animal activo asociado al collar y devuelve coordenadas límite dummy (4 puntos cerca de Rosario) con estado `INFORMED`. A futuro se persistirá en una tabla `BoundaryUpdate` con estados PENDING/INFORMED.
-* **Script Simulador (`scripts/iot_simulator.js`)**:
-  * Simula el comportamiento de un Gateway físico transmitiendo datos cada 8 segundos mediante peticiones `POST` al endpoint del backend.
-  * Genera una ruta aleatoria (drift/random walk) y simula el drenaje de la batería y fluctuaciones normales de temperatura en el animal.
-* **Frontend (Visualización)**:
-  * El listado de **Hacienda** (`/animals`) incluye ahora el estado del dispositivo actualizando un bloque con las últimas lecturas (`🌡️ Temperatura` y `🔋 Batería`) tomadas de la base de datos real.
+El endpoint `POST /api/iot/telemetry` recibe **una lectura individual** (no batch) enviada por el gateway LoRa (`agroguard-firmware/src/v3/receptor.cpp`), la persiste, y devuelve el cerco virtual activo del animal como downlink para que el collar lo evalúe localmente.
 
----
+Durante esta sesión se encontraron y corrigieron varios problemas que impedían que el pipeline funcionara de punta a punta:
 
-## 2. Contrato de Ingesta (API del Gateway)
+* **Puerto incorrecto en el firmware**: `agroguard-firmware/src/v3/receptor.cpp` apuntaba a `http://<ip>:3000/...` (puerto del frontend) en vez de `:3001` (puerto real del backend, confirmado en `backend/.env`). Corregido.
+* **Cliente Prisma desincronizado**: `backend/generated/prisma` tenía un schema viejo (`Collar.id: String`, modelo `TelemetryRecord` fantasma) que no coincidía con `prisma/schema.prisma`. Se regeneró con `prisma generate`.
+* **Historial de migraciones roto**: las 8 migraciones de Prisma crean todas las tablas en singular (`farm_user`, `role`, etc.) pero `schema.prisma` las mapea en plural (`@@map("farm_users")`, etc.). `prisma migrate deploy/reset` falla siempre desde cero — nadie lo nota porque todo el equipo sincroniza con `prisma db push` (que sí funciona, difiere pero no versiona el DDL). **No se corrigió** el historial de migraciones en sí (reescribir 8 archivos es trabajo aparte); se documenta como deuda conocida.
+* **DB local completamente desactualizada**: solo tenía 2 tablas viejas. Se resincronizó con `prisma db push` y se sembró el collar `id=1` que el gateway trae hardcodeado (`#define COLLAR_ID 1` en `receptor.cpp`).
+
+## 2. Contrato de Ingesta (verificado contra el firmware real)
+
 * **Endpoint**: `POST http://localhost:3001/api/iot/telemetry`
-* **Request Body (JSON - Batch Array)**:
-  ```json
-  [
-    {
-      "mac_id": "00:1B:44:11:3A:B7",
-      "lat": -34.6037,
-      "lng": -58.3816,
-      "temp": 38.6,
-      "battery": 92.5
-    },
-    {
-      "mac_id": "00:1B:44:11:3A:B8",
-      "lat": -34.6045,
-      "lng": -58.3820,
-      "temp": 38.2,
-      "battery": 91.0
-    }
-  ]
-  ```
-* **Respuesta Exitosa (201 Created)**:
-  ```json
-  [
-    {
-      "status": "success",
-      "message": "Processed batch of 2 items. Inserted: 2 readings.",
-      "inserted": 2,
-      "ignored": 0
-    }
-  ]
-  ```
-  > **Nota:** El endpoint actual acepta un **array** de lecturas (batch) o un **objeto individual**. La respuesta varía según el input.
-
-* **Respuesta Exitosa (individual - POST /api/iot/telemetry con objeto simple)**:
+* **Sin autenticación** (endpoint de dispositivo, no de usuario — sigue siendo un punto abierto, ver Notas de Seguridad más abajo).
+* **Request Body (JSON — objeto único, no array)**:
   ```json
   {
-    "status": "success",
-    "message": "Reading registered successfully",
-    "animalId": "uuid-del-animal-asociado",
-    "boundaryUpdates": [
-      {
-        "id": "uuid-del-boundary-update",
-        "coordinates": [
-          { "lat": -32.94, "lng": -60.67 },
-          { "lat": -32.94, "lng": -60.65 },
-          { "lat": -32.96, "lng": -60.65 },
-          { "lat": -32.96, "lng": -60.67 }
-        ],
-        "status": "INFORMED",
-        "informedAt": "2026-07-21T12:00:00.000Z"
-      }
-    ]
+    "collar_id": 1,
+    "lat": -31.42,
+    "lng": -64.18,
+    "temp": 38.5,
+    "gateway_id": "uuid-del-gateway (opcional)",
+    "rssi": -72,
+    "snr": 9.5
   }
   ```
+  * `collar_id`, `lat`, `lng`, `temp`: **requeridos**, es exactamente lo que manda `agroguard-firmware/src/v3/receptor.cpp` hoy.
+  * `gateway_id`, `rssi`, `snr`: **opcionales**, agregados en esta sesión como punto de extensión — el firmware v3 actual **no los envía todavía** (ver `epic-gateways-claude.md`). El `ValidationPipe` global usa `forbidNonWhitelisted: true`, así que cualquier campo que mande el firmware que no esté en el DTO hace fallar el request completo con 400 — importante tenerlo presente si se agregan campos nuevos al firmware sin actualizar `TelemetryPayloadDto`.
+* **Respuesta (200/201)**:
+  ```json
+  { "downlink": "-31.4,-64.2;-31.4,-64.15;-31.45,-64.15;-31.45,-64.2" }
+  ```
+  o `{ "downlink": "NONE" }` si el animal no tiene cerco virtual activo. El downlink se calcula ahora a partir del `Geofence` real asignado al animal (ver `epic-4-cerco-electrico-virtual-alertas.md`) — ya **no** es un rectángulo hardcodeado.
+* **No hay concepto de `BoundaryUpdate`** en el código actual — ese flujo descripto en la versión anterior de este doc nunca se implementó; el downlink de cerco resuelve el mismo problema de forma más simple (se recalcula en cada lectura, no hay estado PENDING/INFORMED que sincronizar).
 
----
+## 3. Mapa del Código
 
-## 3. Mapa del Código (Dónde buscar)
+| Capa | Archivo | Descripción |
+|---|---|---|
+| DTO | `backend/src/iot/dto/telemetry-payload.dto.ts` | Contrato de entrada real (`collar_id`, `lat`, `lng`, `temp` + `gateway_id`/`rssi`/`snr` opcionales) |
+| Backend | `backend/src/iot/iot.service.ts` | `handleTelemetry()`: persiste la lectura, actualiza heartbeat del gateway si vino `gateway_id`, resuelve el cerco activo del animal, evalúa fiebre/hipotermia/inactividad (ver `epic-4`), calcula el downlink real |
+| Firmware (gateway) | `agroguard-firmware/src/v3/receptor.cpp` | Arma el JSON y hace el `POST`. **Es la versión vigente** — `src/emisor`/`src/receptor` (v1) y `src/v2` son versiones anteriores, no se usan |
+| Firmware (collar) | `agroguard-firmware/src/v3/emisor.cpp` | Envía por LoRa `ID:<n>,T:<temp>,LAT:<lat>,LON:<lng>,SAT:<n>` al gateway; recibe el downlink y evalúa el cerco localmente (ray-casting) |
+| Scripts de prueba | `damp/scripts/iot_simulator.js`, `damp/scripts/iot_escape_test.js` | **Desactualizados** — usan `mac_id`, batch arrays y `battery`, un contrato que no es el real. No confiar en ellos sin actualizarlos primero |
 
-* **Ingestor de Telemetría (NestJS)**:
-  * Servicio: [iot.service.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/iot/iot.service.ts)
-  * Controlador: [iot.controller.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/iot/iot.controller.ts)
-  * DTO: [telemetry-payload.dto.ts](file:///c:/Users/catal/Desktop/Repos/damp/backend/src/iot/dto/telemetry-payload.dto.ts)
-* **Script Simulador**: [iot_simulator.js](file:///c:/Users/catal/Desktop/Repos/damp/scripts/iot_simulator.js)
-* **Visualización en Tarjeta de Animal**: [animals/page.tsx](file:///c:/Users/catal/Desktop/Repos/damp/frontend/src/app/animals/page.tsx)
+## 4. Instrucciones de Prueba Rápida
 
----
+```bash
+# 1. Levantar el backend (con la DB local sincronizada, ver estructura-damp.md sección 5)
+cd damp/backend && pnpm run start:dev
 
-## 4. Instrucciones de Prueba Rápida y Simulación
-1. Registra un animal en el panel de Hacienda y asígnale un collar con la dirección MAC: `00:1B:44:11:3A:B7`.
-2. En la raíz del proyecto, corre el simulador indicando esa MAC:
-   ```bash
-   node scripts/iot_simulator.js 00:1B:44:11:3A:B7
-   ```
-3. El simulador mostrará logs en la consola enviando telemetría cada 8 segundos.
-4. Refresca la vista de **Monitoreo de Hacienda** (`/animals`) y comprueba que la tarjeta de ese animal muestra ahora la temperatura real e indicador de batería actualizándose.
+# 2. Mandar una lectura con el shape real
+curl -X POST http://localhost:3001/api/iot/telemetry \
+  -H "Content-Type: application/json" \
+  -d '{"collar_id":1,"lat":-31.42,"lng":-64.18,"temp":38.5}'
 
----
+# Respuesta esperada: {"downlink":"NONE"} si el animal del collar 1 no tiene cerco activo,
+# o las coordenadas del cerco si sí lo tiene.
+```
 
----
+Para probar con el firmware real: flashear `agroguard-firmware/src/v3` (collar + gateway), confirmar que `API_URL` en `receptor.cpp` apunta a la IP y puerto (`:3001`) reales del backend en la red local, y que existe un `Collar` en la DB con `id` igual al valor de `#define COLLAR_ID` del gateway.
 
-## 5. Flujo de Actualización de Límites (BoundaryUpdate)
+## 5. Notas de Seguridad (deuda conocida, sin resolver)
 
-### Concepto
-
-Cuando los límites de una zona/geocerca son modificados en el sistema (ej: se agranda un potrero), el collar IoT debe ser **informado** de los nuevos límites para que pueda detectar fugas localmente. El concepto `BoundaryUpdate` gestiona este proceso mediante un estado `PENDING` → `INFORMED`.
-
-### Flujo (a futuro, con persistencia)
-
-1. **Administrador actualiza los límites** de una zona/potrero en el frontend.
-2. El sistema crea un `BoundaryUpdate` con `status: PENDING` y las nuevas coordenadas, asociado al `collarId` y `animalId`.
-3. El collar envía su próxima lectura de telemetría a `POST /api/iot/telemetry`.
-4. El backend:
-   - Persiste la telemetría normalmente.
-   - Busca el animal activo para ese collar (`AnimalCollar` con `endAt IS NULL`).
-   - Busca `BoundaryUpdate` con `status: PENDING` para ese collar.
-   - Si encuentra uno, lo marca como `status: INFORMED` y setea `informedAt`.
-   - Devuelve las coordenadas en la respuesta.
-5. El collar recibe las coordenadas y actualiza sus límites locales.
-6. En próximas lecturas, el `BoundaryUpdate` ya está `INFORMED` y no se devuelve.
-
-### Estado actual (fase dummy — sin cambios en schema)
-
-Por ahora no se persiste `BoundaryUpdate` en la base de datos. El backend **siempre devuelve** 4 coordenadas fijas cercanas a Rosario con `status: INFORMED` en cada lectura de telemetría. Esto permite:
-- Probar el formato de respuesta con el collar/simulador.
-- Validar que el collar procesa correctamente los límites.
-- Tener la estrutura lista para cuando se implemente la persistencia.
-
-### Próximos pasos
-
-Cuando se implemente la actualización de límites:
-1. Agregar modelo `BoundaryUpdate` y enum `BoundaryUpdateStatus` en Prisma.
-2. Ejecutar migración.
-3. Reemplazar la lógica dummy por consultas reales a la base de datos.
-4. Solo devolver `boundaryUpdates` cuando haya cambios reales (PENDING).
-
----
-
-## 6. Notas de Implementación (Migración a Dispositivos Físicos)
-Cuando se introduzcan los collares físicos en producción, se deben realizar los siguientes cambios sobre esta estructura simulada:
-1. **Configuración de Red / IP del Servidor**: Los gateways o collares deben configurarse para apuntar al host de producción del backend en la ruta `/api/iot/telemetry`.
-2. **Seguridad (Autenticación del Gateway)**: El endpoint actualmente es abierto para agilizar la integración de pruebas. En producción, se debe autenticar cada gateway con una **API key única**:
-   - Cada gateway/dispositivo tendrá su propia API key almacenada en la tabla `Gateway` (a crear).
-   - El gateway envía la API key en el header `X-API-Key`.
-   - Se creará un `ApiKeyGuard` de NestJS que valide la key contra la base de datos y asocie la request al gateway correspondiente.
-   - Esto permite revocar keys individualmente y auditar qué gateway envió cada lectura.
-3. **Optimización de Base de Datos**: Debido a la alta frecuencia de envío (5-10 segundos por dispositivo), la tabla `telemetry_reading` crecerá sumamente rápido. Se aconseja programar un servicio de purga cron o mover las lecturas a un motor de base de datos de series temporales (como TimescaleDB o InfluxDB) para evitar degradar el rendimiento de PostgreSQL.
+El endpoint sigue sin ningún mecanismo de autenticación de dispositivo (API key, HMAC). Cualquiera que conozca un `collar_id` válido puede inyectar telemetría falsa. Sumado a que `agroguard-firmware` tiene las credenciales WiFi commiteadas en texto plano en el repo. Ninguno de los dos puntos se tocó en esta sesión — quedan para una tarea de seguridad aparte.

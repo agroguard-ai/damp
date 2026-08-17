@@ -1,23 +1,14 @@
-export interface Sector {
-  id: string;
-  farmId: string;
-  name: string;
-  description?: string | null;
-  areaHa?: number | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface Geofence {
   id: string;
-  sectorId: string;
+  zoneId: string;
   name: string;
-  geometry?: unknown;
-  active?: boolean;
+  polygonCoordinates: [number, number][] | null;
+  active: boolean;
   activatedAt?: string | null;
+  deactivatedAt?: string | null;
   createdAt?: string;
   updatedAt?: string;
-  sector: Sector;
+  animalGeofences?: AnimalGeofence[];
 }
 
 export interface AnimalGeofence {
@@ -26,5 +17,13 @@ export interface AnimalGeofence {
   geofenceId: string;
   startAt: string;
   endAt?: string | null;
-  geofence: Geofence;
+  geofence?: Geofence;
+  animal?: { id: string; tag: string | null };
+}
+
+export interface CreateGeofencePayload {
+  zoneId: string;
+  name: string;
+  polygonCoordinates: [number, number][];
+  animalIds: string[];
 }

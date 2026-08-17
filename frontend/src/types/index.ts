@@ -7,3 +7,5 @@ export * from './collar';
 export * from './telemetry';
 export * from './geofence';
 export * from './medical-event';
+export * from './gateway';
+export * from './alert-settings';

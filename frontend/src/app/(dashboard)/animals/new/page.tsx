@@ -7,6 +7,7 @@ import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
+import { collarsApi } from '@/lib/api/collars';
 import { useToast } from '@/context/ToastContext';
 
 export default function NewAnimalPage() {
@@ -14,6 +15,8 @@ export default function NewAnimalPage() {
   const { toast } = useToast();
 
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
+  const { data: collars = [] } = useApi(collarsApi.getAll);
+  const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
   const { mutate: createAnimal, loading, error, reset } = useMutation(animalsApi.create);
 
   const [formData, setFormData] = useState({
@@ -22,7 +25,7 @@ export default function NewAnimalPage() {
     breed: '',
     weightKg: '',
     ageMonths: '',
-    collarMacAddress: '',
+    collarId: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -42,10 +45,10 @@ export default function NewAnimalPage() {
         breed: formData.breed,
         weightKg: Number(formData.weightKg),
         ageMonths: Number(formData.ageMonths),
-        collarMacAddress: formData.collarMacAddress || undefined,
+        collarId: formData.collarId ? Number(formData.collarId) : undefined,
       });
       toast.success('Animal registrado con éxito');
-      router.push('/');
+      router.push('/animals');
     } catch {}
   };
 
@@ -55,7 +58,7 @@ export default function NewAnimalPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/"
+            href="/dashboard"
             className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4"
           >
             &larr; Volver al Dashboard
@@ -183,19 +186,24 @@ export default function NewAnimalPage() {
                   />
                 </div>
 
-                {/* ID/MAC Collar */}
+                {/* Collar */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                    MAC del Collar IoT (Opcional)
+                    Collar IoT (Opcional)
                   </label>
-                  <input
-                    type="text"
-                    name="collarMacAddress"
-                    value={formData.collarMacAddress}
+                  <select
+                    name="collarId"
+                    value={formData.collarId}
                     onChange={handleChange}
-                    placeholder="Ej: 00:1B:44:11:3A:B7"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
-                  />
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
+                  >
+                    <option value="">Sin collar</option>
+                    {availableCollars.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.identifier}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>

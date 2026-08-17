@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { CollarsService } from '@/collars/collars.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
 
 @Injectable()
 export class AnimalsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly collarsService: CollarsService
+  ) {}
 
   async create(createAnimalDto: CreateAnimalDto, userId: string) {
     const { farmId, tag, breed, weightKg, ageMonths, collarId, animalTypeId, zoneId } = createAnimalDto;
@@ -21,10 +25,7 @@ export class AnimalsService {
     }
 
     if (collarId) {
-      const collar = await this.prisma.collar.findUnique({ where: { id: collarId } });
-      if (!collar) {
-        throw new NotFoundException(`El collar con ID ${collarId} no existe.`);
-      }
+      await this.collarsService.assertAvailableForAssignment(collarId);
     }
 
     const animal = await this.prisma.animal.create({
@@ -61,14 +62,14 @@ export class AnimalsService {
   async findAll(
     query: {
       farmId?: string;
-      sectorId?: string;
+      zoneId?: string;
       animalType?: string;
       healthStatus?: string;
       status?: string;
     },
     userId: string
   ) {
-    const { farmId, sectorId, animalType, healthStatus, status } = query;
+    const { farmId, zoneId, animalType, healthStatus, status } = query;
     const whereClause: any = {};
 
     // Filtrado por establecimiento (farmId) obligatoriamente del usuario autenticado
@@ -102,15 +103,8 @@ export class AnimalsService {
       whereClause.animalTypeId = animalType;
     }
 
-    if (sectorId) {
-      whereClause.animalGeofences = {
-        some: {
-          geofence: {
-            sectorId: sectorId,
-          },
-          endAt: null,
-        },
-      };
+    if (zoneId) {
+      whereClause.zoneId = zoneId;
     }
 
     if (healthStatus) {
@@ -144,11 +138,7 @@ export class AnimalsService {
         animalGeofences: {
           where: { endAt: null },
           include: {
-            geofence: {
-              include: {
-                sector: true,
-              },
-            },
+            geofence: true,
           },
         },
         medicalEvents: {
@@ -180,9 +170,7 @@ export class AnimalsService {
         },
         animalGeofences: {
           include: {
-            geofence: {
-              include: { sector: true },
-            },
+            geofence: true,
           },
         },
         medicalEvents: {
@@ -257,11 +245,11 @@ export class AnimalsService {
       },
     });
 
-    // 5. Registrar en el historial de eventos médicos
+    // 5. Registrar en el historial del animal (sin tipo médico: la baja no es un evento médico)
     await this.prisma.medicalEvent.create({
       data: {
         animalId: id,
-        type: 'TREATMENT',
+        type: null,
         description: `Baja del animal del sistema. Motivo: ${status === 'SOLD' ? 'Vendido' : 'Fallecido'}.`,
         occurredAt: new Date(),
       },

@@ -7,7 +7,7 @@ import type { MedicalEvent } from './medical-event';
 
 export interface AnimalCollar {
   id: string;
-  collarId: string;
+  collarId: number;
   animalId: string;
   startAt: string;
   endAt?: string | null;
@@ -39,12 +39,13 @@ export interface AnimalLocation extends Pick<Animal, 'id' | 'tag' | 'breed' | 'w
   hasActiveAlert: boolean;
   animalType: Pick<AnimalType, 'id' | 'name' | 'species'> | null;
   zone: Pick<Zone, 'id' | 'name' | 'polygonCoordinates'> | null;
-  collar: Pick<Collar, 'id' | 'serialNumber' | 'status'> | null;
+  collar: Pick<Collar, 'id'> | null;
   latestReading: TelemetryReading | null;
 }
 
 export interface AnimalsQueryParams {
   farmId: string;
+  zoneId?: string;
   animalType?: string;
   collarStatus?: string;
   healthStatus?: string;
@@ -57,7 +58,7 @@ export interface CreateAnimalPayload {
   breed: string;
   weightKg: number;
   ageMonths: number;
-  collarMacAddress?: string;
+  collarId?: number;
   animalTypeId?: string;
   zoneId?: string;
 }

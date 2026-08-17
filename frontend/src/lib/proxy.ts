@@ -48,3 +48,38 @@ export async function proxyRequest(path: string, init?: RequestInit): Promise<Ne
     return NextResponse.json({ error: 'Internal proxy error' }, { status: 502 });
   }
 }
+
+/** Como proxyRequest, pero para descargas binarias (PDF/Excel): reenvía bytes crudos sin pasar por JSON. */
+export async function proxyFileDownload(path: string): Promise<NextResponse> {
+  const { getToken } = await auth();
+  const token = await getToken();
+
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const url = `${getBaseUrl()}${path}`;
+
+  try {
+    const backendRes = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!backendRes.ok) {
+      const body = await backendRes.text();
+      return new NextResponse(body, { status: backendRes.status });
+    }
+
+    const buffer = await backendRes.arrayBuffer();
+    const headers = new Headers();
+    const contentType = backendRes.headers.get('content-type');
+    const contentDisposition = backendRes.headers.get('content-disposition');
+    if (contentType) headers.set('content-type', contentType);
+    if (contentDisposition) headers.set('content-disposition', contentDisposition);
+
+    return new NextResponse(buffer, { status: 200, headers });
+  } catch (err) {
+    console.error(`[proxy] Error forwarding file download GET ${url}:`, err);
+    return NextResponse.json({ error: 'Internal proxy error' }, { status: 502 });
+  }
+}

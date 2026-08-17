@@ -4,6 +4,5 @@ export interface TelemetryReading {
   latitude: number;
   longitude: number;
   temperature: number;
-  batteryLevel: number;
   timestamp: string;
 }

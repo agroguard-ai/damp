@@ -13,6 +13,12 @@ import { IotModule } from './iot/iot.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { AdminUsersModule } from './admin/admin-users.module';
 import { FarmUsersModule } from './farm-users/farm-users.module';
+import { GeofencesModule } from './geofences/geofences.module';
+import { CollarsModule } from './collars/collars.module';
+import { MedicalEventsModule } from './medical-events/medical-events.module';
+import { GatewaysModule } from './gateways/gateways.module';
+import { AlertSettingsModule } from './alert-settings/alert-settings.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -28,6 +34,12 @@ import { FarmUsersModule } from './farm-users/farm-users.module';
     AlertsModule,
     AdminUsersModule,
     FarmUsersModule,
+    GeofencesModule,
+    CollarsModule,
+    MedicalEventsModule,
+    GatewaysModule,
+    AlertSettingsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

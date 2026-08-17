@@ -19,7 +19,7 @@ export class AnimalsController {
   findAll(
     @CurrentUser('sub') userId: string,
     @Query('farmId') farmId?: string,
-    @Query('sectorId') sectorId?: string,
+    @Query('zoneId') zoneId?: string,
     @Query('animalType') animalType?: string,
     @Query('healthStatus') healthStatus?: string,
     @Query('status') status?: string
@@ -27,7 +27,7 @@ export class AnimalsController {
     return this.animalsService.findAll(
       {
         farmId,
-        sectorId,
+        zoneId,
         animalType,
         healthStatus,
         status,

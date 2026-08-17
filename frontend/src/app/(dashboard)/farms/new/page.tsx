@@ -46,7 +46,7 @@ export default function NewFarmPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/"
+            href="/dashboard"
             className="text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 flex items-center gap-1 mb-4"
           >
             &larr; Volver al Dashboard

@@ -5,6 +5,9 @@ export const zonesApi = {
   /** GET /api/zones?farmId=xxx — returns all zones for a given farm */
   getByFarm: (farmId: string): Promise<Zone[]> => apiFetch<Zone[]>(`/api/zones?farmId=${farmId}`),
 
+  /** GET /api/zones/[id] — returns a single zone */
+  getOne: (id: string): Promise<Zone> => apiFetch<Zone>(`/api/zones/${id}`),
+
   /** POST /api/zones — creates a new zone */
   create: (data: CreateZonePayload): Promise<Zone> =>
     apiFetch<Zone>('/api/zones', {
