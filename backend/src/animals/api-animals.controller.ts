@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AnimalsService } from './animals.service';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
+import { CurrentUser } from '@/auth/current-user.decorator';
+import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
 
 @Controller('api/animals')
 @UseGuards(ClerkAuthGuard)

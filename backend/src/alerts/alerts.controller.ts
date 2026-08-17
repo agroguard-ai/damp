@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param, UseGuards } from '@nestjs/common';
 import { AlertsService } from './alerts.service';
-import { ClerkAuthGuard } from '../auth/clerk-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { CurrentUser } from '@/auth/current-user.decorator';
 
 @Controller('alerts')
 @UseGuards(ClerkAuthGuard)

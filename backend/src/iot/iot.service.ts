@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '@/prisma/prisma.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 
 @Injectable()
@@ -42,9 +42,11 @@ export class IotService {
     const downlink = [
       [-32.85, -60.75],
       [-32.85, -60.55],
-      [-33.00, -60.55],
-      [-33.00, -60.75],
-    ].map(p => `${p[0]},${p[1]}`).join(';');
+      [-33.0, -60.55],
+      [-33.0, -60.75],
+    ]
+      .map((p) => `${p[0]},${p[1]}`)
+      .join(';');
 
     return { downlink };
   }
