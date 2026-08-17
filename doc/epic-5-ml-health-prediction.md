@@ -1,32 +1,36 @@
 # Epic 5: Inferencia ML y Detección Temprana de Enfermedades
 
-* **Autor**: Antigravity
+* **Autor**: Antigravity (versión original) — actualizado por Claude (sesión con Santino)
 * **Fecha de Creación**: 09/07/2026
-* **Estado**: Completado
+* **Última actualización**: 17/08/2026
+* **Estado**: Modelo LSTM real entrenado y validado en `damp-ml-api`. **No conectado** al backend todavía — ver sección 5.
 
-## 1. Resumen de la Solución Técnica
-Esta Epic introduce el motor de **Inferencia de Machine Learning** para la detección temprana de anomalías de salud (como fiebre, hipotermia o inactividad prolongada) a partir de la telemetría recolectada de los collares. 
+> **Aviso sobre la versión anterior de este doc**: describía como "Completado" una integración (`iot.service.ts` → `ml-service` → alertas `HEALTH` con cooldown de 1h) que **fue eliminada del código el 14/07/2026**, 5 días después de escrita, y nunca se restauró. Confirmado con `git log -p` sobre `backend/src/iot/iot.service.ts`. El microservicio `ml-service` (sección 2 de abajo) sigue existiendo tal como se documentó, pero desconectado. Lo que reemplazó esa integración en la práctica es la heurística por umbrales de `epic-4-cerco-electrico-virtual-alertas.md` (sección 4) — no es el modelo de ML, es una regla simple mientras no hubiera modelo real.
 
-Para mantener el backend NestJS enfocado y permitir el uso de librerías científicas y de modelos avanzados (como scikit-learn, tensorflow, o pandas), el motor se implementó como un **microservicio independiente en Python** utilizando **FastAPI**.
+## 1. Qué existe ahora (17/08/2026)
 
-* **Microservicio Python (`/ml-service`)**:
-  * Expone el endpoint de inferencia `POST /predict/health`.
-  * Recibe una ventana temporal de las últimas 10 lecturas de telemetría del animal.
-  * Implementa un modelo basado en reglas biométricas (veterinarias):
-    * **Fiebre**: Temperatura promedio sostenida > 39.5°C.
-    * **Hipotermia**: Temperatura promedio sostenida < 37.0°C.
-    * **Inactividad**: Desplazamiento acumulado (drift posicional) < 5 metros sobre las 10 lecturas utilizando la fórmula de Haversine.
-* **Integración en el Ingestor (NestJS)**:
-  * Al procesar cada lote de telemetría en `IotService`, el backend de forma asíncrona (no bloqueante, fire-and-forget) obtiene las últimas 10 lecturas del animal y hace un POST interno a `http://localhost:8000/predict/health` (o la URL configurada por entorno).
-* **Alertas de Salud con Cooldown**:
-  * Si el microservicio de inferencia retorna `anomaly_detected: true`, se inserta una alerta de tipo `HEALTH` en la tabla `Alert`.
-  * Para evitar spam, se implementó un **cooldown de 1 hora** por animal. Si ya existe una alerta de salud activa o resuelta creada en los últimos 60 minutos para ese animal, se omite la creación de la nueva alerta.
-* **Orquestación en Producción (Docker)**:
-  * Se configuró un entorno multinodo en `docker-compose.yml` que levanta la base de datos (PostgreSQL/PostGIS), el backend principal y el microservicio de Python en una red privada compartida (`damp-network`).
+### 1.1 Modelo LSTM multitarea (nuevo, `damp-ml-api`)
 
----
+Se armó y entrenó el modelo LSTM multitarea que el proyecto siempre documentó como objetivo pero nunca existió en código (confirmado: hasta esta sesión, `damp-ml-api` solo tenía el generador de datos sintéticos, cero código de modelo). Detalle completo, arquitectura y cómo reproducirlo: [`damp-ml-api/README.md`](../../damp-ml-api/README.md).
 
-## 2. Contrato del Microservicio de Inferencia (Python FastAPI)
+**Resumen**: LSTM bidireccional + LSTM, tronco compartido, 4 cabezas de salida (fiebre/celo/inactividad/anomalía). Entrada: ventana de 24hs de telemetría. Predicción: si cada evento va a estar activo en las próximas 6hs (tarea genuinamente predictiva, no clasificación del instante actual). Entrenado y evaluado contra un hold-out set (test, 15% de los animales, nunca visto durante entrenamiento ni ajuste de umbral) generado 100% con datos sintéticos de `generador.py` — no hay ni va a haber datos de campo reales (limitación de alcance conocida y aceptada, ver `CLAUDE.md`).
+
+**Métricas reales sobre el test set** (no simuladas, corridas el 17/08/2026 — ver `damp-ml-api/machine-learning/outputs/artifacts/metrics_report.json` para el detalle completo):
+
+| Evento | Precision | Recall | F1 | ROC-AUC |
+|---|---|---|---|---|
+| Fiebre | 0.968 | 0.757 | 0.850 | 0.902 |
+| Celo | 0.849 | 0.772 | 0.809 | 0.994 |
+| Inactividad | 0.959 | 0.861 | 0.908 | 0.944 |
+| Anomalía | 0.781 | 0.410 | 0.538 | 0.734 |
+
+`anomalía` es notoriamente el evento más difícil de predecir — tiene sentido: es la categoría más rara en los datos (0.72% de las ventanas) y, por diseño del propio generador sintético, es la menos "fisiológicamente coherente" de las cuatro (combina distancia y pasos elevados sin un patrón único, es un poco un cajón de sastre). No se infló ni se ocultó este resultado — queda documentado tal cual salió.
+
+### 1.2 Microservicio Python (`/ml-service`) — sin cambios, sigue siendo un stub
+
+Todo lo de la sección 2/3 de abajo (contrato del microservicio, reglas fijas de fiebre >39.5°C / hipotermia <37°C / inactividad por drift Haversine) **sigue describiendo el código real de `damp/ml-service/main.py` tal cual está hoy** — no se tocó en esta sesión. Sigue siendo un stub por reglas, no carga ningún modelo entrenado, y **no está conectado al backend**.
+
+## 2. Contrato del Microservicio de Inferencia (Python FastAPI) — histórico, vigente en el código pero desconectado
 
 * **Endpoint**: `POST http://localhost:8000/predict/health`
 * **Request Body (JSON)**:
@@ -34,47 +38,37 @@ Para mantener el backend NestJS enfocado y permitir el uso de librerías cientí
   {
     "animal_id": "uuid-del-animal",
     "readings": [
-      {
-        "temperature": 39.7,
-        "lat": -33.3082,
-        "lng": -61.8742,
-        "timestamp": "2026-07-09T17:40:00.000Z"
-      },
-      {
-        "temperature": 39.9,
-        "lat": -33.3081,
-        "lng": -61.8741,
-        "timestamp": "2026-07-09T17:41:00.000Z"
-      }
+      { "temperature": 39.7, "lat": -33.3082, "lng": -61.8742, "timestamp": "2026-07-09T17:40:00.000Z" }
     ]
   }
   ```
 * **Response Body (200 OK - Anomaly Detected)**:
   ```json
-  {
-    "animal_id": "uuid-del-animal",
-    "anomaly_detected": true,
-    "confidence": 0.89,
-    "type": "Fiebre",
-    "avg_temperature": 39.8,
-    "position_drift_m": 12.3
-  }
+  { "animal_id": "uuid-del-animal", "anomaly_detected": true, "confidence": 0.89, "type": "Fiebre", "avg_temperature": 39.8, "position_drift_m": 12.3 }
   ```
 
----
+## 3. Estructura del Código del Microservicio (sin cambios)
 
-## 3. Estructura del Código del Microservicio
+* **`ml-service/requirements.txt`**: `fastapi`, `uvicorn`, `scikit-learn`, `pandas`, `numpy` (los últimos tres declarados pero no usados por el stub actual).
+* **`ml-service/main.py`**: servidor FastAPI, validación Pydantic, Haversine para inactividad, lógica de inferencia **por reglas fijas**, no por modelo.
+* **`ml-service/Dockerfile`**: imagen `python:3.11-slim`.
 
-* **`ml-service/requirements.txt`**: Define las librerías necesarias (`fastapi`, `uvicorn`, `scikit-learn`, `pandas`, `numpy`).
-* **`ml-service/main.py`**: Código del servidor FastAPI, validación de esquemas con Pydantic, cálculo de distancias geodésicas (Haversine) para inactividad y lógica de inferencia.
-* **`ml-service/Dockerfile`**: Genera la imagen liviana de producción basada en `python:3.11-slim`.
+## 4. Mapa del Código
 
----
+| Capa | Archivo | Estado |
+|---|---|---|
+| Generador de datos | `damp-ml-api/machine-learning/data-generator/generador.py` | Sin cambios, sigue siendo el que genera el dataset de entrenamiento |
+| Preprocesamiento | `damp-ml-api/machine-learning/model/preprocess.py` | **Nuevo** — ventaneo temporal + split por animal |
+| Arquitectura | `damp-ml-api/machine-learning/model/model.py` | **Nuevo** — LSTM multitarea |
+| Entrenamiento/evaluación | `damp-ml-api/machine-learning/model/train.py` | **Nuevo** |
+| Modelo entrenado | `damp-ml-api/machine-learning/outputs/artifacts/final_model.keras` | **Nuevo** — generado localmente, no versionado (pesado, va en `.gitignore` de `outputs/`) |
+| Microservicio (sin cambios) | `damp/ml-service/main.py` | Stub por reglas, desconectado del backend |
+| Backend (sin cambios) | `backend/src/iot/iot.service.ts` | Heurística propia por umbrales (ver `epic-4`), no llama a `ml-service` ni al modelo nuevo |
 
-## 4. Mapa del Código (NestJS Backend)
+## 5. Lo que falta para que esto sea "CU014 completo" (no se hizo en esta sesión)
 
-* **`backend/src/iot/iot.service.ts`**:
-  * Ejecuta la llamada asíncrona no bloqueante `this.runMLHealthChecks(animalCollarMap)`.
-  * Consulta las últimas 10 lecturas (`TelemetryReading.findMany()`).
-  * Valida el cooldown de 1 hora con `prisma.alert.findFirst()` antes de crear la alerta de tipo `HEALTH`.
-* **`docker-compose.yml`**: Configuración de redes de red compartidas y variables de entorno para que el backend localice el microservicio vía nombre de contenedor: `ML_SERVICE_URL: http://ml-service:8000`.
+1. **Exportar/servir el modelo real desde `ml-service`**: reescribir `ml-service/main.py` para cargar `final_model.keras` (+ `scaler.joblib` + `thresholds.joblib` de `damp-ml-api/machine-learning/outputs/`) y hacer inferencia real en `POST /predict/health`, en vez de las reglas fijas actuales.
+2. **Decidir la relación con la heurística de `iot.service.ts`** (fiebre/hipotermia/inactividad por umbral, `epic-4` sección 4): ¿la reemplaza el modelo, o coexisten? El modelo cubre 4 eventos (agrega `celo` y `anomalía`, que la heurística actual no detecta en absoluto) y predice a futuro, no solo el instante actual — es estrictamente más capaz, pero reemplazarla implica repensar qué significan los umbrales configurables de `AlertSettings` (CU016) en ese nuevo esquema.
+3. **Re-conectar `iot.service.ts` → `ml-service`**: la llamada fire-and-forget que describía la versión vieja de este doc ya no existe en el código; hay que reconstruirla apuntando al servicio real, no al stub.
+
+Ninguno de estos tres pasos se hizo — quedó fuera del alcance de "crear el modelo", que era el pedido concreto de esta sesión.
