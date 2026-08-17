@@ -11,6 +11,8 @@ import { ZonesModule } from './zones/zones.module';
 import { AnimalTypesModule } from './animal-types/animal-types.module';
 import { IotModule } from './iot/iot.module';
 import { AlertsModule } from './alerts/alerts.module';
+import { AdminUsersModule } from './admin/admin-users.module';
+import { FarmUsersModule } from './farm-users/farm-users.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { AlertsModule } from './alerts/alerts.module';
     AnimalTypesModule,
     IotModule,
     AlertsModule,
+    AdminUsersModule,
+    FarmUsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
