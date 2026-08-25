@@ -47,7 +47,6 @@ export interface AnimalsQueryParams {
   farmId: string;
   zoneId?: string;
   animalType?: string;
-  collarStatus?: string;
   healthStatus?: string;
   status?: string;
 }

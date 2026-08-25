@@ -2,17 +2,20 @@
 
 * **Autor**: Claude (sesión con Santino)
 * **Fecha de Creación**: 17/08/2026
-* **Estado**: Parcialmente completado — CRUD y cálculo de estado listos; el estado "en línea" real depende de un cambio en el firmware que todavía no se hizo
+* **Última actualización**: 25/08/2026
+* **Estado**: CRUD, cálculo de estado y envío real de `gateway_id`/`rssi`/`snr` desde el firmware v4 ya escritos. **Sin probar contra hardware físico** — no hay un gateway ESP32 a mano en esta sesión, ver sección 5.
 
 ## 1. Resumen de la Solución Técnica
 
-`Gateway` no existía en el schema — confirmado como hueco real tanto en el diagnóstico inicial como en el doc de Casos de Uso. Se modeló y se construyó el CRUD, pero hay una limitación de fondo que hay que entender antes de dar esto por "terminado" en el sentido pleno del CU:
+`Gateway` no existía en el schema — confirmado como hueco real tanto en el diagnóstico inicial como en el doc de Casos de Uso. Se modeló y se construyó el CRUD.
 
-**El gateway físico (firmware v3, `agroguard-firmware/src/v3/receptor.cpp`) hoy le pega a `/api/iot/telemetry` sin mandar ningún identificador propio** — solo `{collar_id, lat, lng, temp}`. No hay forma de saber, a partir de una lectura real, cuál gateway la retransmitió. Por lo tanto "verificar que esté funcionando correctamente" (requerimiento del CU) no se puede completar solo con software del lado del backend/frontend.
+**Actualización 25/08/2026**: un compañero (Matías) escribió `agroguard-firmware/src/v4/receptor.cpp`, que reemplaza el WiFi hardcodeado de v3 por un portal cautivo (`WiFiManager`) — te conectás desde el celular a la red "AgroGuard-Setup" y cargás SSID/password + URL de la API, persistido en NVS. Buena resolución del ítem de credenciales hardcodeadas, pero **v4 seguía sin mandar `gateway_id`/`rssi`/`snr`** (capturaba `rssi`/`snr` del paquete LoRa pero nunca los incluía en el POST). Se agregó en esta sesión:
 
-Lo que se hizo: se agregaron `gateway_id`, `rssi` y `snr` como campos **opcionales** al DTO de telemetría (`backend/src/iot/dto/telemetry-payload.dto.ts`) — el firmware actual, que no los manda, sigue funcionando exactamente igual, no se rompió nada. Cuando estén presentes, `iot.service.ts` actualiza el heartbeat del gateway (`lastSeenAt`, `lastRssi`, `lastSnr`). Se verificó con datos de prueba que el heartbeat se actualiza correctamente cuando esos campos llegan.
+- `gateway_id`/`rssi`/`snr` ahora van en el JSON que arma `sendTelemetryToApi()`.
+- El UUID del gateway (el que matchea `recordHeartbeat()` en el backend — es el `id` real de la tabla `gateways`, no un nombre inventado) se agregó como **otro campo del mismo portal cautivo**, junto a la URL de la API — mismo patrón que ya existía, no uno nuevo. Se guarda en NVS como `gateway_id`.
+- **Flujo de aprovisionamiento correspondiente**: primero registrar el gateway en la app (`/gateways`, `POST /gateways`) para obtener su UUID, después flashear/configurar el dispositivo físico y cargar ese UUID en el portal. Si no se carga, el gateway sigue mandando telemetría normal (no rompe nada) pero sin `gateway_id` — mismo comportamiento que v3, el heartbeat simplemente no se actualiza.
 
-**Para que el estado "en línea" sea real en producción**, alguien tiene que tocar `agroguard-firmware/src/v3/receptor.cpp` para que el gateway mande su propio ID (y el RSSI/SNR que ya lee del radio LoRa pero hoy solo loguea por Serial, nunca lo envía) en el JSON — eso requiere el hardware físico para probarlo, no se hizo en esta sesión por no tener acceso a un dispositivo real.
+**Sigue sin probarse contra un gateway físico real** — no hubo acceso a hardware en esta sesión. El código compila conceptualmente (mismo patrón que el resto del archivo, ya en uso para `api_url`) pero no se flasheó ni se corrió en un ESP32.
 
 * **Prisma Schema**: modelo `Gateway` (`name`, `farmId`, `zoneId`, `lastSeenAt`, `lastRssi`, `lastSnr`), asociado a una granja y una zona (dentro de esa granja) como pide el CU.
 * **Estado calculado, no guardado**: `NO_DATA` (nunca reportó — nunca confundir con "fuera de línea", como pide explícitamente el alt path del CU) / `ONLINE` (última señal hace ≤15 minutos) / `OFFLINE` (más vieja). 15 minutos porque el firmware v3 manda telemetría cada 5 minutos (`SEND_INTERVAL`), da margen a 2-3 ciclos perdidos antes de considerarlo caído.
@@ -54,7 +57,8 @@ Lo que se hizo: se agregaron `gateway_id`, `rssi` y `snr` como campos **opcional
 | Backend | `backend/src/iot/iot.service.ts` | Llama a `GatewaysService.recordHeartbeat()` si vino `gateway_id` |
 | Frontend | `frontend/src/app/(dashboard)/gateways/page.tsx` | Registro + listado con badge de estado por granja |
 | Frontend | `frontend/src/lib/api/gateways.ts` | Cliente |
-| Firmware (pendiente) | `agroguard-firmware/src/v3/receptor.cpp` | **No modificado** — acá es donde habría que agregar el envío de `gateway_id`/`rssi`/`snr` cuando se tenga el hardware para probarlo |
+| Firmware | `agroguard-firmware/src/v4/receptor.cpp` | Manda `gateway_id`/`rssi`/`snr` (25/08) — UUID configurable por el portal cautivo, sin probar en hardware real |
+| Firmware (obsoleto) | `agroguard-firmware/src/v3/receptor.cpp` | Reemplazado por v4 (WiFi hardcodeado, sin `gateway_id`) — no se tocó, queda como referencia histórica |
 
 ## 4. Instrucciones de Prueba Rápida
 
@@ -75,4 +79,4 @@ curl -X POST http://localhost:3001/api/iot/telemetry \
 
 ## 5. Próximo paso real (fuera de alcance de esta sesión)
 
-Modificar `agroguard-firmware/src/v3/receptor.cpp` para que incluya `gateway_id` (un identificador fijo por dispositivo, análogo a `#define COLLAR_ID` del collar) y los valores de `radio.getRSSI()`/`radio.getSNR()` (ya se leen, ver comentarios en el propio archivo) en el JSON que ya arma `sendTelemetryToApi()`. Requiere probarlo contra un gateway físico.
+**Probar `agroguard-firmware/src/v4/receptor.cpp` contra un gateway ESP32 físico** — flashearlo, registrar un gateway real en `/gateways`, cargar su UUID en el portal cautivo, y confirmar en la DB (`SELECT last_seen_at, last_rssi, last_snr FROM gateways WHERE id = '<uuid>'`) que el heartbeat se actualiza con telemetría real, no simulada. Nada de esto se verificó con hardware — es el mismo tipo de limitación que ya existía con v3, ahora un escalón más adelante (el código está, falta la prueba física).

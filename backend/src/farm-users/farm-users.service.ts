@@ -18,7 +18,7 @@ export class FarmUsersService {
     }
 
     return this.prisma.farmUser.findMany({
-      where: { farmId },
+      where: { farmId, isActive: true },
       include: {
         user: {
           select: {
@@ -71,6 +71,8 @@ export class FarmUsersService {
       });
     }
 
+    // Si el usuario ya había sido removido de la granja (soft-delete), reasignarlo reactiva
+    // la membresía en vez de dejarla inactiva con un rol nuevo sin efecto.
     return this.prisma.farmUser.upsert({
       where: {
         farmId_userId: {
@@ -85,6 +87,8 @@ export class FarmUsersService {
       },
       update: {
         roleId: role.id,
+        isActive: true,
+        removedAt: null,
       },
       include: {
         user: {
@@ -110,7 +114,7 @@ export class FarmUsersService {
       },
     });
 
-    if (!existing) {
+    if (!existing || !existing.isActive) {
       throw new NotFoundException(`Sub-user membership not found for farm "${farmId}" and user "${userId}"`);
     }
 
@@ -150,6 +154,12 @@ export class FarmUsersService {
     });
   }
 
+  /**
+   * Baja lógica (CU002/CU018): marca la membresía inactiva en vez de borrar la fila, para
+   * conservar el rastro de quién tuvo acceso a la granja y cuándo se lo revocaron.
+   * assignSubUser() reactiva (isActive: true, removedAt: null) si se vuelve a invitar al mismo
+   * usuario más adelante.
+   */
   async removeSubUser(farmId: string, userId: string) {
     const existing = await this.prisma.farmUser.findUnique({
       where: {
@@ -160,16 +170,20 @@ export class FarmUsersService {
       },
     });
 
-    if (!existing) {
+    if (!existing || !existing.isActive) {
       throw new NotFoundException(`Sub-user membership not found for farm "${farmId}" and user "${userId}"`);
     }
 
-    return this.prisma.farmUser.delete({
+    return this.prisma.farmUser.update({
       where: {
         farmId_userId: {
           farmId,
           userId,
         },
+      },
+      data: {
+        isActive: false,
+        removedAt: new Date(),
       },
     });
   }
