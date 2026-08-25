@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { randomBytes, timingSafeEqual } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateGatewayDto } from './dto/create-gateway.dto';
 import { UpdateGatewayDto } from './dto/update-gateway.dto';
@@ -39,8 +40,12 @@ export class GatewaysService {
     }
     await this.assertZoneBelongsToFarm(dto.farmId, dto.zoneId);
 
+    // apiKey se genera server-side y se devuelve UNA sola vez, en la respuesta de este create()
+    // (ver el omit en findByFarm/update más abajo) — es lo que el gateway físico manda en el
+    // header X-API-Key para autenticarse en POST /api/iot/telemetry (ver iot/guards/iot-device-auth.guard.ts).
+    const apiKey = randomBytes(32).toString('hex');
     const gateway = await this.prisma.gateway.create({
-      data: { name: dto.name, farmId: dto.farmId, zoneId: dto.zoneId },
+      data: { name: dto.name, farmId: dto.farmId, zoneId: dto.zoneId, apiKey },
     });
     return this.withStatus(gateway);
   }
@@ -58,6 +63,7 @@ export class GatewaysService {
       where: { farmId },
       include: { zone: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
+      omit: { apiKey: true },
     });
     return gateways.map((g) => this.withStatus(g));
   }
@@ -84,13 +90,14 @@ export class GatewaysService {
     const updated = await this.prisma.gateway.update({
       where: { id },
       data: { name: dto.name, zoneId: dto.zoneId },
+      omit: { apiKey: true },
     });
     return this.withStatus(updated);
   }
 
   async remove(id: string, userId: string) {
     await this.getOwned(id, userId);
-    return this.prisma.gateway.delete({ where: { id } });
+    return this.prisma.gateway.delete({ where: { id }, omit: { apiKey: true } });
   }
 
   /** Actualiza el heartbeat del gateway a partir de un paquete de telemetría retransmitido (CU013). */
@@ -103,5 +110,27 @@ export class GatewaysService {
         ...(snr !== undefined && { lastSnr: snr }),
       },
     });
+  }
+
+  /**
+   * Valida el X-API-Key de un gateway físico contra el que se guardó al registrarlo
+   * (ver create()). Comparación en tiempo constante para no filtrar la clave por timing.
+   * Usado exclusivamente por IotDeviceAuthGuard — nunca se expone vía HTTP a un cliente.
+   */
+  async validateApiKey(gatewayId: string, providedKey: string): Promise<boolean> {
+    const gateway = await this.prisma.gateway.findUnique({
+      where: { id: gatewayId },
+      select: { apiKey: true },
+    });
+    if (!gateway) {
+      return false;
+    }
+
+    const expected = Buffer.from(gateway.apiKey);
+    const provided = Buffer.from(providedKey);
+    if (expected.length !== provided.length) {
+      return false;
+    }
+    return timingSafeEqual(expected, provided);
   }
 }

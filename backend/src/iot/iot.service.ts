@@ -58,9 +58,8 @@ export class IotService {
       data: { lastTelemetryDate: new Date() },
     });
 
-    if (payload.gateway_id) {
-      await this.gatewaysService.recordHeartbeat(payload.gateway_id, payload.rssi, payload.snr);
-    }
+    // gateway_id ya se validó en IotDeviceAuthGuard (existe y el X-API-Key matchea) antes de llegar acá.
+    await this.gatewaysService.recordHeartbeat(payload.gateway_id, payload.rssi, payload.snr);
 
     const animalCollar = await this.prisma.animalCollar.findFirst({
       where: { collarId: payload.collar_id, endAt: null },

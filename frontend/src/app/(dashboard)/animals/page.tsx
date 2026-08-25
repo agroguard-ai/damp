@@ -31,7 +31,6 @@ export default function AnimalsListPage() {
 
   const [filters, setFilters] = useState({
     animalType: '',
-    collarStatus: '',
     healthStatus: '',
     status: 'ACTIVE',
   });
@@ -42,7 +41,6 @@ export default function AnimalsListPage() {
         ? animalsApi.getAll({
             farmId: activeFarmId,
             ...(filters.animalType && { animalType: filters.animalType }),
-            ...(filters.collarStatus && { collarStatus: filters.collarStatus }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
             status: filters.status,
           })
@@ -157,6 +155,11 @@ export default function AnimalsListPage() {
   };
 
   const getHealthBadge = (animal: Animal) => {
+    if (animal.isArchived)
+      return {
+        label: 'Archivado',
+        class: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/30',
+      };
     const latestEvent = animal.medicalEvents[0];
     if (!latestEvent)
       return {
@@ -166,12 +169,6 @@ export default function AnimalsListPage() {
       };
     switch (latestEvent.type) {
       case 'TREATMENT':
-        if (latestEvent.description?.includes('archivado') || latestEvent.description?.includes('Baja'))
-          return {
-            label: 'Archivado',
-            class:
-              'bg-zinc-100 dark:bg-zinc-800 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700/30',
-          };
         return {
           label: 'Bajo Tratamiento',
           class:
@@ -289,19 +286,6 @@ export default function AnimalsListPage() {
                     {type.name} ({type.species})
                   </option>
                 ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Estado Collar</label>
-              <select
-                name="collarStatus"
-                value={filters.collarStatus}
-                onChange={handleFilterChange}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-              >
-                <option value="">Todos</option>
-                <option value="ACTIVE">Online</option>
-                <option value="INACTIVE">Offline</option>
               </select>
             </div>
             <div className="flex flex-col gap-1.5">

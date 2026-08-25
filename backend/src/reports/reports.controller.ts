@@ -3,9 +3,14 @@ import type { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
+import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
+import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
+import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
+// Todos los reportes son de solo lectura -> cualquier miembro de la granja (VIEWER incluido,
+// CU017 lo pide explícitamente), sin @RequireFarmRole.
 @Controller('reports')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
@@ -26,6 +31,7 @@ export class ReportsController {
   }
 
   @Get('animals/:animalId/medical-history')
+  @ResolveFarmIdFrom('animal', 'animalId')
   async animalMedicalHistory(
     @Param('animalId') animalId: string,
     @CurrentUser('sub') userId: string,
