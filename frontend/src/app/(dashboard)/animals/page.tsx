@@ -208,33 +208,28 @@ export default function AnimalsListPage() {
             Visualización y administración de los animales activos y sus collares vinculados.
           </p>
         </div>
-        <div className="flex gap-3">
-          <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
-            Registrar Campo
-          </Button>
-          <Button
-            variant="success"
-            size="md"
-            icon={CirclePlus}
-            onClick={() => {
-              if (farms.length === 0) {
-                toast.warning('Debes registrar un campo antes de añadir animales.');
-                return;
-              }
-              if (animalTypes.length > 0 && !formData.animalTypeId) {
-                setFormData((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
-              }
-              setIsModalOpen(true);
-            }}
-          >
-            Añadir Animal
-          </Button>
-        </div>
+        {farms.length > 0 && (
+          <div className="flex gap-3">
+            <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
+              Registrar Campo
+            </Button>
+            <Button
+              variant="success"
+              size="md"
+              icon={CirclePlus}
+              onClick={() => {
+                if (animalTypes.length > 0 && !formData.animalTypeId) {
+                  setFormData((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
+                }
+                setIsModalOpen(true);
+              }}
+            >
+              Añadir Animal
+            </Button>
+          </div>
+        )}
       </div>
-      cuando no hay un campo registrado las paginas de geolocalizacion, zonas y haciendas muestra este texto donde en
-      los 3 casos es distintos, quiero que creas un componente unico para representar este estado donde no esta
-      registrado el campo, donde tenga el mismo estilo y muestre el mismo texto en los 3 casos. Repetir lo mismo en
-      todas las paginas que aparezca este componente para reemplazarlo como reportes, gateways y alertas
+
       {fetchingFarms ? (
         <div className="flex justify-center items-center py-20">
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
