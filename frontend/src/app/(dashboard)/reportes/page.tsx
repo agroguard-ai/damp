@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
+import { EmptyFarmState } from '@/components/ui/EmptyState';
 
 export default function ReportesPage() {
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
@@ -43,11 +44,7 @@ export default function ReportesPage() {
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
       ) : farms.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Primero debes registrar un campo para poder generar reportes.
-          </p>
-        </div>
+        <EmptyFarmState />
       ) : (
         <div className="space-y-6">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { animalsApi } from '@/lib/api/animals';
+import { EmptyFarmState } from '@/components/ui/EmptyState';
 
 // Load Map with SSR disabled
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
@@ -75,17 +75,7 @@ export default function GeolocalizacionPage() {
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
       ) : farms.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Primero debes registrar un campo para poder geolocalizar tu hacienda.
-          </p>
-          <Link
-            href="/farms/new"
-            className="inline-block bg-green-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-green-700 transition-all shadow-sm cursor-pointer"
-          >
-            Registrar Mi Primer Campo
-          </Link>
-        </div>
+        <EmptyFarmState />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Map display */}

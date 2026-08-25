@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
+import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { useToast } from '@/context/ToastContext';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
@@ -230,20 +231,16 @@ export default function AnimalsListPage() {
           </Button>
         </div>
       </div>
-
+      cuando no hay un campo registrado las paginas de geolocalizacion, zonas y haciendas muestra este texto donde en
+      los 3 casos es distintos, quiero que creas un componente unico para representar este estado donde no esta
+      registrado el campo, donde tenga el mismo estilo y muestre el mismo texto en los 3 casos. Repetir lo mismo en
+      todas las paginas que aparezca este componente para reemplazarlo como reportes, gateways y alertas
       {fetchingFarms ? (
         <div className="flex justify-center items-center py-20">
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
       ) : farms.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Aún no has configurado ningún establecimiento en DAMP.
-          </p>
-          <Button href="/farms/new" variant="success" size="md">
-            Crear Mi Primer Campo
-          </Button>
-        </div>
+        <EmptyFarmState />
       ) : (
         <>
           {/* Filters Panel */}
@@ -456,7 +453,6 @@ export default function AnimalsListPage() {
           )}
         </>
       )}
-
       {/* Modal: Add Animal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -608,7 +604,6 @@ export default function AnimalsListPage() {
           </div>
         </div>
       )}
-
       {/* Modal: Historial Médico */}
       {medicalHistoryAnimalId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">

@@ -8,6 +8,7 @@ import { animalsApi } from '@/lib/api/animals';
 import { alertsApi } from '@/lib/api/alerts';
 import { alertSettingsApi } from '@/lib/api/alert-settings';
 import { useToast } from '@/context/ToastContext';
+import { EmptyFarmState } from '@/components/ui/EmptyState';
 import type { AlertType } from '@/types';
 
 const TYPE_LABELS: Record<AlertType, string> = {
@@ -118,11 +119,7 @@ export default function AlertasPage() {
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
       ) : farms.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Primero debes registrar un campo para poder ver sus alertas.
-          </p>
-        </div>
+        <EmptyFarmState />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">

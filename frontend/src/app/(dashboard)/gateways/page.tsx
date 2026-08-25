@@ -7,6 +7,7 @@ import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
+import { EmptyFarmState } from '@/components/ui/EmptyState';
 import type { GatewayStatus } from '@/types';
 
 const STATUS_LABELS: Record<GatewayStatus, string> = {
@@ -83,11 +84,7 @@ export default function GatewaysPage() {
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
       ) : farms.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-16 rounded-xl text-center space-y-4 shadow-sm">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-            Primero debes registrar un campo para poder gestionar sus gateways.
-          </p>
-        </div>
+        <EmptyFarmState />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
