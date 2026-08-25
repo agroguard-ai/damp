@@ -5,16 +5,25 @@ import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { haversineMeters } from './utils/haversine.utils';
+import { MlHealthService, ML_WINDOW_SIZE } from './ml-health.service';
 
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
 const INACTIVITY_RADIUS_M = 15;
+
+const EVENT_LABELS_ES: Record<string, string> = {
+  fiebre: 'fiebre',
+  celo: 'celo',
+  inactividad: 'inactividad prolongada',
+  anomalia: 'un evento anómalo',
+};
 
 @Injectable()
 export class IotService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly gatewaysService: GatewaysService,
-    private readonly alertSettingsService: AlertSettingsService
+    private readonly alertSettingsService: AlertSettingsService,
+    private readonly mlHealthService: MlHealthService
   ) {}
 
   /**
@@ -63,6 +72,7 @@ export class IotService {
     }
 
     await this.checkHealthThresholds(animalCollar.animalId, animalCollar.animal.farmId, payload);
+    await this.checkPredictiveHealth(animalCollar.animalId, payload.collar_id);
 
     const animalGeofence = await this.prisma.animalGeofence.findFirst({
       where: { animalId: animalCollar.animalId, endAt: null, geofence: { active: true } },
@@ -106,16 +116,27 @@ export class IotService {
   /**
    * Evalúa la lectura actual contra los umbrales configurados por la granja (CU016) y,
    * si corresponde, dispara una alerta HEALTH (fiebre, hipotermia o inactividad prolongada).
+   *
+   * Es reactiva e instantánea (una sola lectura fuera de umbral ya alcanza) — complementa,
+   * no reemplaza, a checkPredictiveHealth, que mira 24hs de historial y predice a futuro.
    */
   private async checkHealthThresholds(animalId: string, farmId: string, payload: TelemetryPayloadDto) {
     const settings = await this.alertSettingsService.getEffective(farmId);
 
     if (payload.temp >= settings.feverThreshold) {
-      await this.raiseHealthAlert(animalId, `Temperatura elevada detectada: ${payload.temp}°C (posible fiebre).`);
+      await this.raiseHealthAlert(
+        animalId,
+        '[UMBRAL:FIEBRE]',
+        `Temperatura elevada detectada: ${payload.temp}°C (posible fiebre).`
+      );
       return;
     }
     if (payload.temp <= settings.hypothermiaThreshold) {
-      await this.raiseHealthAlert(animalId, `Temperatura baja detectada: ${payload.temp}°C (posible hipotermia).`);
+      await this.raiseHealthAlert(
+        animalId,
+        '[UMBRAL:HIPOTERMIA]',
+        `Temperatura baja detectada: ${payload.temp}°C (posible hipotermia).`
+      );
       return;
     }
 
@@ -145,14 +166,69 @@ export class IotService {
     if (!hasMoved) {
       await this.raiseHealthAlert(
         animalId,
+        '[UMBRAL:INACTIVIDAD]',
         `El animal no registra movimiento significativo hace más de ${inactivityMinutes} minutos.`
       );
     }
   }
 
-  private async raiseHealthAlert(animalId: string, message: string) {
+  /**
+   * Predicción con el modelo LSTM real (damp-ml-api, servido por damp/ml-service): a
+   * partir de las últimas ML_WINDOW_SIZE lecturas, predice si cada evento (fiebre,
+   * celo, inactividad, anomalía) va a estar activo en las próximas 6hs. Requiere
+   * historial suficiente — si el animal tiene menos de ML_WINDOW_SIZE lecturas
+   * todavía, el servicio devuelve ready=false y no se genera ninguna alerta.
+   */
+  private async checkPredictiveHealth(animalId: string, collarId: number) {
+    const [animal, recentReadings] = await Promise.all([
+      this.prisma.animal.findUnique({ where: { id: animalId }, select: { sex: true } }),
+      this.prisma.telemetryReading.findMany({
+        where: { collarId },
+        orderBy: { timestamp: 'desc' },
+        take: ML_WINDOW_SIZE,
+        select: { temperature: true, latitude: true, longitude: true, timestamp: true },
+      }),
+    ]);
+
+    if (recentReadings.length < ML_WINDOW_SIZE) {
+      return; // Historial insuficiente todavía para una ventana de 24hs.
+    }
+
+    const readings = recentReadings.reverse().map((r) => ({
+      temperature: r.temperature,
+      lat: r.latitude,
+      lng: r.longitude,
+      timestamp: r.timestamp.toISOString(),
+    }));
+
+    const result = await this.mlHealthService.predict(animalId, animal?.sex, readings);
+    if (!result?.ready) {
+      return;
+    }
+
+    for (const [eventName, prediction] of Object.entries(result.events)) {
+      if (!prediction.detected) {
+        continue;
+      }
+      const label = EVENT_LABELS_ES[eventName] ?? eventName;
+      const confidencePct = Math.round(prediction.probability * 100);
+      await this.raiseHealthAlert(
+        animalId,
+        `[IA:${eventName.toUpperCase()}]`,
+        `Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`
+      );
+    }
+  }
+
+  /**
+   * Crea una alerta HEALTH si no hay ya una sin resolver con el mismo `dedupeKey` (prefijo
+   * del mensaje). El dedupeKey separa por tipo de evento y por fuente (umbral configurado
+   * vs. predicción del modelo) para que no se bloqueen entre sí — sin eso, una alerta de
+   * fiebre por umbral impediría que se cree una de celo predicha por el modelo, por ejemplo.
+   */
+  private async raiseHealthAlert(animalId: string, dedupeKey: string, message: string) {
     const existing = await this.prisma.alert.findFirst({
-      where: { animalId, type: 'HEALTH', isResolved: false },
+      where: { animalId, type: 'HEALTH', isResolved: false, message: { startsWith: dedupeKey } },
     });
 
     if (existing) {
@@ -160,7 +236,7 @@ export class IotService {
     }
 
     await this.prisma.alert.create({
-      data: { animalId, type: 'HEALTH', message },
+      data: { animalId, type: 'HEALTH', message: `${dedupeKey} ${message}` },
     });
   }
 }

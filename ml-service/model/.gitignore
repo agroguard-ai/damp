@@ -1,0 +1,10 @@
+# Artefactos del modelo entrenado — no se versionan acá. Se generan y versionan
+# con DVC en damp-ml-api (ver damp-ml-api/README.md, sección "Versionado de datos
+# y modelos"). Para desarrollo local, copiar desde ahí después de `dvc repro`:
+#
+#   cp ../../../damp-ml-api/machine-learning/outputs/artifacts/final_model.keras .
+#   cp ../../../damp-ml-api/machine-learning/outputs/artifacts/thresholds.joblib .
+#   cp ../../../damp-ml-api/machine-learning/outputs/preprocessed/scaler.joblib .
+#   cp ../../../damp-ml-api/machine-learning/outputs/preprocessed/metadata.joblib .
+*.keras
+*.joblib

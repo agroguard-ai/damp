@@ -19,7 +19,7 @@
 ### 1.2 Lo que ya existía y sigue igual
 
 * Modelo `Alert` (`id`, `type`, `message`, `animal_id`, `is_resolved`, `created_at`).
-* Anti-spam: antes de crear una alerta (`ESCAPE` o `HEALTH`) se verifica que no exista ya una sin resolver del mismo tipo para ese animal.
+* Anti-spam: antes de crear una alerta `ESCAPE` se verifica que no exista ya una sin resolver del mismo tipo para ese animal. Para `HEALTH` el chequeo es más fino desde el 25/08/2026 (ver `epic-5-ml-health-prediction.md`): se hace por prefijo del mensaje (`[UMBRAL:FIEBRE]`, `[IA:CELO]`, etc.), no por tipo a secas — si no, una alerta de fiebre por umbral bloquearía para siempre que se cree una de celo predicha por el modelo, por ejemplo.
 * Resolución manual desde el centro de notificaciones (`PATCH /alerts/:id/resolve`).
 * Algoritmo de Ray-Casting (`isPointInPolygon`, sin cambios) — ver sección 5 de la versión original de este documento para el detalle del algoritmo, sigue vigente.
 
@@ -48,7 +48,8 @@
 2. Busca su `Geofence` activo.
 3. Si la lectura cae fuera del polígono → crea `Alert(type: ESCAPE)` (si no hay una sin resolver ya).
 4. Evalúa fiebre/hipotermia/inactividad contra los umbrales de la granja → crea `Alert(type: HEALTH)` si corresponde.
-5. Devuelve `{ downlink: "<polígono real>" }` o `{ downlink: "NONE" }`.
+5. Llama al modelo predictivo real (`damp/ml-service`) con las últimas 48 lecturas → crea `Alert(type: HEALTH)` por cada evento (fiebre/celo/inactividad/anomalía) que prediga por encima de su umbral. Ver `epic-5-ml-health-prediction.md` para el contrato completo — es un paso adicional a este, no un reemplazo.
+6. Devuelve `{ downlink: "<polígono real>" }` o `{ downlink: "NONE" }`.
 
 ### 2.3 Alertas — filtros agregados (`backend/src/alerts/`)
 
@@ -74,7 +75,8 @@ Sin `resolved`, devuelve **todas** las alertas (resueltas y no resueltas). El da
 | Schema | `backend/prisma/schema.prisma` | `Geofence` (ahora sobre `Zone`), `AlertSettings` (nuevo). `Sector` eliminado. |
 | Backend | `backend/src/geofences/*` | CRUD de cercos virtuales (nuevo) |
 | Backend | `backend/src/alert-settings/*` | CRUD de umbrales por granja (nuevo) |
-| Backend | `backend/src/iot/iot.service.ts` | Downlink real, `raiseEscapeAlert`, `checkHealthThresholds`, `checkInactivity`, `raiseHealthAlert` |
+| Backend | `backend/src/iot/iot.service.ts` | Downlink real, `raiseEscapeAlert`, `checkHealthThresholds`, `checkInactivity`, `checkPredictiveHealth` (25/08, ver `epic-5`), `raiseHealthAlert` |
+| Backend | `backend/src/iot/ml-health.service.ts` | Cliente HTTP hacia `damp/ml-service` (nuevo, 25/08/2026) |
 | Backend | `backend/src/iot/utils/geofencing.utils.ts` | `isPointInPolygon` — sin cambios, ahora sí se usa |
 | Backend | `backend/src/iot/utils/haversine.utils.ts` | Nuevo — distancia entre dos puntos GPS, usada para detectar inactividad |
 | Backend | `backend/src/alerts/alerts.service.ts` | `findAll()` con filtros (antes `getUnresolvedAlerts()` sin filtros) |
