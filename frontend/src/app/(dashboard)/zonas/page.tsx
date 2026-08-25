@@ -189,39 +189,26 @@ export default function ZonasPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {zones.map((zone) => {
-                        const coords =
-                          typeof zone.polygonCoordinates === 'string'
-                            ? JSON.parse(zone.polygonCoordinates as string)
-                            : zone.polygonCoordinates;
-                        const count = Array.isArray(coords) ? coords.length : 0;
-
-                        return (
-                          <tr key={zone.id} className="text-zinc-800 dark:text-zinc-200">
-                            <td className="py-3.5 font-semibold">{zone.name}</td>
-                            <td className="py-3.5">{zone.pastureType || 'No especificado'}</td>
-                            <td className="py-3.5">
-                              <span className="bg-zinc-100 dark:bg-zinc-800 px-2.5 py-0.5 rounded text-xs text-zinc-650 dark:text-zinc-450 font-mono">
-                                {count > 0 ? `${count} Vértices` : 'Sin coordenadas'}
-                              </span>
-                            </td>
-                            <td className="py-3.5 text-right space-x-3">
-                              <Link
-                                href={`/zonas/${zone.id}/cercos`}
-                                className="text-green-600 hover:text-green-700 text-xs font-semibold cursor-pointer"
-                              >
-                                Cercos
-                              </Link>
-                              <button
-                                onClick={() => handleDeleteZone(zone.id)}
-                                className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
-                              >
-                                Eliminar
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {zones.map((zone) => (
+                        <tr key={zone.id} className="text-zinc-800 dark:text-zinc-200">
+                          <td className="py-3.5 font-semibold">{zone.name}</td>
+                          <td className="py-3.5">{zone.pastureType || 'No especificado'}</td>
+                          <td className="py-3.5 text-right space-x-3">
+                            <Link
+                              href={`/zonas/${zone.id}/cercos`}
+                              className="text-green-600 hover:text-green-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Cercos
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteZone(zone.id)}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Eliminar
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

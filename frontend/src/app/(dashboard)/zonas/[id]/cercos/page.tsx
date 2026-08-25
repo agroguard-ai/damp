@@ -262,13 +262,6 @@ export default function CercosPage({ params }: { params: Promise<{ id: string }>
                       </button>
                     )}
                   </div>
-                  {newPoints.length === 0 ? (
-                    <span className="text-[11px] text-zinc-400 italic">
-                      Haz clic sobre el mapa para marcar el límite del cerco.
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-zinc-500">{newPoints.length} vértices trazados</span>
-                  )}
                 </div>
 
                 <div className="pt-2">
