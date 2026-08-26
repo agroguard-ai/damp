@@ -134,7 +134,7 @@ export default function NewFarmPage() {
         fullAddress = `${fullAddress} (${formData.department})`;
       }
 
-      await createFarm({
+      const farm = await createFarm({
         name: formData.name.trim(),
         address: fullAddress.trim(),
         province: formData.province,
@@ -144,7 +144,10 @@ export default function NewFarmPage() {
       });
 
       toast.success('Establecimiento registrado con éxito');
-      router.push('/animals/new');
+      // Item 3.1.4 del análisis UX/UI: redirigir directo a alta de animal era un salto abrupto
+      // — sin zonas ni cercos todavía, no hay dónde asignar el animal. El paso lógico siguiente
+      // es delimitar zonas/lotes.
+      router.push(farm ? `/zonas?farmId=${farm.id}` : '/zonas');
     } catch {
       // Error handled by mutation state
     }

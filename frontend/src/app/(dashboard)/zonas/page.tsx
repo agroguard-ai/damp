@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
@@ -17,11 +18,23 @@ import { getProvinceCenter } from '@/data/argentinaLocations';
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
 
 export default function ZonasPage() {
+  return (
+    <Suspense fallback={null}>
+      <ZonasPageContent />
+    </Suspense>
+  );
+}
+
+function ZonasPageContent() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
+  // Si venimos de "Registrar Campo" (redirect post-alta, ver farms/new/page.tsx), preseleccionar
+  // el campo recién creado en vez del primero de la lista.
+  const searchParams = useSearchParams();
+  const farmIdFromUrl = searchParams?.get('farmId') ?? '';
   const [selectedFarm, setSelectedFarm] = useState<string>('');
-  const activeFarmId = selectedFarm || farms[0]?.id || '';
+  const activeFarmId = selectedFarm || farmIdFromUrl || farms[0]?.id || '';
   const [error, setError] = useState<string | null>(null);
 
   // Form State
