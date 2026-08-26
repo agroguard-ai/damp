@@ -19,6 +19,21 @@ interface GoogleAddressSearchProps {
   placeholder?: string;
 }
 
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    state?: string;
+    province?: string;
+    county?: string;
+    state_district?: string;
+    city?: string;
+    town?: string;
+    municipality?: string;
+  };
+}
+
 export function GoogleAddressSearch({
   value,
   onChange,
@@ -41,7 +56,12 @@ export function GoogleAddressSearch({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced search fetching restricted to Argentina
+  // Debounced search fetching restricted to Argentina.
+  // El early-return de abajo (setSuggestions([]) sincrono) dispara react-hooks/set-state-in-effect
+  // igual que el patron fetch-on-mount que ya resolvimos en useApi.ts/AdminUserList/FarmUserList
+  // con el mismo eslint-disable puntual — acá no hay forma de diferirlo sin cambiar el
+  // comportamiento (limpiar sugerencias apenas se borra el input, sin esperar el debounce).
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!value || value.trim().length < 3) {
       setSuggestions([]);
@@ -63,8 +83,8 @@ export function GoogleAddressSearch({
         });
 
         if (res.ok) {
-          const data = await res.json();
-          const parsed: AddressSearchResult[] = data.map((item: any) => {
+          const data: NominatimResult[] = await res.json();
+          const parsed: AddressSearchResult[] = data.map((item) => {
             const addr = item.address || {};
             const rawProvince = addr.state || addr.province || '';
             const province = matchProvince(rawProvince) || rawProvince;
@@ -91,6 +111,7 @@ export function GoogleAddressSearch({
 
     return () => clearTimeout(timer);
   }, [value]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSelect = (item: AddressSearchResult) => {
     onChange(item.address);
