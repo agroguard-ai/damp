@@ -1,5 +1,14 @@
 # damp
 
+## Arranque rápido (Windows)
+
+Una vez que ya instalaste dependencias y configuraste los `.env` de `backend/` y `frontend/`
+al menos una vez (ver secciones de abajo), `start.bat` (en la raíz de este repo) levanta todo
+de un solo doble-click: la base de datos local (Docker), el backend y el frontend, cada uno en
+su propia ventana. Requiere Docker Desktop corriendo.
+
+---
+
 ## Cómo correr el Backend
 
 El backend está construido sobre **NestJS** (v11) y utiliza **Prisma ORM** con una base de datos **PostgreSQL** habilitada con **PostGIS**. La autenticación de usuarios está delegada a **Clerk**.
