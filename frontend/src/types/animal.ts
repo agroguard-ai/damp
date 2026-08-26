@@ -49,6 +49,7 @@ export interface AnimalsQueryParams {
   animalType?: string;
   healthStatus?: string;
   status?: string;
+  hasActiveAlert?: string;
 }
 
 export interface CreateAnimalPayload {

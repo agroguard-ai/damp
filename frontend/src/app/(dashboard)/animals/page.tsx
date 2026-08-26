@@ -38,6 +38,7 @@ export default function AnimalsListPage() {
     healthStatus: '',
     zoneId: '',
     status: 'ACTIVE',
+    hasActiveAlert: false,
   });
 
   const fetchAnimals = useCallback(
@@ -48,6 +49,7 @@ export default function AnimalsListPage() {
             ...(filters.animalType && { animalType: filters.animalType }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
             ...(filters.zoneId && { zoneId: filters.zoneId }),
+            ...(filters.hasActiveAlert && { hasActiveAlert: 'true' }),
             status: filters.status,
           })
         : Promise.resolve([]),
@@ -316,6 +318,17 @@ export default function AnimalsListPage() {
                 <option value="SURGERY">Post-Op</option>
                 <option value="VACCINATION">Vacunado</option>
               </select>
+            </div>
+            <div className="flex flex-col gap-1.5 justify-end">
+              <label className="flex items-center gap-2 cursor-pointer select-none h-[38px] px-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950">
+                <input
+                  type="checkbox"
+                  checked={filters.hasActiveAlert}
+                  onChange={(e) => setFilters((prev) => ({ ...prev, hasActiveAlert: e.target.checked }))}
+                  className="rounded border-zinc-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Solo con alertas activas</span>
+              </label>
             </div>
           </div>
 
