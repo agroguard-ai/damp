@@ -5,6 +5,7 @@ import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { collarsApi } from '@/lib/api/collars';
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 import type { CollarStatus } from '@/types';
 
 const STATUS_LABELS: Record<CollarStatus, string> = {
@@ -22,6 +23,7 @@ const STATUS_CLASSES: Record<CollarStatus, string> = {
 
 export default function CollaresPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: collars = [], loading, refetch } = useApi(collarsApi.getAll);
   const { mutate: createCollar, loading: submitting, error: createError } = useMutation(collarsApi.create);
   const { mutate: updateStatus } = useMutation(collarsApi.updateStatus);
@@ -45,12 +47,13 @@ export default function CollaresPage() {
 
   const handleStatusChange = async (id: number, status: CollarStatus) => {
     if (status !== 'AVAILABLE') {
-      if (
-        !confirm(
-          `¿Marcar el collar como ${STATUS_LABELS[status]}? Si está asignado a un animal, se liberará automáticamente.`
-        )
-      )
-        return;
+      const ok = await confirm({
+        title: `Marcar collar como ${STATUS_LABELS[status]}`,
+        description: 'Si está asignado a un animal, se liberará automáticamente.',
+        confirmLabel: 'Confirmar',
+        danger: true,
+      });
+      if (!ok) return;
     }
     try {
       await updateStatus(id, status);
