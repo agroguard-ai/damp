@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 
 interface FarmUserRecord {
   id: string;
@@ -20,6 +21,7 @@ interface FarmUserRecord {
 }
 
 export function FarmUserList({ farmId }: { farmId: string }) {
+  const confirm = useConfirm();
   const [members, setMembers] = useState<FarmUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +105,13 @@ export function FarmUserList({ farmId }: { farmId: string }) {
   };
 
   const handleRemoveUser = async (userId: string) => {
-    if (!confirm('¿Está seguro de remover a este usuario de la granja?')) return;
+    const ok = await confirm({
+      title: 'Remover usuario de la granja',
+      description: 'Pierde acceso a este establecimiento de inmediato. Se puede volver a invitar más adelante.',
+      confirmLabel: 'Remover',
+      danger: true,
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/farms/${farmId}/users/${userId}`, {
