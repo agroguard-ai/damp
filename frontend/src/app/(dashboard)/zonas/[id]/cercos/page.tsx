@@ -9,12 +9,14 @@ import { zonesApi } from '@/lib/api/zones';
 import { animalsApi } from '@/lib/api/animals';
 import { geofencesApi } from '@/lib/api/geofences';
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
 
 export default function CercosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: zoneId } = use(params);
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const { data: zone, loading: fetchingZone, error: zoneError } = useApi(() => zonesApi.getOne(zoneId), [zoneId]);
 
@@ -69,7 +71,13 @@ export default function CercosPage({ params }: { params: Promise<{ id: string }>
   };
 
   const handleDeactivate = async (geofenceId: string) => {
-    if (!confirm('¿Desactivar este cerco? Los animales asignados quedarán sin cerco activo.')) return;
+    const ok = await confirm({
+      title: 'Desactivar cerco virtual',
+      description: 'Los animales asignados a este cerco quedarán sin cerco activo hasta que se les asigne otro.',
+      confirmLabel: 'Desactivar',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deactivateGeofence(geofenceId);
       toast.success('Cerco desactivado');
