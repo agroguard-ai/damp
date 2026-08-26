@@ -7,6 +7,7 @@ import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SignalStrength } from '@/components/gateways/SignalStrength';
 import type { GatewayStatus } from '@/types';
@@ -26,6 +27,7 @@ const STATUS_CLASSES: Record<GatewayStatus, string> = {
 
 export default function GatewaysPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -61,7 +63,13 @@ export default function GatewaysPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este gateway?')) return;
+    const ok = await confirm({
+      title: 'Eliminar gateway',
+      description: 'Se pierde el historial de heartbeat de este dispositivo. Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteGateway(id);
       toast.success('Gateway eliminado');
