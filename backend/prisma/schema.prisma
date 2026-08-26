@@ -43,6 +43,7 @@ model Farm {
   location    String?
   totalAreaHa        Float?   @map("total_area_ha")
   polygonCoordinates Json?    @map("polygon_coordinates")
+  renspa             String?
   userId             String?  @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
