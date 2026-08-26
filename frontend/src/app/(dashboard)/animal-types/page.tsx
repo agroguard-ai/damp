@@ -6,9 +6,11 @@ import { useMutation } from '@/hooks/useMutation';
 import { animalTypesApi } from '@/lib/api/animal-types';
 
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 
 export default function AnimalTypesPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: types = [], loading, error: loadError, refetch } = useApi(animalTypesApi.getAll);
   const {
     mutate: createType,
@@ -40,7 +42,13 @@ export default function AnimalTypesPage() {
   };
 
   const handleDelete = async (typeId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este tipo de animal?')) return;
+    const ok = await confirm({
+      title: 'Eliminar tipo de animal',
+      description: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteType(typeId);
       toast.success('Tipo de animal eliminado con éxito');
