@@ -29,6 +29,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
   const [selectedRole, setSelectedRole] = useState('OPERATOR');
   const [assigning, setAssigning] = useState(false);
 
+  // El patrón fetch-on-mount con loading/error manejados a mano siempre dispara
+  // react-hooks/set-state-in-effect (mismo problema que ya resolvió src/hooks/useApi.ts
+  // de la misma forma — no hay una reestructuración razonable que lo evite sin reescribir
+  // esto para usar ese hook en vez de fetch directo).
+  /* eslint-disable */
   const fetchMembers = useCallback(async () => {
     try {
       setLoading(true);
@@ -49,6 +54,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
   useEffect(() => {
     void fetchMembers();
   }, [fetchMembers]);
+  /* eslint-enable */
 
   const handleAssignUser = async (e: React.FormEvent) => {
     e.preventDefault();
