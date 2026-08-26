@@ -658,12 +658,12 @@ export const PROVINCE_CENTERS: Record<string, [number, number]> = {
   Corrientes: [-28.7745, -57.8012],
   'Entre Ríos': [-31.7747, -59.0416],
   Formosa: [-24.8949, -59.9324],
-  Jujuy: [-23.3200, -65.7649],
+  Jujuy: [-23.32, -65.7649],
   'La Pampa': [-37.1315, -65.4466],
   'La Rioja': [-29.6857, -67.1817],
   Mendoza: [-34.6299, -68.5831],
   Misiones: [-26.9256, -54.3411],
-  Neuquén: [-38.5727, -70.1190],
+  Neuquén: [-38.5727, -70.119],
   'Río Negro': [-40.4065, -67.2598],
   Salta: [-24.2884, -64.8144],
   'San Juan': [-30.8653, -68.8892],
@@ -671,11 +671,10 @@ export const PROVINCE_CENTERS: Record<string, [number, number]> = {
   'Santa Cruz': [-48.8576, -69.9579],
   'Santa Fe': [-30.7069, -60.9499],
   'Santiago del Estero': [-27.7824, -63.2524],
-  'Tierra del Fuego, Antártida e Islas del Atlántico Sur': [-54.8019, -68.3030],
+  'Tierra del Fuego, Antártida e Islas del Atlántico Sur': [-54.8019, -68.303],
   Tucumán: [-26.9478, -65.3648],
 };
 
 export function getProvinceCenter(provinceName: string): [number, number] | null {
   return PROVINCE_CENTERS[provinceName] || null;
 }
-

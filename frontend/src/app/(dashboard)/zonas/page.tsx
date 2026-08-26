@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useApi } from '@/hooks/useApi';
@@ -9,6 +9,7 @@ import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { getProvinceCenter } from '@/data/argentinaLocations';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
@@ -25,6 +26,19 @@ export default function ZonasPage() {
   const [newZonePasture, setNewZonePasture] = useState('');
   const [newPoints, setNewPoints] = useState<[number, number][]>([]);
 
+  const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
+
+  const farmPolygon = useMemo<[number, number][]>(() => {
+    if (!activeFarm || !(activeFarm as unknown as { polygonCoordinates?: unknown }).polygonCoordinates) return [];
+    try {
+      const raw = (activeFarm as unknown as { polygonCoordinates: unknown }).polygonCoordinates;
+      const coords = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return Array.isArray(coords) ? coords : [];
+    } catch {
+      return [];
+    }
+  }, [activeFarm]);
+
   const fetchZones = useCallback(
     () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
     [activeFarmId]
@@ -35,8 +49,11 @@ export default function ZonasPage() {
   const { mutate: createZone, loading: submitting } = useMutation(zonesApi.create);
   const { mutate: deleteZone } = useMutation(zonesApi.delete);
 
-  const handleAddPoint = (point: [number, number]) => {
+  const handleAddPoint = (point: [number, number], message?: string) => {
     setNewPoints((prev) => [...prev, point]);
+    if (message) {
+      toast.info(message);
+    }
   };
 
   const handleClearPoints = () => {
@@ -83,6 +100,13 @@ export default function ZonasPage() {
 
   // Resolve dynamic map center
   const getMapCenter = (): [number, number] => {
+    if (farmPolygon.length > 0) {
+      return farmPolygon[0];
+    }
+    if (activeFarm?.province) {
+      const provCenter = getProvinceCenter(activeFarm.province);
+      if (provCenter) return provCenter;
+    }
     if (zones.length > 0 && zones[0].polygonCoordinates) {
       try {
         const coords =
@@ -160,7 +184,13 @@ export default function ZonasPage() {
                     : 'Haz clic en el mapa para marcar el perímetro'}
                 </span>
               </div>
-              <ZoneMap zones={zones} newPoints={newPoints} onAddPoint={handleAddPoint} center={getMapCenter()} />
+              <ZoneMap
+                zones={zones}
+                newPoints={newPoints}
+                onAddPoint={handleAddPoint}
+                center={getMapCenter()}
+                farmPolygon={farmPolygon}
+              />
             </div>
 
             {/* Listado de Zonas */}

@@ -16,4 +16,7 @@ export class CreateFarmDto {
 
   @IsNumber()
   totalAreaHa: number;
+
+  @IsOptional()
+  polygonCoordinates?: any;
 }

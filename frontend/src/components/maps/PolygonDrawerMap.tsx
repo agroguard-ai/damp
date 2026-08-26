@@ -3,8 +3,10 @@
 import { MapContainer, TileLayer, Polygon, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Undo2, Trash2, Layers } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Undo2, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import MapActionControls from './controls/MapActionControls';
+import { type MapLayerType } from './controls/MapLayerControl';
 
 // Fix Leaflet marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -53,6 +55,21 @@ function MapRecenter({ center, zoom }: { center: [number, number]; zoom: number 
   return null;
 }
 
+export const MAP_PROVIDERS: Record<MapLayerType, { url: string; attribution: string }> = {
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+  },
+  topo: {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+  },
+};
+
 export default function PolygonDrawerMap({
   points,
   onChangePoints,
@@ -62,7 +79,8 @@ export default function PolygonDrawerMap({
   strokeColor = '#16a34a',
   fillColor = '#22c55e',
 }: PolygonDrawerMapProps) {
-  const [mapType, setMapType] = useState<'satellite' | 'street'>('satellite');
+  const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleAddPoint = (point: [number, number]) => {
     onChangePoints([...points, point]);
@@ -77,29 +95,16 @@ export default function PolygonDrawerMap({
     onChangePoints([]);
   };
 
-  const tileUrl =
-    mapType === 'satellite'
-      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-  const tileAttribution =
-    mapType === 'satellite'
-      ? '&copy; <a href="https://www.esri.com/">Esri</a>'
-      : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const activeProvider = MAP_PROVIDERS[currentLayer];
 
   return (
     <div className="w-full space-y-3">
-      {/* Control Bar */}
+      {/* Control Bar for Drawing Actions */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setMapType((prev) => (prev === 'satellite' ? 'street' : 'satellite'))}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            {mapType === 'satellite' ? 'Vista Callejero' : 'Vista Satelital'}
-          </button>
+        <div className="flex items-center gap-2 text-zinc-500 font-medium">
+          <span>
+            {points.length} {points.length === 1 ? 'vértice' : 'vértices'} trazados
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -124,10 +129,16 @@ export default function PolygonDrawerMap({
         </div>
       </div>
 
-      {/* Map Container */}
-      <div className="w-full h-[420px] rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm">
+      {/* Map Container Canvas */}
+      <div
+        ref={containerRef}
+        className="w-full h-[420px] rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm group"
+      >
+        {/* Floating Round Action Controls inside the map */}
+        <MapActionControls targetRef={containerRef} currentLayer={currentLayer} onChangeLayer={setCurrentLayer} />
+
         <MapContainer center={center} zoom={zoom} className="w-full h-full">
-          <TileLayer key={mapType} attribution={tileAttribution} url={tileUrl} />
+          <TileLayer key={currentLayer} attribution={activeProvider.attribution} url={activeProvider.url} />
           <MapRecenter center={center} zoom={zoom} />
 
           {/* Render existing polygons (e.g. established farm boundary or surrounding zones) */}

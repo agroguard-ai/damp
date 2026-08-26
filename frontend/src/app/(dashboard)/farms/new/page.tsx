@@ -121,6 +121,7 @@ export default function NewFarmPage() {
         address: fullAddress.trim(),
         province: formData.province,
         totalAreaHa: Number(formData.totalAreaHa),
+        polygonCoordinates: polygonPoints.length > 0 ? polygonPoints : undefined,
       });
 
       toast.success('Establecimiento registrado con éxito');
@@ -331,11 +332,11 @@ export default function NewFarmPage() {
 
           {/* Step 2 Actions */}
           <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
-            <Button type="button" variant="outline" size="md" icon={ArrowLeft} onClick={() => setStep(1)}>
+            <Button type="button" variant="outline" size="md" onClick={() => setStep(1)}>
               Anterior
             </Button>
 
-            <Button type="submit" variant="success" size="lg" icon={CheckCircle2} disabled={loading}>
+            <Button type="submit" variant="success" size="md" disabled={loading}>
               {loading ? 'Guardando...' : 'Registrar Campo'}
             </Button>
           </div>

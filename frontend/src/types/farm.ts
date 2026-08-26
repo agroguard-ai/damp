@@ -5,6 +5,7 @@ export interface Farm {
   province: string;
   location: string | null;
   totalAreaHa: number;
+  polygonCoordinates?: [number, number][] | string | null;
   userId: string;
   createdAt: string;
 }
@@ -14,4 +15,5 @@ export interface CreateFarmPayload {
   address: string;
   province: string;
   totalAreaHa: number;
+  polygonCoordinates?: [number, number][];
 }
