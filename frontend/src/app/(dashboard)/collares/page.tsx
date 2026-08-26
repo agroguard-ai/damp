@@ -6,6 +6,7 @@ import { useMutation } from '@/hooks/useMutation';
 import { collarsApi } from '@/lib/api/collars';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
+import { SkeletonRowList } from '@/components/ui/Skeleton';
 import type { CollarStatus } from '@/types';
 
 const STATUS_LABELS: Record<CollarStatus, string> = {
@@ -81,9 +82,7 @@ export default function CollaresPage() {
               Listado de Collares
             </h3>
             {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-              </div>
+              <SkeletonRowList count={4} />
             ) : collars.length === 0 ? (
               <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center py-8">
                 Todavía no hay collares registrados en el sistema.
