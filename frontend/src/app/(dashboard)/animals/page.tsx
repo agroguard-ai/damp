@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { SkeletonCardGrid } from '@/components/ui/Skeleton';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { useApi } from '@/hooks/useApi';
@@ -302,9 +303,7 @@ export default function AnimalsListPage() {
 
           {/* Animals Grid */}
           {loading ? (
-            <div className="flex justify-center items-center py-20">
-              <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-            </div>
+            <SkeletonCardGrid />
           ) : animals.length === 0 ? (
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-16 rounded-xl text-center shadow-sm">
               <p className="text-zinc-400 dark:text-zinc-500 text-sm">
