@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
@@ -17,6 +18,7 @@ import { CirclePlus } from 'lucide-react';
 
 export default function AnimalsListPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const { data: animalTypes = [] } = useApi(animalTypesApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
@@ -111,12 +113,13 @@ export default function AnimalsListPage() {
 
   const handleArchive = async (animalId: string, reason: string) => {
     if (!reason) return;
-    if (
-      !confirm(
-        `¿Estás seguro de archivar este animal como ${reason === 'SOLD' ? 'Vendido' : 'Muerto'}? Se desvincularán sus collares y zonas activas.`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: `Archivar animal como ${reason === 'SOLD' ? 'Vendido' : 'Muerto'}`,
+      description: 'Se desvincularán sus collares y zonas activas. Esta acción no se puede deshacer.',
+      confirmLabel: 'Archivar',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await archiveAnimal(animalId, { status: reason as 'SOLD' | 'DEAD' });
       toast.success('Animal archivado con éxito');
