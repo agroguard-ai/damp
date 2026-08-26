@@ -66,10 +66,11 @@ export class AnimalsService {
       animalType?: string;
       healthStatus?: string;
       status?: string;
+      hasActiveAlert?: string;
     },
     userId: string
   ) {
-    const { farmId, zoneId, animalType, healthStatus, status } = query;
+    const { farmId, zoneId, animalType, healthStatus, status, hasActiveAlert } = query;
     const whereClause: any = {};
 
     // Filtrado por establecimiento (farmId) obligatoriamente del usuario autenticado
@@ -115,6 +116,10 @@ export class AnimalsService {
           },
         };
       }
+    }
+
+    if (hasActiveAlert === 'true') {
+      whereClause.alerts = { some: { isResolved: false } };
     }
 
     return this.prisma.animal.findMany({

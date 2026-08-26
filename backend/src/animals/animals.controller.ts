@@ -31,7 +31,8 @@ export class AnimalsController {
     @Query('zoneId') zoneId?: string,
     @Query('animalType') animalType?: string,
     @Query('healthStatus') healthStatus?: string,
-    @Query('status') status?: string
+    @Query('status') status?: string,
+    @Query('hasActiveAlert') hasActiveAlert?: string
   ) {
     return this.animalsService.findAll(
       {
@@ -40,6 +41,7 @@ export class AnimalsController {
         animalType,
         healthStatus,
         status,
+        hasActiveAlert,
       },
       userId
     );
