@@ -7,6 +7,7 @@ import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { animalsApi } from '@/lib/api/animals';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 // Load Map with SSR disabled
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
@@ -107,9 +108,7 @@ export default function GeolocalizacionPage() {
             {/* Map Container */}
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm">
               {loadingMapData && zones.length === 0 && animals.length === 0 ? (
-                <div className="flex justify-center items-center h-137.5">
-                  <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-                </div>
+                <Skeleton className="w-full h-137.5" />
               ) : (
                 <LiveTrackingMap zones={zones} animals={animals} />
               )}
