@@ -7,6 +7,7 @@ import { animalTypesApi } from '@/lib/api/animal-types';
 
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
+import { SkeletonRowList } from '@/components/ui/Skeleton';
 
 export default function AnimalTypesPage() {
   const { toast } = useToast();
@@ -89,9 +90,7 @@ export default function AnimalTypesPage() {
             </h3>
 
             {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-              </div>
+              <SkeletonRowList count={4} />
             ) : types.length === 0 ? (
               <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center py-8">
                 No hay tipos de animales configurados aún. Utiliza el panel lateral para registrar el primero.
