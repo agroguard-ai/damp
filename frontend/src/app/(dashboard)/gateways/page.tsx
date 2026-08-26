@@ -9,6 +9,7 @@ import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { SignalStrength } from '@/components/gateways/SignalStrength';
 import type { GatewayStatus } from '@/types';
 
@@ -119,9 +120,7 @@ export default function GatewaysPage() {
                 Gateways de este Campo
               </h3>
               {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-                </div>
+                <SkeletonRowList count={3} />
               ) : gateways.length === 0 ? (
                 <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center py-8">
                   Este establecimiento no tiene gateways registrados todavía.
