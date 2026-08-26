@@ -34,7 +34,7 @@ export default function MapFullScreenControl({ targetRef }: MapFullScreenControl
   };
 
   return (
-    <div className="absolute top-3 left-3 z-[400]">
+    <div className="absolute top-3 left-3 z-400">
       <button
         type="button"
         onClick={toggleFullscreen}

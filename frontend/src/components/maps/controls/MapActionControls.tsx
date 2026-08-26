@@ -97,7 +97,7 @@ export default function MapActionControls({ targetRef, currentLayer, onChangeLay
 
         {/* Floating Layer Dropdown Menu (Positioned to the left of the button) */}
         {isLayerMenuOpen && (
-          <div className="absolute right-12 top-0 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-[1050] animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute right-12 top-0 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-1050 animate-in fade-in zoom-in-95 duration-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2 py-1">Capa de Fondo</p>
             {layerOptions.map((opt) => (
               <button

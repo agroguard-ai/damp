@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
@@ -11,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { GoogleAddressSearch, type AddressSearchResult } from '@/components/farms/GoogleAddressSearch';
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import { MapPin, ArrowLeft, CheckCircle2, Ruler, ChevronDown } from 'lucide-react';
+import { MapPin, Ruler, ChevronDown } from 'lucide-react';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 

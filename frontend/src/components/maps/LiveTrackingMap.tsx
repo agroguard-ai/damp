@@ -208,7 +208,7 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
               icon={animal.hasActiveAlert ? alertIcon : normalIcon}
             >
               <Popup>
-                <div className="p-2 space-y-2 text-xs min-w-[180px] text-zinc-900">
+                <div className="p-2 space-y-2 text-xs min-w-45 text-zinc-900">
                   {animal.hasActiveAlert && (
                     <div className="bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
                       <span className="text-red-600 font-bold text-[11px]">⚠ ALERTA: Fuera de geocerca</span>
@@ -249,11 +249,11 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
             }}
           >
             <Popup>
-              <div className="p-2 space-y-2 text-xs min-w-[200px] text-zinc-900">
+              <div className="p-2 space-y-2 text-xs min-w-50 text-zinc-900">
                 <h4 className="font-bold text-zinc-900 border-b pb-1">
                   Grupo de Hacienda ({cluster.animals.length} animales)
                 </h4>
-                <div className="max-h-[140px] overflow-y-auto space-y-1 pr-1">
+                <div className="max-h-35 overflow-y-auto space-y-1 pr-1">
                   {cluster.animals.map((a) => (
                     <div key={a.id} className="flex justify-between text-[11px] border-b border-zinc-100 pb-1">
                       <span className="font-semibold">{a.tag || a.id.slice(0, 5)}</span>
@@ -283,7 +283,7 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
   return (
     <div
       ref={containerRef}
-      className="w-full h-[550px] rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
+      className="w-full h-137.5 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
     >
       <MapActionControls targetRef={containerRef} currentLayer={currentLayer} onChangeLayer={setCurrentLayer} />
 

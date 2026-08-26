@@ -107,7 +107,7 @@ export default function GeolocalizacionPage() {
             {/* Map Container */}
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm">
               {loadingMapData && zones.length === 0 && animals.length === 0 ? (
-                <div className="flex justify-center items-center h-[550px]">
+                <div className="flex justify-center items-center h-137.5">
                   <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
                 </div>
               ) : (
@@ -139,8 +139,8 @@ export default function GeolocalizacionPage() {
             </div>
 
             {/* Animals list with latest details */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-4 max-h-[460px] flex flex-col">
-              <h3 className="font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider pb-2 border-b border-zinc-100 dark:border-zinc-800 flex-shrink-0">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-4 max-h-115 flex flex-col">
+              <h3 className="font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider pb-2 border-b border-zinc-100 dark:border-zinc-800 shrink-0">
                 Dispositivos en Lote
               </h3>
 

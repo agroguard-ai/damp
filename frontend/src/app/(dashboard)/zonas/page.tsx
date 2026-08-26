@@ -303,7 +303,7 @@ export default function ZonasPage() {
                       Haz clics sobre el mapa de la izquierda para marcar las esquinas del potrero.
                     </span>
                   ) : (
-                    <div className="max-h-[120px] overflow-y-auto space-y-1 pr-1 font-mono text-[10px] text-zinc-500">
+                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1 font-mono text-[10px] text-zinc-500">
                       {newPoints.map((pt, idx) => (
                         <div
                           key={idx}

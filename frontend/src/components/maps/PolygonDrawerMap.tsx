@@ -132,7 +132,7 @@ export default function PolygonDrawerMap({
       {/* Map Container Canvas */}
       <div
         ref={containerRef}
-        className="w-full h-[420px] rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm group"
+        className="w-full h-105 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-sm group"
       >
         {/* Floating Round Action Controls inside the map */}
         <MapActionControls targetRef={containerRef} currentLayer={currentLayer} onChangeLayer={setCurrentLayer} />
@@ -176,7 +176,7 @@ export default function PolygonDrawerMap({
         </MapContainer>
 
         {points.length === 0 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[400] bg-zinc-900/80 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/80 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none">
             Hacé clic en el mapa para marcar los vértices del perímetro
           </div>
         )}

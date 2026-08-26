@@ -47,7 +47,7 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
   ];
 
   return (
-    <div ref={containerRef} className="absolute top-3 right-3 z-[400]">
+    <div ref={containerRef} className="absolute top-3 right-3 z-400">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -59,7 +59,7 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-[450] animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-450 animate-in fade-in zoom-in-95 duration-100">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2 py-1">Tipo de Lienzo</p>
           {layerOptions.map((opt) => (
             <button

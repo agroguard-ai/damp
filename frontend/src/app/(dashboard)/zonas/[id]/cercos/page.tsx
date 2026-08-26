@@ -225,7 +225,7 @@ export default function CercosPage({ params }: { params: Promise<{ id: string }>
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                     Animales de esta zona ({selectedAnimalIds.length} seleccionados)
                   </label>
-                  <div className="max-h-[160px] overflow-y-auto space-y-1 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2">
+                  <div className="max-h-40 overflow-y-auto space-y-1 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2">
                     {animals.length === 0 ? (
                       <p className="text-[11px] text-zinc-400 italic p-2">No hay animales activos en esta zona.</p>
                     ) : (
