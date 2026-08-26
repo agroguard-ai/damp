@@ -36,6 +36,7 @@ export default function AnimalsListPage() {
   const [filters, setFilters] = useState({
     animalType: '',
     healthStatus: '',
+    zoneId: '',
     status: 'ACTIVE',
   });
 
@@ -46,6 +47,7 @@ export default function AnimalsListPage() {
             farmId: activeFarmId,
             ...(filters.animalType && { animalType: filters.animalType }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
+            ...(filters.zoneId && { zoneId: filters.zoneId }),
             status: filters.status,
           })
         : Promise.resolve([]),
@@ -280,6 +282,22 @@ export default function AnimalsListPage() {
                 {animalTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name} ({type.species})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Zona / Lote</label>
+              <select
+                name="zoneId"
+                value={filters.zoneId}
+                onChange={handleFilterChange}
+                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
+              >
+                <option value="">Todas</option>
+                {farmZones.map((zone) => (
+                  <option key={zone.id} value={zone.id}>
+                    {zone.name}
                   </option>
                 ))}
               </select>
