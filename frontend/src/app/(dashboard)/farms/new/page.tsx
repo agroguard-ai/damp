@@ -14,6 +14,20 @@ import { MapPin, Ruler, ChevronDown } from 'lucide-react';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 
+const RENSPA_FORMAT = /^\d{2}\.\d{3}\.\d\.\d{5}\/\d{2}$/;
+
+/** Autoformatea a medida que se tipea: XX.XXX.X.XXXXX/XX (Registro Nacional Sanitario, SENASA). */
+function formatRenspa(input: string): string {
+  const digits = input.replace(/\D/g, '').slice(0, 13);
+  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 6), digits.slice(6, 11), digits.slice(11, 13)];
+  let result = parts[0];
+  if (parts[1]) result += `.${parts[1]}`;
+  if (parts[2]) result += `.${parts[2]}`;
+  if (parts[3]) result += `.${parts[3]}`;
+  if (parts[4]) result += `/${parts[4]}`;
+  return result;
+}
+
 export default function NewFarmPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -27,6 +41,7 @@ export default function NewFarmPage() {
     province: '',
     department: '',
     totalAreaHa: '',
+    renspa: '',
   });
 
   const [mapCenter, setMapCenter] = useState<[number, number]>([-38.4161, -63.6167]); // Default Argentina center
@@ -79,6 +94,10 @@ export default function NewFarmPage() {
       toast.warning('Por favor seleccioná una provincia.');
       return;
     }
+    if (formData.renspa && !RENSPA_FORMAT.test(formData.renspa)) {
+      toast.warning('El RENSPA está incompleto. Dejalo vacío o completalo entero (formato XX.XXX.X.XXXXX/XX).');
+      return;
+    }
 
     // If address wasn't picked via search, update center to chosen province
     if (!hasCustomCoords && formData.province) {
@@ -121,6 +140,7 @@ export default function NewFarmPage() {
         province: formData.province,
         totalAreaHa: Number(formData.totalAreaHa),
         polygonCoordinates: polygonPoints.length > 0 ? polygonPoints : undefined,
+        renspa: formData.renspa || undefined,
       });
 
       toast.success('Establecimiento registrado con éxito');
@@ -279,6 +299,27 @@ export default function NewFarmPage() {
                   <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
               </div>
+            </div>
+
+            {/* RENSPA (SENASA) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
+                RENSPA (Opcional)
+              </label>
+              <input
+                type="text"
+                name="renspa"
+                inputMode="numeric"
+                value={formData.renspa}
+                onChange={(e) => setFormData((prev) => ({ ...prev, renspa: formatRenspa(e.target.value) }))}
+                placeholder="01.001.0.00001/00"
+                maxLength={18}
+                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-mono"
+              />
+              <p className="text-[11px] text-zinc-400">
+                Registro Nacional Sanitario de Productores Agropecuarios — necesario para trazabilidad ganadera y
+                Documentos de Tránsito Electrónico.
+              </p>
             </div>
           </div>
 
