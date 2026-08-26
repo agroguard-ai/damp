@@ -8,6 +8,7 @@ import { zonesApi } from '@/lib/api/zones';
 import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { SignalStrength } from '@/components/gateways/SignalStrength';
 import type { GatewayStatus } from '@/types';
 
 const STATUS_LABELS: Record<GatewayStatus, string> = {
@@ -141,8 +142,10 @@ export default function GatewaysPage() {
                           ) : (
                             'Nunca reportó actividad'
                           )}
-                          {g.lastRssi !== null && g.lastRssi !== undefined && <> · RSSI: {g.lastRssi}</>}
                         </p>
+                        <div className="mt-1.5">
+                          <SignalStrength rssi={g.lastRssi} snr={g.lastSnr} />
+                        </div>
                       </div>
                       <button
                         onClick={() => handleDelete(g.id)}
