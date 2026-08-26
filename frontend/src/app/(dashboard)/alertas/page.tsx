@@ -9,6 +9,7 @@ import { alertsApi } from '@/lib/api/alerts';
 import { alertSettingsApi } from '@/lib/api/alert-settings';
 import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { SkeletonRowList } from '@/components/ui/Skeleton';
 import type { AlertType } from '@/types';
 
 const TYPE_LABELS: Record<AlertType, string> = {
@@ -182,9 +183,7 @@ export default function AlertasPage() {
 
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-6 space-y-4">
               {loading ? (
-                <div className="flex justify-center items-center py-12">
-                  <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-                </div>
+                <SkeletonRowList count={4} />
               ) : alerts.length === 0 ? (
                 <p className="text-zinc-400 dark:text-zinc-500 text-sm text-center py-8">
                   No hay alertas que coincidan con los filtros seleccionados.
