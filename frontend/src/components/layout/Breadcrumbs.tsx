@@ -46,8 +46,6 @@ export default function Breadcrumbs() {
     );
   }
 
-  let hrefAccumulator = '';
-
   return (
     <nav className="flex items-center gap-1.5 text-sm min-w-0" aria-label="Breadcrumb">
       <Link
@@ -57,16 +55,16 @@ export default function Breadcrumbs() {
         <Home className="w-4 h-4" />
       </Link>
       {segments.map((segment, idx) => {
-        hrefAccumulator += `/${segment}`;
+        const href = '/' + segments.slice(0, idx + 1).join('/');
         const isLast = idx === segments.length - 1;
         return (
-          <span key={hrefAccumulator} className="flex items-center gap-1.5 min-w-0">
+          <span key={href} className="flex items-center gap-1.5 min-w-0">
             <ChevronRight className="w-3.5 h-3.5 text-zinc-300 dark:text-zinc-700 shrink-0" />
             {isLast ? (
               <span className="font-semibold text-zinc-900 dark:text-white truncate">{labelFor(segment)}</span>
             ) : (
               <Link
-                href={hrefAccumulator}
+                href={href}
                 className="text-zinc-500 dark:text-zinc-400 hover:text-green-600 dark:hover:text-green-400 transition-colors truncate"
               >
                 {labelFor(segment)}
