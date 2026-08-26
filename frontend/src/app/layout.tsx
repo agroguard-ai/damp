@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Inter, DM_Sans } from 'next/font/google';
 import '@/app/globals.css';
 import { ToastProvider } from '@/context/ToastContext';
+import { ConfirmDialogProvider } from '@/context/ConfirmDialogContext';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -24,7 +25,9 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
         <ClerkProvider afterSignOutUrl="/">
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+          </ToastProvider>
         </ClerkProvider>
       </body>
     </html>
