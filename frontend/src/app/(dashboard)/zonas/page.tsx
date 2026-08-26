@@ -8,6 +8,7 @@ import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
 import { useToast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 
@@ -16,6 +17,7 @@ const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false 
 
 export default function ZonasPage() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -88,7 +90,13 @@ export default function ZonasPage() {
   };
 
   const handleDeleteZone = async (zoneId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta zona?')) return;
+    const ok = await confirm({
+      title: 'Eliminar zona',
+      description: 'Esta acción no se puede deshacer.',
+      confirmLabel: 'Eliminar',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteZone(zoneId);
       toast.success('Zona eliminada con éxito');
