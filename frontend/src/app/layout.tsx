@@ -24,7 +24,10 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${dmSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <ClerkProvider afterSignOutUrl="/">
+        <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+          afterSignOutUrl="/"
+        >
           <ToastProvider>
             <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
           </ToastProvider>
