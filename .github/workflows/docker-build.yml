@@ -1,0 +1,39 @@
+name: Docker Build
+
+# Valida que las 3 imágenes de producción (backend, frontend, ml-service) buildeen
+# sin errores — no las publica a ningún registry. Esto es lo que evita descubrir un
+# Dockerfile roto recién al desplegar en el VPS (Dockploy hace exactamente este mismo
+# build a partir de docker-compose.prod.yml). Ver damp/DEPLOY.md.
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'ml-service/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'ml-service/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/docker-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend, frontend, ml-service]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.service }} image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_ci_placeholder \
+            -t damp-${{ matrix.service }}:ci \
+            ./${{ matrix.service }}

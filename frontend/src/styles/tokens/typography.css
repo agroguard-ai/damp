@@ -1,0 +1,10 @@
+/* Para agregar una nueva familia: importarla en layout.tsx y
+ * agregar su variable acá.
+ */
+
+@theme {
+  /* ─── FAMILIAS ──────────────────────────────────────────────────────────── */
+  /* Seteadas via CSS variables inyectadas por next/font en layout.tsx */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-dm-sans);
+}

@@ -82,3 +82,8 @@ next-env.d.ts
 
 # prisma
 generated/prisma
+
+# Python (ml-service)
+__pycache__/
+*.pyc
+.pytest_cache/

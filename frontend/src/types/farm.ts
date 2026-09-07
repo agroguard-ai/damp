@@ -1,0 +1,21 @@
+export interface Farm {
+  id: string;
+  name: string;
+  address: string;
+  province: string;
+  location: string | null;
+  totalAreaHa: number;
+  polygonCoordinates?: [number, number][] | string | null;
+  renspa?: string | null;
+  userId: string;
+  createdAt: string;
+}
+
+export interface CreateFarmPayload {
+  name: string;
+  address: string;
+  province: string;
+  totalAreaHa: number;
+  polygonCoordinates?: [number, number][];
+  renspa?: string;
+}

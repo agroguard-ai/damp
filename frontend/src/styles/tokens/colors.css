@@ -1,0 +1,164 @@
+/*
+ *  1. Primitivas → los colores reales. Acá se cambia la paleta.
+ *  2. Semánticas  → aliases con significado.
+ *
+ * Para cambiar la identidad visual del producto: solo editar la sección
+ * "PRIMITIVAS"
+ */
+
+@theme {
+  /* ─── PRIMITIVAS ────────────────────────────────────────────────────────── */
+
+  /* Primary (Forest Green — #1b5e20) */
+  --color-primary-50: #e8f5e9;
+  --color-primary-100: #c8e6c9;
+  --color-primary-200: #a5d6a7;
+  --color-primary-300: #81c784;
+  --color-primary-400: #66bb6a;
+  --color-primary-500: #4caf50;
+  --color-primary-600: #43a047;
+  --color-primary-700: #388e3c;
+  --color-primary-800: #2e7d32;
+  --color-primary-900: #1b5e20;
+  --color-primary-950: #0c2d10;
+
+  /* Secondary (Light Green — #8bc34a) */
+  --color-secondary-50: #f1f8e9;
+  --color-secondary-100: #dcedc8;
+  --color-secondary-200: #c5e1a5;
+  --color-secondary-300: #aed581;
+  --color-secondary-400: #9ccc65;
+  --color-secondary-500: #8bc34a;
+  --color-secondary-600: #7cb342;
+  --color-secondary-700: #689f38;
+  --color-secondary-800: #558b2f;
+  --color-secondary-900: #33691e;
+  --color-secondary-950: #1c3d11;
+
+  /* Accent (Amber — #ffc107) */
+  --color-accent-50: #fff8e1;
+  --color-accent-100: #ffecb3;
+  --color-accent-200: #ffe082;
+  --color-accent-300: #ffd54f;
+  --color-accent-400: #ffca28;
+  --color-accent-500: #ffc107;
+  --color-accent-600: #ffb300;
+  --color-accent-700: #ffa000;
+  --color-accent-800: #ff8f00;
+  --color-accent-900: #ff6f00;
+  --color-accent-950: #3e1d00;
+
+  /* Neutrals */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fcfcfc; /* Fondo limpio solicitado */
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #1e1e1e; /* Texto sofisticado solicitado */
+  --color-neutral-950: #0a0a0a;
+
+  /* Feedback */
+  --color-success: #22c55e;
+  --color-warning: #ffb300;
+  --color-error: #c62828;
+  --color-info: #3b82f6;
+
+  /* ─── SEMÁNTICOS (light) ────────────────────────────────────────────────── */
+
+  /* Superficie y fondo */
+  --color-background: var(--color-neutral-50);
+  --color-surface: var(--color-neutral-0);
+  --color-surface-raised: var(--color-neutral-100);
+  --color-overlay: var(--color-neutral-200);
+
+  /* Tipografía */
+  --color-foreground: var(--color-neutral-900);
+  --color-muted: var(--color-neutral-500);
+  --color-subtle: var(--color-neutral-400);
+
+  /* Bordes */
+  --color-border: var(--color-neutral-200);
+  --color-border-strong: var(--color-neutral-300);
+
+  /* Acción primaria (Forest Green) */
+  --color-primary: var(--color-primary-900);
+  --color-primary-hover: var(--color-primary-800);
+  --color-primary-active: var(--color-primary-950);
+  --color-primary-subtle: var(--color-primary-50);
+  --color-on-primary: var(--color-neutral-0);
+
+  /* Acción secundaria (Light Green) */
+  --color-secondary: var(--color-secondary-500);
+  --color-secondary-hover: var(--color-secondary-600);
+  --color-secondary-active: var(--color-secondary-700);
+  --color-secondary-subtle: var(--color-secondary-50);
+
+  /* Acción acentuada (Amber) */
+  --color-accent: var(--color-accent-500);
+  --color-accent-hover: var(--color-accent-600);
+  --color-accent-active: var(--color-accent-700);
+
+  /* Feedback semántico */
+  --color-success: var(--color-success-500);
+  --color-warning: var(--color-accent-500);
+  --color-error: var(--color-error-800); /* Rojo intenso */
+  --color-info: var(--color-info-500);
+}
+
+/* ─── DARK MODE ─────────────────────────────────────────────────────────────
+ * Solo se sobreescriben los tokens SEMÁNTICOS. Las primitivas no cambian.
+ * Soporta dos estrategias:
+ *   - Automático: via prefers-color-scheme (sistema operativo)
+ *   - Manual:     via [data-theme="dark"] en el <html> (toggle en la app)
+ * ──────────────────────────────────────────────────────────────────────────*/
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-background: var(--color-neutral-950);
+    --color-surface: var(--color-neutral-900);
+    --color-surface-raised: var(--color-neutral-800);
+    --color-overlay: var(--color-neutral-700);
+
+    --color-foreground: var(--color-neutral-50);
+    --color-muted: var(--color-neutral-400);
+    --color-subtle: var(--color-neutral-500);
+
+    --color-border: var(--color-neutral-800);
+    --color-border-strong: var(--color-neutral-700);
+
+    --color-primary: var(--color-primary-500); /* Lighter for better dark mode contrast */
+    --color-primary-hover: var(--color-primary-400);
+    --color-primary-active: var(--color-primary-600);
+    --color-primary-subtle: var(--color-primary-950);
+
+    --color-secondary: var(--color-secondary-400);
+    --color-error: var(--color-error-500); /* Brighter red for dark mode */
+  }
+}
+
+[data-theme='dark'] {
+  --color-background: var(--color-neutral-950);
+  --color-surface: var(--color-neutral-900);
+  --color-surface-raised: var(--color-neutral-800);
+  --color-overlay: var(--color-neutral-700);
+
+  --color-foreground: var(--color-neutral-50);
+  --color-muted: var(--color-neutral-400);
+  --color-subtle: var(--color-neutral-500);
+
+  --color-border: var(--color-neutral-800);
+  --color-border-strong: var(--color-neutral-700);
+
+  --color-primary: var(--color-primary-500);
+  --color-primary-hover: var(--color-primary-400);
+  --color-primary-active: var(--color-primary-600);
+  --color-primary-subtle: var(--color-primary-950);
+
+  --color-secondary: var(--color-secondary-400);
+  --color-error: var(--color-error-500);
+}

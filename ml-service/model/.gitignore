@@ -1,0 +1,14 @@
+# Los 4 artefactos del modelo entrenado (final_model.keras, scaler.joblib,
+# thresholds.joblib, metadata.joblib) SÍ se versionan acá a partir de la preparación
+# para deploy en VPS (Dockploy) — antes estaban gitignoreados porque son "regenerables",
+# pero Dockploy buildea la imagen del ml-service directo desde este repo sin acceso a
+# DVC ni a un remote real (el de damp-ml-api es un placeholder local, ver su README).
+# Commitearlos acá es lo que permite que `docker build` funcione standalone.
+#
+# Si el equipo reentrena el modelo (`dvc repro` en damp-ml-api), hay que volver a copiar
+# los 4 archivos acá y commitear de nuevo — ver damp/DEPLOY.md, sección final.
+#
+#   cp ../../../damp-ml-api/machine-learning/outputs/artifacts/final_model.keras .
+#   cp ../../../damp-ml-api/machine-learning/outputs/artifacts/thresholds.joblib .
+#   cp ../../../damp-ml-api/machine-learning/outputs/preprocessed/scaler.joblib .
+#   cp ../../../damp-ml-api/machine-learning/outputs/preprocessed/metadata.joblib .
