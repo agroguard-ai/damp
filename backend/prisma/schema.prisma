@@ -134,6 +134,11 @@ model Collar {
   @@map("collars")
 }
 
+// Un collar solo puede tener una asignación activa (endAt IS NULL) a la vez,
+// y un animal solo puede tener un collar activo a la vez. Prisma no soporta
+// índices únicos parciales (WHERE) en el DSL, así que esas dos constraints
+// viven como CREATE UNIQUE INDEX ... WHERE end_at IS NULL en la migración
+// add_active_assignment_constraints, no acá.
 model AnimalCollar {
   id       String   @id @default(uuid())
   collarId Int      @map("collar_id")
@@ -161,8 +166,11 @@ model MedicalEvent {
   @@map("medical_events")
 }
 
+// Un animal solo puede estar en una geocerca activa (endAt IS NULL) a la vez
+// (varios animales sí pueden compartir la misma geocerca activa). Índice único
+// parcial en la migración add_active_assignment_constraints — ver AnimalCollar.
 model AnimalGeofence {
-  id         String    @id @default(uuid()) 
+  id         String    @id @default(uuid())
   animalId   String    @map("animal_id")
   geofenceId String    @map("geofence_id")
   startAt    DateTime  @map("start_at")
