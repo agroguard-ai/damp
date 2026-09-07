@@ -4,3 +4,12 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   unrs-resolver: true
+
+# El Prisma Client se genera fuera de node_modules (ver "output" en prisma/schema.prisma),
+# así que sus dependencias internas (ej. @prisma/client-runtime-utils) necesitan quedar
+# hoisteadas en la raíz de node_modules para que `require()` las encuentre desde ahí —
+# sin esto, `node dist/main` (start:prod, y por lo tanto la imagen Docker) rompe con
+# "Cannot find module '@prisma/client-runtime-utils'". En pnpm 10+ esta config vive acá,
+# no en .npmrc (public-hoist-pattern de .npmrc quedó sin efecto — se comprobó en la práctica).
+publicHoistPattern:
+  - '@prisma/*'

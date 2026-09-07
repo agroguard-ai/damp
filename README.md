@@ -1,5 +1,8 @@
 # damp
 
+> Para desplegar en un VPS con Dockploy (backend + frontend + ml-service dockerizados,
+> base de datos aparte), ver [DEPLOY.md](./DEPLOY.md).
+
 ## Arranque rápido (Windows)
 
 Una vez que ya instalaste dependencias y configuraste los `.env` de `backend/` y `frontend/`

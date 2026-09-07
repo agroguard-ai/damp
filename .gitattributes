@@ -1,0 +1,4 @@
+# El entrypoint corre con #!/bin/sh dentro del contenedor Linux (Alpine) — CRLF
+# rompe el shebang ("bad interpreter"). Fuerza LF sin importar el core.autocrlf
+# de quien lo edite en Windows.
+backend/docker-entrypoint.sh text eol=lf
