@@ -34,7 +34,5 @@ USER app
 
 EXPOSE 3001
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3001/ || exit 1
-
 ENTRYPOINT ["./docker-entrypoint.sh"]
+

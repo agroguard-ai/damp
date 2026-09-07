@@ -38,52 +38,87 @@ Si tira un error de permisos, es porque el usuario de la conexión no es superus
 hay que pedirle a Dockploy que la habilite desde su panel de administración de la base, o conectarse
 como el usuario `postgres` por defecto en vez del usuario de la app.
 
-## 3. Crear la app de tipo "Compose" en Dockploy
+## 3. Crear las 3 Aplicaciones en Dockploy
 
-1. Nuevo recurso → **Application → Docker Compose** (o el tipo equivalente en tu versión de Dockploy).
-2. Repositorio: `damp` (el mismo de este archivo).
-3. Rama: `dev` (o la que el equipo use como rama de deploy).
-4. Archivo de compose: `docker-compose.prod.yml` (no `docker-compose.yml` — ese es solo para
-   desarrollo local, incluye una base de datos propia que acá no se usa).
+En Dockploy, crear **3 recursos individuales de tipo Application** (uno para cada servicio). En todos seleccionás el repositorio `damp`, la rama a desplegar (`dev` o `main`), y **Build Type: Dockerfile**.
 
-## 4. Cargar las variables de entorno
+---
 
-En la sección de Environment Variables de la app en Dockploy, cargar exactamente estos nombres
-(son los mismos que usan `backend/.env.example` y `frontend/.env.example`, revisar ahí si hace
-falta más contexto de cada uno):
+### A. Servicio: `ml-service`
 
-| Variable | De dónde sale |
-|---|---|
-| `DATABASE_URL` | El de la base creada en el paso 1 |
-| `FRONTEND_URL` | El dominio que Dockploy le asigne al servicio `frontend` (ej. `https://damp-frontend.tu-dominio.com`) |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Dashboard de Clerk → API Keys |
-| `CLERK_SECRET_KEY` | Dashboard de Clerk → API Keys |
-| `CLERK_WEBHOOK_SECRET` | Dashboard de Clerk → Webhooks → tu endpoint → Signing Secret |
+1. **Configuración de Build:**
+   * **Build Type**: `Dockerfile`
+   * **Docker Context Path**: `./ml-service`
+   * **Docker File**: `Dockerfile` (o `./Dockerfile`)
+2. **Configuración de Red / Puerto:**
+   * **Port**: `8000`
+   * **Health Check Path**: `/health`
+3. **Variables de entorno**: Ninguna requerida (los modelos ya están incluidos en el repo).
 
-No hace falta cargar `ML_SERVICE_URL` ni `API_BASE_URL`: `docker-compose.prod.yml` ya los fija al
-nombre interno de cada servicio en la red de Docker (`http://ml-service:8000` y `http://backend:3001`).
+---
 
-Importante: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` se usa dos veces — como variable de entorno del
-backend en runtime, y como **build arg** del frontend (Next.js la inyecta en el bundle del cliente
-durante el build, no en runtime). Si Dockploy pasa las Environment Variables del proyecto también
-como build args del compose (comportamiento estándar de `docker compose build` con interpolación
-`${VAR}`), no hay que hacer nada extra — `docker-compose.prod.yml` ya está armado para eso.
+### B. Servicio: `backend`
 
-## 5. Deploy
+1. **Configuración de Build:**
+   * **Build Type**: `Dockerfile`
+   * **Docker Context Path**: `./backend`
+   * **Docker File**: `Dockerfile` (o `./Dockerfile`)
+2. **Configuración de Red / Puerto:**
+   * **Port**: `3001`
+   * **Health Check Path**: `/`
+3. **Variables de entorno (Environment Variables)**:
+   ```env
+   PORT=3001
+   DATABASE_URL=<DATABASE_URL de Postgres en Dockploy>
+   FRONTEND_URL=<Dominio público del Frontend, ej: https://app.tu-dominio.com>
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<pk_test_... o pk_live_...>
+   CLERK_SECRET_KEY=<sk_test_... o sk_live_...>
+   CLERK_WEBHOOK_SECRET=<whsec_...>
+   ML_SERVICE_URL=http://<nombre-o-internal-host-del-ml-service>:8000
+   ```
+   *(Nota: Si están en el mismo proyecto de Dockploy, el hostname suele ser el nombre que le diste a la aplicación `ml-service` en Dockploy).*
 
-Lanzar el deploy desde Dockploy. Va a buildear las 3 imágenes (`backend`, `frontend`, `ml-service`)
-y levantarlas en la red interna del compose.
+---
 
-Verificar que quedó bien:
+### C. Servicio: `frontend`
 
-- `GET https://<dominio-backend>/` → responde (aunque sea un simple "Hello World").
-- `https://<dominio-frontend>/` → carga la home de DAMP.
-- `GET https://<dominio-ml-service>/health` (si Dockploy expone el ml-service con dominio propio;
-  si no, entrar al contenedor o pegarle desde el backend) → debe devolver `"model_loaded": true`.
-  Si da `false`, revisar que los 4 archivos de `ml-service/model/` se hayan commiteado al repo
-  (ver sección "Regenerar el modelo" más abajo).
+1. **Configuración de Build:**
+   * **Build Type**: `Dockerfile`
+   * **Docker Context Path**: `./frontend`
+   * **Docker File**: `Dockerfile` (o `./Dockerfile`)
+2. **Configuración de Red / Puerto:**
+   * **Port**: `3000`
+   * **Health Check Path**: `/`
+3. **Variables de entorno y Build Args**:
+   * En Dockploy, cargar en las variables de entorno de la aplicación:
+   ```env
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<pk_test_... o pk_live_...>
+   NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+   NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+   NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL=/dashboard
+   NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL=/dashboard
+   CLERK_SECRET_KEY=<sk_test_... o sk_live_...>
+   API_BASE_URL=http://<nombre-o-internal-host-del-backend>:3001
+   ```
+   *(Nota: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` se inyecta durante el build de Next.js, por lo que debe estar presente al momento de compilar la imagen).*
 
-## 6. Redeploy después de un nuevo push
+---
+
+## 4. Deploy y Orden de Lanzamiento
+
+Recomendamos lanzar los deploys en este orden:
+1. **`ml-service`** (arranca independiente).
+2. **`backend`** (corre migraciones automáticamente vía `docker-entrypoint.sh` y conecta con la base y el ml-service).
+3. **`frontend`** (conecta con el backend).
+
+Verificar que todo responde:
+- `GET https://<dominio-backend>/` → responde OK.
+- `https://<dominio-frontend>/` → carga la app web de DAMP.
+- `GET http://<ml-service>:8000/health` → devuelve `{"status": "ok", "model_loaded": true}`.
+
+---
+
+## 5. Redeploy después de un nuevo push
 
 Depende de cómo esté configurado el proyecto en Dockploy:
 - Si tiene **auto-deploy por webhook**: cada push a la rama configurada dispara el deploy solo.
