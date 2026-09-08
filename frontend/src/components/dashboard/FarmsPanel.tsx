@@ -1,4 +1,3 @@
-import React from 'react';
 import Link from 'next/link';
 import { Farm } from '@/types';
 
@@ -20,12 +19,6 @@ export function FarmsPanel({ farms, loading }: FarmsPanelProps) {
       ) : farms.length === 0 ? (
         <div className="text-center py-8 space-y-4">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">No tienes campos registrados aún en tu cuenta.</p>
-          <Link
-            href="/farms/new"
-            className="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-lg text-sm shadow-sm transition-all"
-          >
-            Registrar Primer Campo
-          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -36,9 +29,6 @@ export function FarmsPanel({ farms, loading }: FarmsPanelProps) {
             >
               <div>
                 <h4 className="font-bold text-zinc-900 dark:text-white text-base">{farm.name}</h4>
-                <p className="text-xs text-zinc-500 mt-1">
-                  {farm.address}, {farm.province}
-                </p>
               </div>
               <div className="mt-4 pt-3 border-t border-zinc-200/50 dark:border-zinc-850 flex justify-between items-center text-xs">
                 <span className="text-zinc-500">Superficie</span>
