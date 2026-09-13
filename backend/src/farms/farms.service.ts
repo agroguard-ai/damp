@@ -7,11 +7,30 @@ export class FarmsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createFarmDto: CreateFarmDto, userId: string) {
-    return this.prisma.farm.create({
-      data: {
-        ...createFarmDto,
-        userId,
-      },
+    // Sin esto, el creador de una granja nueva queda sin ninguna fila en FarmUser — y el único
+    // endpoint para agregarse un rol de granja (POST /farms/:farmId/users) exige ya ser ADMIN de
+    // esa granja, así que nadie podría auto-otorgárselo (deadlock, salvo ser SUPER_ADMIN global).
+    const dbUser = await this.prisma.user.findUnique({ where: { clerkId: userId } });
+    if (!dbUser) {
+      throw new NotFoundException('User record not found in system database');
+    }
+
+    let adminRole = await this.prisma.role.findUnique({ where: { name: 'ADMIN' } });
+    if (!adminRole) {
+      adminRole = await this.prisma.role.create({ data: { name: 'ADMIN' } });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const farm = await tx.farm.create({
+        data: {
+          ...createFarmDto,
+          userId,
+        },
+      });
+      await tx.farmUser.create({
+        data: { farmId: farm.id, userId: dbUser.id, roleId: adminRole.id },
+      });
+      return farm;
     });
   }
 
