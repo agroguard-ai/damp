@@ -10,6 +10,8 @@ import { alertSettingsApi } from '@/lib/api/alert-settings';
 import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import type { AlertType } from '@/types';
 
 const TYPE_LABELS: Record<AlertType, string> = {
@@ -26,6 +28,7 @@ const TYPE_CLASSES: Record<AlertType, string> = {
 };
 
 export default function AlertasPage() {
+  const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
@@ -103,6 +106,10 @@ export default function AlertasPage() {
       toast.error(err instanceof Error ? err.message : 'Error desconocido');
     }
   };
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="las Alertas de Campo" />;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">

@@ -1,19 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { CollarsService } from './collars.service';
 import { CreateCollarDto } from './dto/create-collar.dto';
 import { UpdateCollarDto } from './dto/update-collar.dto';
 import { UpdateCollarStatusDto } from './dto/update-collar-status.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { GlobalRoles } from '@/auth/decorators/global-roles.decorator';
+import { CurrentUser } from '@/auth/current-user.decorator';
+import type { JwtPayload } from '@/auth/current-user.decorator';
 import { GlobalRole } from '@generated/prisma';
 
-// Collar no tiene farmId en el schema: es inventario global (la flota de collares del sistema,
-// no de una granja puntual), así que no aplica FarmRoleGuard acá — el alta/baja/estado de un
-// collar físico es gestión de flota, se restringe a SUPER_ADMIN. Ver/listar queda abierto a
-// cualquier usuario autenticado (necesario para elegir un collar disponible al dar de alta un animal).
 @Controller('collars')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class CollarsController {
   constructor(private readonly collarsService: CollarsService) {}
 
@@ -25,13 +23,13 @@ export class CollarsController {
   }
 
   @Get()
-  findAll() {
-    return this.collarsService.findAll();
+  findAll(@CurrentUser() user: JwtPayload) {
+    return this.collarsService.findAll(user);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.collarsService.findOne(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: JwtPayload) {
+    return this.collarsService.findOne(id, user);
   }
 
   @Patch(':id')
@@ -41,11 +39,17 @@ export class CollarsController {
     return this.collarsService.update(id, updateCollarDto);
   }
 
-  // Marcar un collar dañado/fuera de servicio es una acción de campo rutinaria, no de
-  // gestión de flota -> se deja abierta a cualquier usuario autenticado (a diferencia de
-  // create/update, que sí son decisiones de inventario).
   @Patch(':id/status')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
   updateStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCollarStatusDto) {
     return this.collarsService.updateStatus(id, dto.status);
+  }
+
+  @Delete(':id')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.collarsService.remove(id);
   }
 }

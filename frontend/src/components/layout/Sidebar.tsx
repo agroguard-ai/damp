@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { SidebarLink } from '@/components/layout/SidebarLink';
 import {
   Hexagon,
@@ -15,10 +16,17 @@ import {
   Router,
   Bell,
   FileDown,
+  Users,
+  Building2,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, emulatedUser } = useAuth();
+
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
+  const isEmulating = isSuperAdmin && !!emulatedUser;
+  const isSuperAdminWithoutEmulation = isSuperAdmin && !isEmulating;
 
   return (
     <aside
@@ -56,36 +64,125 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 py-6 px-3 space-y-1.5 overflow-y-auto">
-        {/* Dashboard */}
-        <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
+      <nav className="flex-1 py-6 px-3 space-y-4 overflow-y-auto">
+        {/* MODO 1: SUPER_ADMIN SIN EMULACIÓN (Gestión Central & Inventario) */}
+        {isSuperAdminWithoutEmulation ? (
+          <>
+            <div className="space-y-1.5">
+              {!isCollapsed && (
+                <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-purple-400">
+                  Inventario & Plataforma
+                </div>
+              )}
+              {/* Tipos de Animal: ABM exclusivo para SuperAdmin */}
+              <SidebarLink
+                href="/animal-types"
+                label="Tipos de Animal"
+                logo={<Tags className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+              {/* Collares: Inventario global de hardware */}
+              <SidebarLink
+                href="/collares"
+                label="Collares (Flota)"
+                logo={<Radio className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+              {/* Gateways: Hardware de retransmisión */}
+              <SidebarLink
+                href="/gateways"
+                label="Gateways LoRa"
+                logo={<Router className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+            </div>
 
-        {/* Campos */}
-        <SidebarLink href="/farms/new" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
+            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+              {!isCollapsed && (
+                <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-purple-400">
+                  Administración Global
+                </div>
+              )}
+              <SidebarLink
+                href="/admin/users"
+                label="Usuarios Sistema"
+                logo={<Users className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/admin/farms"
+                label="Todas las Granjas"
+                logo={<Building2 className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+            </div>
 
-        {/* Zonas */}
-        <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
-
-        {/* Hacienda */}
-        <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
-
-        {/* Geolocalización */}
-        <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
-
-        {/* Tipos de Animal */}
-        <SidebarLink href="/animal-types" label="Tipos de Animal" logo={<Tags />} isCollapsed={isCollapsed} />
-
-        {/* Collares */}
-        <SidebarLink href="/collares" label="Collares" logo={<Radio />} isCollapsed={isCollapsed} />
-
-        {/* Gateways */}
-        <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
-
-        {/* Alertas */}
-        <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
-
-        {/* Reportes */}
-        <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
+            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+              {!isCollapsed && (
+                <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                  Gestión de Campo (Requiere Emular)
+                </div>
+              )}
+              <SidebarLink
+                href="/dashboard"
+                label="Dashboard"
+                logo={<LayoutDashboard className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/farms/new"
+                label="Campos"
+                logo={<Tractor className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/zonas"
+                label="Zonas"
+                logo={<Map className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/animals"
+                label="Hacienda"
+                logo={<ClipboardList className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/geolocalizacion"
+                label="Geolocalización"
+                logo={<MapPin className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/alertas"
+                label="Alertas"
+                logo={<Bell className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/reportes"
+                label="Reportes"
+                logo={<FileDown className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+            </div>
+          </>
+        ) : (
+          /* MODO 2: GRANJERO / USUARIO ESTÁNDAR O SUPER_ADMIN EMULANDO */
+          <div className="space-y-1.5">
+            <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/farms/new" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
+            {/* Collares: solo collares contratados */}
+            <SidebarLink href="/collares" label="Collares" logo={<Radio />} isCollapsed={isCollapsed} />
+            {/* Gateways: solo de este campo */}
+            <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
+          </div>
+        )}
       </nav>
     </aside>
   );

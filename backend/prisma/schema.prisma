@@ -23,34 +23,39 @@ model Role {
 }
 
 model User {
-  id         String     @id @default(uuid())
-  clerkId    String     @unique @map("clerk_id")
-  email      String     @unique
-  globalRole GlobalRole @default(USER) @map("global_role")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  name         String?
+  globalRole         GlobalRole @default(USER) @map("global_role")
+  mustChangePassword Boolean    @default(true) @map("must_change_password")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
 
   farmUsers FarmUser[]
+  farms     Farm[]
 
   @@map("users")
 }
 
 model Farm {
-  id          String   @id @default(uuid())
-  name        String?
-  address     String?
-  province    String?
-  location    String?
+  id                 String   @id @default(uuid())
+  name               String?
+  address            String?
+  province           String?
+  location           String?
   totalAreaHa        Float?   @map("total_area_ha")
   polygonCoordinates Json?    @map("polygon_coordinates")
   renspa             String?
   userId             String?  @map("user_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt          DateTime @default(now()) @map("created_at")
 
+  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   farmUsers     FarmUser[]
   animals       Animal[]
   zones         Zone[]
   gateways      Gateway[]
+  collars       Collar[]
   alertSettings AlertSettings?
 
   @@map("farms")
@@ -126,8 +131,10 @@ model Collar {
   identifier        String       @unique
   status            CollarStatus @default(AVAILABLE)
   lastTelemetryDate DateTime?    @map("last_telemetry_date")
+  farmId            String?      @map("farm_id")
   createdAt         DateTime     @default(now()) @map("created_at")
 
+  farm              Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
   animalCollars     AnimalCollar[]
   telemetryReadings TelemetryReading[]
 

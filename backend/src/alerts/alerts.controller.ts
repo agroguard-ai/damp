@@ -1,17 +1,15 @@
 import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
 import { AlertsService } from './alerts.service';
 import { AlertType } from '@generated/prisma';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
 import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
-// findAll queda solo con ClerkAuthGuard: farmId es opcional (vista multi-granja), mismo
-// motivo que animals.controller.ts findAll — el service ya filtra por dueño.
 @Controller('alerts')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 

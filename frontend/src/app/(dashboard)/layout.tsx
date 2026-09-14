@@ -1,5 +1,6 @@
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
+import { EmulationBanner } from '@/components/layout/EmulationBanner';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,6 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Panel Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
+        <EmulationBanner />
         <Topbar />
 
         {/* Content Body */}

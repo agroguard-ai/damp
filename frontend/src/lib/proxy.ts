@@ -1,5 +1,8 @@
-import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+export const AUTH_COOKIE_NAME = 'damp_token';
+export const EMULATE_USER_COOKIE_NAME = 'damp_emulate_user_id';
 
 function getBaseUrl(): string {
   const url = process.env.API_BASE_URL;
@@ -9,9 +12,19 @@ function getBaseUrl(): string {
   return url;
 }
 
+export async function getAuthToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(AUTH_COOKIE_NAME)?.value ?? null;
+}
+
+export async function getEmulatedUserId(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return cookieStore.get(EMULATE_USER_COOKIE_NAME)?.value ?? null;
+}
+
 export async function proxyRequest(path: string, init?: RequestInit): Promise<NextResponse> {
-  const { getToken } = await auth();
-  const token = await getToken();
+  const token = await getAuthToken();
+  const emulatedUserId = await getEmulatedUserId();
 
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -19,10 +32,14 @@ export async function proxyRequest(path: string, init?: RequestInit): Promise<Ne
 
   const url = `${getBaseUrl()}${path}`;
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token}`,
   };
+
+  if (emulatedUserId) {
+    headers['x-emulate-user-id'] = emulatedUserId;
+  }
 
   try {
     const backendRes = await fetch(url, {
@@ -51,8 +68,8 @@ export async function proxyRequest(path: string, init?: RequestInit): Promise<Ne
 
 /** Como proxyRequest, pero para descargas binarias (PDF/Excel): reenvía bytes crudos sin pasar por JSON. */
 export async function proxyFileDownload(path: string): Promise<NextResponse> {
-  const { getToken } = await auth();
-  const token = await getToken();
+  const token = await getAuthToken();
+  const emulatedUserId = await getEmulatedUserId();
 
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -60,9 +77,14 @@ export async function proxyFileDownload(path: string): Promise<NextResponse> {
 
   const url = `${getBaseUrl()}${path}`;
 
+  const reqHeaders: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (emulatedUserId) {
+    reqHeaders['x-emulate-user-id'] = emulatedUserId;
+  }
+
   try {
     const backendRes = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: reqHeaders,
     });
 
     if (!backendRes.ok) {

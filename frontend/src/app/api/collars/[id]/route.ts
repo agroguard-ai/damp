@@ -16,3 +16,10 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     body,
   });
 }
+
+export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  return proxyRequest(`/collars/${id}`, {
+    method: 'DELETE',
+  });
+}

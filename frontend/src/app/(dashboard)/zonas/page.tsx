@@ -13,6 +13,8 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { getProvinceCenter } from '@/data/argentinaLocations';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
@@ -26,6 +28,7 @@ export default function ZonasPage() {
 }
 
 function ZonasPageContent() {
+  const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
   const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
@@ -144,6 +147,10 @@ function ZonasPageContent() {
   };
 
   const displayError = farmsError ?? error;
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="las Zonas y Potreros" />;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">

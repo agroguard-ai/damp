@@ -11,6 +11,8 @@ import { GoogleAddressSearch, type AddressSearchResult } from '@/components/farm
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { MapPin, Ruler, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 
@@ -29,8 +31,10 @@ function formatRenspa(input: string): string {
 }
 
 export default function NewFarmPage() {
+  const { user, emulatedUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+
   const { mutate: createFarm, loading, error } = useMutation(farmsApi.create);
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -152,6 +156,10 @@ export default function NewFarmPage() {
       // Error handled by mutation state
     }
   };
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="el Alta y Gestión de Campos" />;
+  }
 
   return (
     <div className="py-10 px-4 md:px-8 max-w-3xl mx-auto space-y-8">

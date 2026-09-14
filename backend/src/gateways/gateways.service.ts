@@ -4,6 +4,8 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { CreateGatewayDto } from './dto/create-gateway.dto';
 import { UpdateGatewayDto } from './dto/update-gateway.dto';
 
+import { GlobalRole } from '@generated/prisma';
+
 // El firmware v3 envía telemetría cada 5 minutos; se tolera hasta 3 ciclos perdidos antes de marcar offline.
 const ONLINE_THRESHOLD_MS = 15 * 60 * 1000;
 
@@ -35,8 +37,18 @@ export class GatewaysService {
     if (!farm) {
       throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
     }
-    if (farm.userId !== userId) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+
+    if (!isSuperAdmin && farm.userId !== userId) {
+      const member = await this.prisma.farmUser.findUnique({
+        where: { farmId_userId: { farmId: dto.farmId, userId } },
+        include: { role: true },
+      });
+      if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
+        throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      }
     }
     await this.assertZoneBelongsToFarm(dto.farmId, dto.zoneId);
 
@@ -55,8 +67,17 @@ export class GatewaysService {
     if (!farm) {
       throw new NotFoundException('Farm not found');
     }
-    if (farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this farm');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+
+    if (!isSuperAdmin && farm.userId !== userId) {
+      const member = await this.prisma.farmUser.findUnique({
+        where: { farmId_userId: { farmId, userId } },
+      });
+      if (!member || !member.isActive) {
+        throw new ForbiddenException('You do not have access to this farm');
+      }
     }
 
     const gateways = await this.prisma.gateway.findMany({
@@ -76,8 +97,18 @@ export class GatewaysService {
     if (!gateway) {
       throw new NotFoundException(`Gateway with id ${id} not found`);
     }
-    if (gateway.farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this gateway');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+
+    if (!isSuperAdmin && gateway.farm.userId !== userId) {
+      const member = await this.prisma.farmUser.findUnique({
+        where: { farmId_userId: { farmId: gateway.farmId, userId } },
+        include: { role: true },
+      });
+      if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
+        throw new ForbiddenException('You do not have access to this gateway');
+      }
     }
     return gateway;
   }

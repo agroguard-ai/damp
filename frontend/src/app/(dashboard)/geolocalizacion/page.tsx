@@ -8,11 +8,14 @@ import { zonesApi } from '@/lib/api/zones';
 import { animalsApi } from '@/lib/api/animals';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 // Load Map with SSR disabled
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
 export default function GeolocalizacionPage() {
+  const { user, emulatedUser } = useAuth();
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -51,6 +54,10 @@ export default function GeolocalizacionPage() {
   // Derived statistics
   const activeAnimalsWithGps = animals.filter((a) => a.latestReading !== null);
   const offlineCollars = animals.filter((a) => a.collar && !a.latestReading);
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="la Geolocalización y Monitoreo en Tiempo Real" />;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">

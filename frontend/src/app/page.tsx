@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { auth } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
+import { AUTH_COOKIE_NAME } from '@/lib/proxy';
 import {
   Hexagon,
   MapPin,
@@ -113,8 +114,8 @@ const plans = [
 ];
 
 export default async function LandingPage() {
-  const { userId } = await auth();
-  const isSignedIn = Boolean(userId);
+  const cookieStore = await cookies();
+  const isSignedIn = Boolean(cookieStore.get(AUTH_COOKIE_NAME)?.value);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -174,12 +175,12 @@ function Nav({ isSignedIn }: { isSignedIn: boolean }) {
               >
                 Iniciar sesión
               </Link>
-              <Link
-                href="/sign-up"
+              <a
+                href="mailto:ventas@damp.com"
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm"
               >
-                Empezar gratis
-              </Link>
+                Contactar Ventas
+              </a>
             </>
           )}
           <button className="md:hidden p-2 text-muted" aria-label="Abrir menú">
@@ -228,13 +229,13 @@ function Hero() {
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-4">
-              <Link
-                href="/sign-up"
+              <a
+                href="mailto:ventas@damp.com"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-all shadow-md hover:shadow-lg"
               >
-                Empezar gratis
+                Solicitar Demo / Ventas
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </a>
               <Link
                 href="/sign-in"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors"
@@ -438,8 +439,8 @@ function Plans() {
               ))}
             </ul>
 
-            <Link
-              href="/sign-up"
+            <a
+              href="mailto:ventas@damp.com"
               className={`mt-8 inline-flex w-full items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-colors ${
                 plan.featured
                   ? 'bg-white text-primary-900 hover:bg-primary-50'
@@ -447,7 +448,7 @@ function Plans() {
               }`}
             >
               Hablar con ventas
-            </Link>
+            </a>
           </div>
         ))}
       </div>
@@ -472,13 +473,13 @@ function CtaBanner() {
             Sumate a DAMP Agro y llevá tu operación ganadera a un estándar de precisión y seguridad multi-tenant.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/sign-up"
+            <a
+              href="mailto:ventas@damp.com"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-white text-primary-900 hover:bg-primary-50 transition-colors shadow-md"
             >
-              Crear cuenta gratis
+              Contactar a Ventas
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
             <Link
               href="/sign-in"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-colors"

@@ -2,16 +2,25 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
 
-export interface ClerkTokenPayload {
+export interface JwtPayload {
   sub: string;
+  email: string;
+  globalRole: string;
+  name?: string;
+  mustChangePassword?: boolean;
+  isEmulated?: boolean;
+  realSuperAdminId?: string;
   [key: string]: any;
 }
 
+// Alias for backwards-compatibility during transition
+export type ClerkTokenPayload = JwtPayload;
+
 export interface AuthenticatedRequest extends Request {
-  user: ClerkTokenPayload;
+  user: JwtPayload;
 }
 
-export const CurrentUser = createParamDecorator((data: keyof ClerkTokenPayload | undefined, ctx: ExecutionContext) => {
+export const CurrentUser = createParamDecorator((data: keyof JwtPayload | undefined, ctx: ExecutionContext) => {
   const request = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
   const user = request.user;
 

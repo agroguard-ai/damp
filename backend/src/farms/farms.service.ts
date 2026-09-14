@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { GlobalRole } from '@generated/prisma';
 import { CreateFarmDto } from './dto/create-farm.dto';
 
 @Injectable()
@@ -7,10 +8,7 @@ export class FarmsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createFarmDto: CreateFarmDto, userId: string) {
-    // Sin esto, el creador de una granja nueva queda sin ninguna fila en FarmUser — y el único
-    // endpoint para agregarse un rol de granja (POST /farms/:farmId/users) exige ya ser ADMIN de
-    // esa granja, así que nadie podría auto-otorgárselo (deadlock, salvo ser SUPER_ADMIN global).
-    const dbUser = await this.prisma.user.findUnique({ where: { clerkId: userId } });
+    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!dbUser) {
       throw new NotFoundException('User record not found in system database');
     }
@@ -24,7 +22,7 @@ export class FarmsService {
       const farm = await tx.farm.create({
         data: {
           ...createFarmDto,
-          userId,
+          userId: dbUser.id,
         },
       });
       await tx.farmUser.create({
@@ -35,26 +33,90 @@ export class FarmsService {
   }
 
   async findAll(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    // Superadmin without emulation has no tenant farm context
+    // (global farms oversight is provided via /admin/farms)
+    if (user?.globalRole === GlobalRole.SUPER_ADMIN) {
+      return [];
+    }
+
+    // Regular users see farms where they are owner or active member
     return this.prisma.farm.findMany({
-      where: { userId },
+      where: {
+        OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        farmUsers: {
+          where: { userId, isActive: true },
+          include: { role: true },
+        },
+      },
     });
   }
 
   async findOne(id: string, userId: string) {
     const farm = await this.prisma.farm.findUnique({
       where: { id },
+      include: {
+        alertSettings: true,
+      },
     });
+
     if (!farm) {
       throw new NotFoundException('Farm not found');
     }
-    if (farm.userId !== userId) {
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    // Superadmin bypass
+    if (user?.globalRole === GlobalRole.SUPER_ADMIN) {
+      return farm;
+    }
+
+    // Owner check
+    if (farm.userId === userId) {
+      return farm;
+    }
+
+    // Membership check
+    const member = await this.prisma.farmUser.findUnique({
+      where: {
+        farmId_userId: { farmId: id, userId },
+      },
+    });
+
+    if (!member || !member.isActive) {
       throw new ForbiddenException('You do not have access to this farm');
     }
+
     return farm;
   }
 
   async update(id: string, updateFarmDto: Partial<CreateFarmDto>, userId: string) {
-    await this.findOne(id, userId); // Validates existence and ownership
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const farm = await this.prisma.farm.findUnique({ where: { id } });
+
+    if (!farm) {
+      throw new NotFoundException('Farm not found');
+    }
+
+    if (user?.globalRole !== GlobalRole.SUPER_ADMIN && farm.userId !== userId) {
+      const adminMember = await this.prisma.farmUser.findFirst({
+        where: {
+          farmId: id,
+          userId,
+          isActive: true,
+          role: { name: 'ADMIN' },
+        },
+      });
+
+      if (!adminMember) {
+        throw new ForbiddenException('Solo el administrador de la granja puede modificarla');
+      }
+    }
+
     return this.prisma.farm.update({
       where: { id },
       data: updateFarmDto,
@@ -62,7 +124,17 @@ export class FarmsService {
   }
 
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId); // Validates existence and ownership
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const farm = await this.prisma.farm.findUnique({ where: { id } });
+
+    if (!farm) {
+      throw new NotFoundException('Farm not found');
+    }
+
+    if (user?.globalRole !== GlobalRole.SUPER_ADMIN && farm.userId !== userId) {
+      throw new ForbiddenException('Solo el propietario o un Superadmin puede eliminar la granja');
+    }
+
     return this.prisma.farm.delete({
       where: { id },
     });

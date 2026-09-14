@@ -168,9 +168,7 @@ describe('FarmRoleGuard', () => {
       });
 
       await expect(guard.canActivate(context)).resolves.toBe(true);
-      expect(prisma.geofence.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'geofence-1' } })
-      );
+      expect(prisma.geofence.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'geofence-1' } }));
     });
 
     it('resuelve el farmId de un alert vía su animal (2 hops)', async () => {

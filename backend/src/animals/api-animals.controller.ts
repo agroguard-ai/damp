@@ -1,10 +1,10 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AnimalsService } from './animals.service';
 import { CurrentUser } from '@/auth/current-user.decorator';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 
 @Controller('api/animals')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class ApiAnimalsController {
   constructor(private readonly animalsService: AnimalsService) {}
 

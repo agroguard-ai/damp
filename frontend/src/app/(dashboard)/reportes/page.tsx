@@ -5,8 +5,11 @@ import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 export default function ReportesPage() {
+  const { user, emulatedUser } = useAuth();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -21,6 +24,10 @@ export default function ReportesPage() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [alertsFormat, setAlertsFormat] = useState<'pdf' | 'xlsx'>('pdf');
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="los Reportes y Exportaciones de Campo" />;
+  }
 
   const rangeQuery = () => {
     const params = new URLSearchParams();

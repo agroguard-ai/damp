@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
 import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
@@ -8,7 +8,7 @@ import { AssignFarmUserDto } from './dto/assign-farm-user.dto';
 import { UpdateFarmUserDto } from './dto/update-farm-user.dto';
 
 @Controller('farms/:farmId/users')
-@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class FarmUsersController {
   constructor(private readonly farmUsersService: FarmUsersService) {}
 

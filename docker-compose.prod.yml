@@ -44,9 +44,8 @@ services:
       PORT: 3001
       FRONTEND_URL: ${FRONTEND_URL}
       DATABASE_URL: ${DATABASE_URL}
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
-      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       ML_SERVICE_URL: http://ml-service:8000
     depends_on:
       ml-service:
@@ -63,18 +62,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_CLERK_SIGN_IN_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_URL:-/sign-in}
-        NEXT_PUBLIC_CLERK_SIGN_UP_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_URL:-/sign-up}
-        NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL: ${NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL:-/dashboard}
-        NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL: ${NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL:-/dashboard}
     container_name: damp-frontend
     restart: always
     ports:
       - '3000:3000'
     environment:
-      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY}
       API_BASE_URL: http://backend:3001
     depends_on:
       - backend

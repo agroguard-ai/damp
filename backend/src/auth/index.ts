@@ -1,4 +1,7 @@
 export * from './auth.module';
+export * from './jwt-auth.guard';
+export * from './auth.service';
+export * from './auth.controller';
 export * from './clerk-auth.guard';
 export * from './current-user.decorator';
 export * from './decorators/global-roles.decorator';

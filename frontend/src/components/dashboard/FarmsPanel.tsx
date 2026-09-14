@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Farm } from '@/types';
 
 interface FarmsPanelProps {

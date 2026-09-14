@@ -23,8 +23,8 @@ export class FarmUsersService {
         user: {
           select: {
             id: true,
-            clerkId: true,
             email: true,
+            name: true,
             globalRole: true,
             createdAt: true,
           },
@@ -58,21 +58,39 @@ export class FarmUsersService {
       throw new NotFoundException(`Target user not found in system database`);
     }
 
+    const roleNameUpper = dto.roleName.toUpperCase();
+
+    // Regla de negocio: cada granja posee un único rol administrador
+    if (roleNameUpper === 'ADMIN') {
+      const existingAdmin = await this.prisma.farmUser.findFirst({
+        where: {
+          farmId,
+          isActive: true,
+          role: { name: 'ADMIN' },
+          userId: { not: user.id },
+        },
+      });
+
+      if (existingAdmin) {
+        throw new BadRequestException(
+          'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'
+        );
+      }
+    }
+
     // Dynamic role lookup / creation if standard seed hasn't run yet
     let role = await this.prisma.role.findUnique({
-      where: { name: dto.roleName.toUpperCase() },
+      where: { name: roleNameUpper },
     });
 
     if (!role) {
       role = await this.prisma.role.create({
         data: {
-          name: dto.roleName.toUpperCase(),
+          name: roleNameUpper,
         },
       });
     }
 
-    // Si el usuario ya había sido removido de la granja (soft-delete), reasignarlo reactiva
-    // la membresía en vez de dejarla inactiva con un rol nuevo sin efecto.
     return this.prisma.farmUser.upsert({
       where: {
         farmId_userId: {
@@ -94,8 +112,8 @@ export class FarmUsersService {
         user: {
           select: {
             id: true,
-            clerkId: true,
             email: true,
+            name: true,
             globalRole: true,
           },
         },
@@ -118,14 +136,34 @@ export class FarmUsersService {
       throw new NotFoundException(`Sub-user membership not found for farm "${farmId}" and user "${userId}"`);
     }
 
+    const roleNameUpper = dto.roleName.toUpperCase();
+
+    // Regla de negocio: cada granja posee un único rol administrador
+    if (roleNameUpper === 'ADMIN') {
+      const existingAdmin = await this.prisma.farmUser.findFirst({
+        where: {
+          farmId,
+          isActive: true,
+          role: { name: 'ADMIN' },
+          userId: { not: userId },
+        },
+      });
+
+      if (existingAdmin) {
+        throw new BadRequestException(
+          'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'
+        );
+      }
+    }
+
     let role = await this.prisma.role.findUnique({
-      where: { name: dto.roleName.toUpperCase() },
+      where: { name: roleNameUpper },
     });
 
     if (!role) {
       role = await this.prisma.role.create({
         data: {
-          name: dto.roleName.toUpperCase(),
+          name: roleNameUpper,
         },
       });
     }
@@ -144,8 +182,8 @@ export class FarmUsersService {
         user: {
           select: {
             id: true,
-            clerkId: true,
             email: true,
+            name: true,
             globalRole: true,
           },
         },
@@ -155,10 +193,7 @@ export class FarmUsersService {
   }
 
   /**
-   * Baja lógica (CU002/CU018): marca la membresía inactiva en vez de borrar la fila, para
-   * conservar el rastro de quién tuvo acceso a la granja y cuándo se lo revocaron.
-   * assignSubUser() reactiva (isActive: true, removedAt: null) si se vuelve a invitar al mismo
-   * usuario más adelante.
+   * Baja lógica (CU002/CU018): marca la membresía inactiva en vez de borrar la fila.
    */
   async removeSubUser(farmId: string, userId: string) {
     const existing = await this.prisma.farmUser.findUnique({

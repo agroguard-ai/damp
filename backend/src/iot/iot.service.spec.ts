@@ -44,9 +44,9 @@ describe('IotService', () => {
     it('throws NotFoundException when the collar does not exist', async () => {
       prisma.collar.findUnique.mockResolvedValue(null);
 
-      await expect(
-        service.handleTelemetry({ collar_id: 1, lat: 0, lng: 0, temp: 38 } as any)
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.handleTelemetry({ collar_id: 1, lat: 0, lng: 0, temp: 38 } as any)).rejects.toThrow(
+        NotFoundException
+      );
     });
 
     it('returns downlink NONE when the collar has no animal assigned', async () => {
