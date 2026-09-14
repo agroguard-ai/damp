@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers, Maximize2, Minimize2 } from 'lucide-react';
+import { Layers, Maximize2, Minimize2, LocateFixed } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { type MapLayerType } from './MapLayerControl';
 
@@ -8,9 +8,16 @@ export interface MapActionControlsProps {
   targetRef: React.RefObject<HTMLDivElement | null>;
   currentLayer: MapLayerType;
   onChangeLayer: (layer: MapLayerType) => void;
+  /** Opcional — solo los mapas con datos que se mueven solos (tracking en vivo) lo necesitan. */
+  onRecenter?: () => void;
 }
 
-export default function MapActionControls({ targetRef, currentLayer, onChangeLayer }: MapActionControlsProps) {
+export default function MapActionControls({
+  targetRef,
+  currentLayer,
+  onChangeLayer,
+  onRecenter,
+}: MapActionControlsProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -80,7 +87,19 @@ export default function MapActionControls({ targetRef, currentLayer, onChangeLay
         )}
       </button>
 
-      {/* 2. Layer Switcher Button (Bottom, Round Icon Only) */}
+      {/* 2. Recenter Button — vuelve a encuadrar el mapa alrededor de la hacienda/cerco actual */}
+      {onRecenter && (
+        <button
+          type="button"
+          onClick={onRecenter}
+          className="w-10 h-10 rounded-full bg-zinc-900/90 backdrop-blur-md hover:bg-zinc-800 text-white border border-zinc-700/70 shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95"
+          title="Centrar mapa en la hacienda"
+        >
+          <LocateFixed className="w-5 h-5 text-green-400" />
+        </button>
+      )}
+
+      {/* 3. Layer Switcher Button (Bottom, Round Icon Only) */}
       <div className="relative">
         <button
           type="button"

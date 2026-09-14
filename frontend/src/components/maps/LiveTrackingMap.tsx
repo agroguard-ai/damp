@@ -95,13 +95,26 @@ function MapAutoBounds({
   zones,
   geofences,
   animals,
+  recenterTick,
 }: {
   zones: Zone[];
   geofences: Geofence[];
   animals: AnimalLocation[];
+  recenterTick: number;
 }) {
   const map = useMap();
+  // Solo encuadra una vez sola (al cargar) o cuando el usuario aprieta "Centrar" — no en cada
+  // poll de 30s. Si no, un animal que se aleja del cerco (escape) hace que el mapa se achique
+  // cada vez más para que siga entrando, "alejándose" del campo en cada actualización en vez
+  // de quedarse quieto donde el usuario lo dejó.
+  const didInitialFit = useRef(false);
+  const lastRecenterTick = useRef(recenterTick);
+
   useEffect(() => {
+    const manualRecenter = recenterTick !== lastRecenterTick.current;
+    lastRecenterTick.current = recenterTick;
+    if (didInitialFit.current && !manualRecenter) return;
+
     const coords: [number, number][] = [];
     zones.forEach((zone) => coords.push(...parsePolygon(zone.polygonCoordinates)));
     geofences.forEach((geofence) => coords.push(...parsePolygon(geofence.polygonCoordinates)));
@@ -114,8 +127,9 @@ function MapAutoBounds({
 
     if (coords.length > 0) {
       map.fitBounds(coords, { padding: [40, 40] });
+      didInitialFit.current = true;
     }
-  }, [zones, geofences, animals, map]);
+  }, [zones, geofences, animals, map, recenterTick]);
 
   return null;
 }
@@ -259,6 +273,7 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
 
 export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
+  const [recenterTick, setRecenterTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const center: [number, number] = [-34.6037, -58.3816];
 
@@ -269,7 +284,12 @@ export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrack
       ref={containerRef}
       className="w-full h-137.5 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
     >
-      <MapActionControls targetRef={containerRef} currentLayer={currentLayer} onChangeLayer={setCurrentLayer} />
+      <MapActionControls
+        targetRef={containerRef}
+        currentLayer={currentLayer}
+        onChangeLayer={setCurrentLayer}
+        onRecenter={() => setRecenterTick((t) => t + 1)}
+      />
 
       <MapContainer center={center} zoom={13} className="w-full h-full">
         <TileLayer key={currentLayer} attribution={activeProvider.attribution} url={activeProvider.url} />
@@ -308,7 +328,7 @@ export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrack
         {/* Clustered Animals */}
         <ClusteredAnimalMarkers animals={animals} />
 
-        <MapAutoBounds zones={zones} geofences={geofences} animals={animals} />
+        <MapAutoBounds zones={zones} geofences={geofences} animals={animals} recenterTick={recenterTick} />
       </MapContainer>
     </div>
   );

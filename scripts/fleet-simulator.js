@@ -143,8 +143,19 @@ function stepWanderer(s) {
     s.lng = center[1] + (escapeTarget[1] - center[1]) * progress;
   } else {
     s.phase = 'OUTSIDE';
-    s.lat += (Math.random() - 0.3) * (radius * 0.03);
-    s.lng += (Math.random() - 0.3) * (radius * 0.03);
+    // Techo de distancia: sin esto, un wanderer se aleja indefinidamente mientras el script
+    // corra (caminata sesgada hacia afuera, sin límite) — eso hace que el auto-encuadre del
+    // mapa se vaya cada vez más lejos con cada lectura nueva. Una vez pasado el techo, solo
+    // jitter en el lugar (sigue "afuera", pero no sigue caminando hacia el horizonte).
+    const distFromCenter = Math.hypot(s.lat - center[0], s.lng - center[1]);
+    const maxDist = radius * 4;
+    if (distFromCenter < maxDist) {
+      s.lat += (Math.random() - 0.3) * (radius * 0.03);
+      s.lng += (Math.random() - 0.3) * (radius * 0.03);
+    } else {
+      s.lat += (Math.random() - 0.5) * (radius * 0.02);
+      s.lng += (Math.random() - 0.5) * (radius * 0.02);
+    }
   }
   return 37.5 + Math.random() * 1.2;
 }
