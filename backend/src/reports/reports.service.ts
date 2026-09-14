@@ -298,6 +298,55 @@ export class ReportsService {
   }
 
   // ---------------------------------------------------------------------
+  // 7. Dashboard de KPIs y gráficos para la pantalla de Reportes (JSON)
+  // ---------------------------------------------------------------------
+  async farmDashboard(farmId: string, userId: string) {
+    await this.getOwnedFarm(farmId, userId);
+
+    const [totalAnimals, assignedCollars, totalZones, activeGeofences, unresolvedAlerts, alertsByType] =
+      await Promise.all([
+        this.prisma.animal.count({ where: { farmId, isArchived: false } }),
+        this.prisma.animalCollar.count({ where: { endAt: null, animal: { farmId } } }),
+        this.prisma.zone.count({ where: { farmId } }),
+        this.prisma.geofence.count({ where: { active: true, zone: { farmId } } }),
+        this.prisma.alert.count({ where: { isResolved: false, animal: { farmId } } }),
+        this.prisma.alert.groupBy({ by: ['type'], where: { animal: { farmId } }, _count: { _all: true } }),
+      ]);
+
+    // Últimos 14 días, del más viejo al más nuevo, con los días sin alertas en 0
+    // (para que el gráfico no salte fechas).
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - 13);
+
+    const recentAlerts = await this.prisma.alert.findMany({
+      where: { animal: { farmId }, createdAt: { gte: since } },
+      select: { createdAt: true },
+    });
+
+    const dayBuckets = new Map<string, number>();
+    for (let i = 0; i < 14; i++) {
+      const day = new Date(since);
+      day.setDate(day.getDate() + i);
+      dayBuckets.set(day.toISOString().slice(0, 10), 0);
+    }
+    recentAlerts.forEach((alert) => {
+      const key = alert.createdAt.toISOString().slice(0, 10);
+      dayBuckets.set(key, (dayBuckets.get(key) ?? 0) + 1);
+    });
+
+    return {
+      totalAnimals,
+      assignedCollars,
+      totalZones,
+      activeGeofences,
+      unresolvedAlerts,
+      alertsByType: alertsByType.map((a) => ({ type: a.type, count: a._count._all })),
+      alertsByDay: Array.from(dayBuckets.entries()).map(([date, count]) => ({ date, count })),
+    };
+  }
+
+  // ---------------------------------------------------------------------
 
   parseFormat(format?: string): 'pdf' | 'xlsx' {
     if (format === 'xlsx') return 'xlsx';

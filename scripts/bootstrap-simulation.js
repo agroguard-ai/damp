@@ -7,21 +7,24 @@
  *  collar) y un geofence que los agrupa a todos. Al final escribe
  *  scripts/fleet-simulator.config.json ya completo.
  *
- *  Usa tu propio token de sesión de Clerk (no hace falta X-API-Key
- *  ni nada del lado IoT para esto — son las mismas rutas que usa
- *  el frontend, autenticadas como vos).
+ *  Se loguea solo contra POST /auth/login (usuario/contraseña, ya no Clerk)
+ *  y usa el JWT que devuelve — dura 7 días por defecto, así que no hay
+ *  apuro de token expirando a mitad de script como antes.
  *
- *  Cómo conseguir el token (dura ~60s, hay que usarlo rápido):
- *    1. Entrá a la app de DAMP en el navegador, ya logueado.
- *    2. Abrí la consola de DevTools (F12 → Console).
- *    3. Corré:  await window.Clerk.session.getToken()
- *    4. Copiá el string que te devuelve (empieza con "eyJ...").
+ *  IMPORTANTE: ZonesService (y algún otro service más) tiene su propio
+ *  chequeo de dueño (`farm.userId !== userId`) que NO respeta el rol
+ *  SUPER_ADMIN ni la membresía FarmUser — así que crear la zona/gateway/
+ *  animales/geofence hay que hacerlo logueado como el DUEÑO real de la
+ *  granja, no como SUPER_ADMIN. Solo el alta de collares (`POST /collars`)
+ *  exige sí o sí SUPER_ADMIN. Por eso este script pide dos logins.
  *
  *  Uso:
- *    node scripts/bootstrap-simulation.js <TOKEN>
- *      → sin farmId, lista tus granjas y sus IDs, no crea nada.
- *    node scripts/bootstrap-simulation.js <TOKEN> <FARM_ID>
- *      → crea todo dentro de esa granja.
+ *    node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD>
+ *      → sin más argumentos, lista las granjas del sistema (requiere
+ *        SUPER_ADMIN) y no crea nada.
+ *    node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD> <FARM_ID> <OWNER_EMAIL> <OWNER_PASSWORD>
+ *      → crea todo dentro de esa granja (OWNER_EMAIL tiene que ser el
+ *        dueño real de FARM_ID, o el paso de zona va a fallar con 403).
  *
  *  Opcional: CENTER_LAT / CENTER_LNG (env vars) para elegir dónde
  *  queda el cerco de prueba. Por defecto usa un punto arbitrario.
@@ -32,19 +35,34 @@ const fs = require('fs');
 const path = require('path');
 
 const BASE_URL = process.env.BASE_URL || 'https://damp-api.geiko.cloud';
-const TOKEN = process.argv[2];
-const FARM_ID = process.argv[3];
+const ADMIN_EMAIL = process.argv[2];
+const ADMIN_PASSWORD = process.argv[3];
+const FARM_ID = process.argv[4];
+const OWNER_EMAIL = process.argv[5];
+const OWNER_PASSWORD = process.argv[6];
 
-if (!TOKEN) {
-  console.error('Uso: node scripts/bootstrap-simulation.js <TOKEN> [FARM_ID]');
-  console.error('Ver el comentario al inicio del archivo para cómo sacar el TOKEN.');
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error('Uso: node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD> [FARM_ID] [OWNER_EMAIL] [OWNER_PASSWORD]');
   process.exit(1);
 }
 
-async function api(method, apiPath, body) {
+async function login(email, password) {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    throw new Error(`Login de ${email} falló: HTTP ${res.status} ${await res.text()}`);
+  }
+  const { accessToken } = await res.json();
+  return accessToken;
+}
+
+async function api(token, method, apiPath, body) {
   const res = await fetch(`${BASE_URL}${apiPath}`, {
     method,
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -63,24 +81,38 @@ async function api(method, apiPath, body) {
 }
 
 async function main() {
+  console.log(`Logueando como ${ADMIN_EMAIL}...`);
+  const adminToken = await login(ADMIN_EMAIL, ADMIN_PASSWORD);
+
   if (!FARM_ID) {
-    const farms = await api('GET', '/farms');
-    console.log('Pasame el farmId como segundo argumento. Tus granjas:');
-    farms.forEach((f) => console.log(`  ${f.id}  ${f.name ?? '(sin nombre)'}`));
+    const farms = await api(adminToken, 'GET', '/admin/farms');
+    console.log('Pasame el farmId (+ credenciales del dueño) como argumentos. Granjas del sistema:');
+    farms.forEach((f) => console.log(`  ${f.id}  ${f.name ?? '(sin nombre)'}  (dueño: ${f.user?.email ?? '—'})`));
     return;
   }
 
+  if (!OWNER_EMAIL || !OWNER_PASSWORD) {
+    throw new Error('Con FARM_ID hacen falta también OWNER_EMAIL y OWNER_PASSWORD (dueño real de esa granja).');
+  }
+
+  console.log(`Logueando como ${OWNER_EMAIL} (dueño de la granja)...`);
+  const ownerToken = await login(OWNER_EMAIL, OWNER_PASSWORD);
+
   console.log('Creando zona de prueba...');
-  const zone = await api('POST', '/zones', { name: 'Zona Simulación', farmId: FARM_ID });
+  const zone = await api(ownerToken, 'POST', '/zones', { name: 'Zona Simulación', farmId: FARM_ID });
 
   console.log('Creando gateway...');
-  const gateway = await api('POST', '/gateways', { name: 'Gateway Simulación', farmId: FARM_ID, zoneId: zone.id });
+  const gateway = await api(ownerToken, 'POST', '/gateways', {
+    name: 'Gateway Simulación',
+    farmId: FARM_ID,
+    zoneId: zone.id,
+  });
 
   console.log('Registrando 20 collares...');
   const collars = [];
   for (let i = 1; i <= 20; i++) {
     const identifier = `COLLAR-SIM-${String(i).padStart(2, '0')}`;
-    const collar = await api('POST', '/collars', { identifier });
+    const collar = await api(adminToken, 'POST', '/collars', { identifier });
     collars.push({ collarId: collar.id, identifier });
     process.stdout.write(`  ${identifier} (id=${collar.id})\n`);
   }
@@ -88,7 +120,7 @@ async function main() {
   console.log('Creando 20 animales y asignándoles un collar a cada uno...');
   const animalIds = [];
   for (const c of collars) {
-    const animal = await api('POST', '/animals', {
+    const animal = await api(ownerToken, 'POST', '/animals', {
       farmId: FARM_ID,
       breed: 'Simulado',
       weightKg: 400,
@@ -110,7 +142,7 @@ async function main() {
   ];
 
   console.log('Creando geofence y asignando los 20 animales...');
-  await api('POST', '/geofences', {
+  await api(ownerToken, 'POST', '/geofences', {
     zoneId: zone.id,
     name: 'Cerco Simulación',
     polygonCoordinates: geofencePolygon,

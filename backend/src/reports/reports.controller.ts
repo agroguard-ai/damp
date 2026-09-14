@@ -94,4 +94,9 @@ export class ReportsController {
     const buffer = await this.reportsService.farmSummaryPdf(farmId, userId);
     this.sendPdf(res, `resumen-${farmId}.pdf`, buffer);
   }
+
+  @Get('farms/:farmId/dashboard')
+  farmDashboard(@Param('farmId') farmId: string, @CurrentUser('sub') userId: string) {
+    return this.reportsService.farmDashboard(farmId, userId);
+  }
 }
