@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const AUTH_COOKIE_NAME = 'damp_token';
 
-const PUBLIC_PATHS = ['/', '/sign-in', '/api/auth/login', '/api/auth/logout'];
+const PUBLIC_PATHS = [
+  '/',
+  '/sign-in',
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/arquitectura',
+  '/architecture',
+  '/architecture.html',
+];
 
 function parseJwtPayload(token: string): { mustChangePassword?: boolean; sub?: string } | null {
   try {
