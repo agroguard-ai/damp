@@ -1,3 +1,4 @@
+// Force full rebuild & deployment trigger
 import { AuthProvider } from '@/context/AuthContext';
 import { Inter, DM_Sans } from 'next/font/google';
 import '@/app/globals.css';

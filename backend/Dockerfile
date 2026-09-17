@@ -1,3 +1,4 @@
+# Force full rebuild & deployment trigger
 FROM node:22-alpine AS base
 RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@11 --activate
