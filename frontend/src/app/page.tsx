@@ -17,7 +17,6 @@ import {
   Sprout,
   Menu,
   Cpu,
-  Layers,
   ExternalLink,
   Maximize2,
 } from 'lucide-react';
@@ -604,4 +603,3 @@ function Footer() {
     </footer>
   );
 }
-

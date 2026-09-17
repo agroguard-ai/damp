@@ -12,7 +12,6 @@ import {
   Database,
   Radio,
   ShieldCheck,
-  MapPin,
   ArrowRight,
 } from 'lucide-react';
 
@@ -95,8 +94,9 @@ export default async function ArquitecturaPage() {
             </span>
           </h1>
           <p className="mt-4 text-base sm:text-lg text-muted leading-relaxed">
-            Diagrama interactivo de alto nivel compilado a partir del código real del ecosistema: firmware embebido
-            LoRa 915 MHz, plataforma web Next.js 16, backend NestJS con PostGIS, autenticación nativa JWT y microservicio predictivo BiLSTM.
+            Diagrama interactivo de alto nivel compilado a partir del código real del ecosistema: firmware embebido LoRa
+            915 MHz, plataforma web Next.js 16, backend NestJS con PostGIS, autenticación nativa JWT y microservicio
+            predictivo BiLSTM.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
@@ -155,7 +155,9 @@ export default async function ArquitecturaPage() {
         {/* Technical Deep Dive Cards */}
         <div className="mb-12">
           <div className="max-w-2xl mb-8">
-            <span className="text-xs font-semibold text-primary-700 uppercase tracking-wider">Detalle de Ingeniería</span>
+            <span className="text-xs font-semibold text-primary-700 uppercase tracking-wider">
+              Detalle de Ingeniería
+            </span>
             <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">Capas del Ecosistema Ganadero</h2>
           </div>
 
@@ -177,11 +179,17 @@ export default async function ArquitecturaPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-cyan-600">• Gateway:</span>
-                    <span>Heltec LoRa32 V3 (ESP32-S3 + SX1262 + WiFi) reenvía la telemetría autenticada vía HTTP POST al backend.</span>
+                    <span>
+                      Heltec LoRa32 V3 (ESP32-S3 + SX1262 + WiFi) reenvía la telemetría autenticada vía HTTP POST al
+                      backend.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-cyan-600">• Downlink:</span>
-                    <span>El backend retorna las coordenadas de la geocerca activa y el gateway las sincroniza con el collar.</span>
+                    <span>
+                      El backend retorna las coordenadas de la geocerca activa y el gateway las sincroniza con el
+                      collar.
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -200,19 +208,27 @@ export default async function ArquitecturaPage() {
                 <ul className="mt-4 space-y-2 text-xs text-foreground">
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-emerald-600">• Web GIS:</span>
-                    <span>Next.js 16 + React 19 + Leaflet con renderizado geoespacial de parcelas, collares y alertas.</span>
+                    <span>
+                      Next.js 16 + React 19 + Leaflet con renderizado geoespacial de parcelas, collares y alertas.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-emerald-600">• Core API:</span>
-                    <span>NestJS 11 + Prisma ORM gestiona la ingesta IoT, motor de geocercas (Point-in-Polygon) y reportes.</span>
+                    <span>
+                      NestJS 11 + Prisma ORM gestiona la ingesta IoT, motor de geocercas (Point-in-Polygon) y reportes.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-emerald-600">• Base Espacial:</span>
-                    <span>PostgreSQL 15 con PostGIS para almacenamiento de polígonos y consultas geoespaciales avanzadas.</span>
+                    <span>
+                      PostgreSQL 15 con PostGIS para almacenamiento de polígonos y consultas geoespaciales avanzadas.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-emerald-600">• Auth Nativa:</span>
-                    <span>JWT con bcrypt y roles RBAC (Super Admin, Dueño, Operador) sin dependencias de servicios externos.</span>
+                    <span>
+                      JWT con bcrypt y roles RBAC (Super Admin, Dueño, Operador) sin dependencias de servicios externos.
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -231,15 +247,23 @@ export default async function ArquitecturaPage() {
                 <ul className="mt-4 space-y-2 text-xs text-foreground">
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-violet-600">• damp-ml-api:</span>
-                    <span>Pipeline DVC que sintetiza telemetría y entrena el modelo BiLSTM multitarea en Keras con Focal Loss.</span>
+                    <span>
+                      Pipeline DVC que sintetiza telemetría y entrena el modelo BiLSTM multitarea en Keras con Focal
+                      Loss.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-violet-600">• ml-service:</span>
-                    <span>Microservicio FastAPI que carga final_model.keras y predice fiebre, celo e inactividad a 6 horas.</span>
+                    <span>
+                      Microservicio FastAPI que carga final_model.keras y predice fiebre, celo e inactividad a 6 horas.
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-semibold text-violet-600">• Sin Fuga de Datos:</span>
-                    <span>Entrada estricta de 48 lecturas (24hs) con features nativas del collar (temperatura, GPS, hora solar).</span>
+                    <span>
+                      Entrada estricta de 48 lecturas (24hs) con features nativas del collar (temperatura, GPS, hora
+                      solar).
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -260,7 +284,12 @@ export default async function ArquitecturaPage() {
             <Link href="/" className="hover:text-foreground transition-colors">
               Inicio
             </Link>
-            <a href="/architecture.html" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
+            <a
+              href="/architecture.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
               Ver HTML Nativo
             </a>
           </div>
