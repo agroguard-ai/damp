@@ -17,8 +17,8 @@ import {
   Sprout,
   Menu,
   Cpu,
-  ExternalLink,
-  Maximize2,
+  Layers,
+  BrainCircuit,
 } from 'lucide-react';
 
 const stats = [
@@ -409,7 +409,7 @@ function HowItWorks() {
 
 function ArchitectureSection() {
   return (
-    <section id="arquitectura" className="relative border-y border-border bg-surface/40 py-24 overflow-hidden">
+    <section id="arquitectura" className="relative border-y border-border bg-surface/40 py-20 lg:py-24 overflow-hidden">
       {/* Subtle tech background */}
       <div
         aria-hidden
@@ -427,8 +427,7 @@ function ArchitectureSection() {
               Arquitectura técnica integral y verificada
             </h2>
             <p className="mt-4 text-muted text-lg leading-relaxed">
-              DAMP Agro cuenta con collares LoRa ESP32-S3 en el campo, gateways Heltec V3, backend NestJS con PostGIS,
-              autenticación nativa JWT y microservicio predictivo BiLSTM con DVC.
+              DAMP Agro combina hardware embebido LoRa 915 MHz, backend geoespacial NestJS con PostGIS, autenticación nativa JWT y microservicio predictivo de Inteligencia Artificial con BiLSTM.
             </p>
           </div>
 
@@ -440,44 +439,80 @@ function ArchitectureSection() {
               Explorar arquitectura interactiva
               <ArrowRight className="w-4 h-4" />
             </Link>
-            <a
-              href="/architecture.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors text-muted hover:text-foreground"
-              title="Abrir diagrama en pantalla completa"
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Pantalla completa</span>
-            </a>
           </div>
         </div>
 
-        {/* Interactive preview box */}
-        <div className="relative rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface-raised/90 backdrop-blur-md text-xs text-muted">
-            <div className="flex items-center gap-2.5">
-              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-foreground">Diagrama de Sistema en Vivo</span>
-              <span className="hidden md:inline text-subtle">• Navegación interactiva con zoom, temas y rutas</span>
+        {/* Technical overview cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-primary-600/10 text-primary-600 flex items-center justify-center mb-4">
+                <Radio className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">Collares LoRa & Gateways</h3>
+              <p className="mt-2 text-sm text-muted leading-relaxed">
+                Nodos de campo con microcontrolador ESP32-S3, telemetría GPS y sensor térmico vía LoRa 915 MHz para máxima cobertura en zonas rurales sin señal celular.
+              </p>
             </div>
-            <Link
-              href="/arquitectura"
-              className="inline-flex items-center gap-1.5 font-medium text-primary-700 hover:text-primary-800 transition-colors"
-            >
-              <span>Ver análisis detallado</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
+            <div className="mt-4 pt-4 border-t border-border/60 flex items-center gap-2 text-xs text-subtle font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Largo alcance rural & bajo consumo
+            </div>
           </div>
 
-          <div className="relative w-full h-[520px] sm:h-[620px] lg:h-[720px] bg-background">
-            <iframe
-              src="/architecture.html"
-              title="Arquitectura de Sistema DAMP Agro"
-              className="w-full h-full border-0"
-              loading="lazy"
-            />
+          <div className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center mb-4">
+                <Layers className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">Cloud NestJS & PostGIS</h3>
+              <p className="mt-2 text-sm text-muted leading-relaxed">
+                Backend modular de alto rendimiento con validación geoespacial instantánea para cercos virtuales, multi-tenant por establecimiento y auth nativa JWT.
+              </p>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border/60 flex items-center gap-2 text-xs text-subtle font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Consultas espaciales optimizadas
+            </div>
           </div>
+
+          <div className="rounded-2xl border border-border bg-surface p-6 flex flex-col justify-between">
+            <div>
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center mb-4">
+                <BrainCircuit className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-bold">Inferencia Predictiva (BiLSTM)</h3>
+              <p className="mt-2 text-sm text-muted leading-relaxed">
+                Microservicio en Python FastAPI con redes neuronales recurrentes para detección temprana de anomalías clínicas y patrones de rumia o estrés térmico.
+              </p>
+            </div>
+            <div className="mt-4 pt-4 border-t border-border/60 flex items-center gap-2 text-xs text-subtle font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Monitoreo predictivo continuo
+            </div>
+          </div>
+        </div>
+
+        {/* Interactive Viewer banner link */}
+        <div className="rounded-2xl border border-border bg-surface-raised/60 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-primary-600/10 text-primary-600 flex items-center justify-center shrink-0">
+              <Cpu className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-base sm:text-lg font-bold">Diagrama interactivo del sistema completo</h4>
+              <p className="text-xs sm:text-sm text-muted mt-0.5">
+                Explorá los flujos de paquetes, nodos edge, pipelines de datos y capas de seguridad en nuestro visor interactivo C4.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/arquitectura"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover transition-colors shadow-sm shrink-0 w-full sm:w-auto justify-center"
+          >
+            Explorar arquitectura interactiva
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </section>
