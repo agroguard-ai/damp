@@ -9,6 +9,16 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
   return proxyRequest(`/zones/${id}`);
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const { id } = await params;
+  const body = await request.text();
+  return proxyRequest(`/zones/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+}
+
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
   const { id } = await params;
   return proxyRequest(`/zones/${id}`, {
@@ -16,3 +26,4 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     headers: {},
   });
 }
+

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Tractor,
   Map,
+  Zap,
   ClipboardList,
   MapPin,
   Tags,
@@ -130,7 +131,7 @@ export default function Sidebar() {
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
-                href="/farms/new"
+                href="/farms"
                 label="Campos"
                 logo={<Tractor className="opacity-70" />}
                 isCollapsed={isCollapsed}
@@ -139,6 +140,12 @@ export default function Sidebar() {
                 href="/zonas"
                 label="Zonas"
                 logo={<Map className="opacity-70" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/cercos"
+                label="Cercos"
+                logo={<Zap className="opacity-70" />}
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
@@ -171,8 +178,9 @@ export default function Sidebar() {
           /* MODO 2: GRANJERO / USUARIO ESTÁNDAR O SUPER_ADMIN EMULANDO */
           <div className="space-y-1.5">
             <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
-            <SidebarLink href="/farms/new" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/farms" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
             <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
+            <SidebarLink href="/cercos" label="Cercos" logo={<Zap />} isCollapsed={isCollapsed} />
             <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
             <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
             {/* Collares: solo collares contratados */}

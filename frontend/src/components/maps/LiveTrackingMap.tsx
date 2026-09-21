@@ -273,6 +273,7 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
 
 export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
+  const [showLabels, setShowLabels] = useState<boolean>(true);
   const [recenterTick, setRecenterTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const center: [number, number] = [-34.6037, -58.3816];
@@ -288,11 +289,36 @@ export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrack
         targetRef={containerRef}
         currentLayer={currentLayer}
         onChangeLayer={setCurrentLayer}
+        showLabels={showLabels}
+        onToggleLabels={() => setShowLabels((prev) => !prev)}
         onRecenter={() => setRecenterTick((t) => t + 1)}
       />
 
       <MapContainer center={center} zoom={13} className="w-full h-full">
-        <TileLayer key={currentLayer} attribution={activeProvider.attribution} url={activeProvider.url} />
+        <TileLayer
+          key={currentLayer}
+          attribution={activeProvider.attribution}
+          url={activeProvider.url}
+          maxZoom={activeProvider.maxZoom || 19}
+        />
+        {showLabels && activeProvider.roadsUrl && (
+          <TileLayer
+            key={`${currentLayer}-roads`}
+            url={activeProvider.roadsUrl}
+            zIndex={10}
+            opacity={0.9}
+            maxZoom={activeProvider.maxZoom || 19}
+          />
+        )}
+        {showLabels && activeProvider.labelsUrl && (
+          <TileLayer
+            key={`${currentLayer}-labels`}
+            url={activeProvider.labelsUrl}
+            zIndex={11}
+            opacity={0.95}
+            maxZoom={activeProvider.maxZoom || 19}
+          />
+        )}
 
         {/* Límite del potrero (Zone) — perímetro del lote, sin implicancia de alerta */}
         {zones.map((zone) => {

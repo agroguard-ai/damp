@@ -18,3 +18,12 @@
   background: transparent !important;
   border: none !important;
 }
+
+/* Reset any Leaflet focus outline / border artifacts */
+.leaflet-container,
+.leaflet-container:focus,
+.leaflet-container:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}

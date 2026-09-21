@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { GoogleAddressSearch, type AddressSearchResult } from '@/components/farms/GoogleAddressSearch';
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import { MapPin, Ruler, ChevronDown } from 'lucide-react';
+import { MapPin, Ruler, ChevronDown, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
@@ -51,6 +51,7 @@ export default function NewFarmPage() {
   const [mapCenter, setMapCenter] = useState<[number, number]>([-38.4161, -63.6167]); // Default Argentina center
   const [hasCustomCoords, setHasCustomCoords] = useState(false);
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
 
   const provincesList = getProvinces();
   const availableDepartments = getDepartments(formData.province);
@@ -162,7 +163,7 @@ export default function NewFarmPage() {
   }
 
   return (
-    <div className="py-10 px-4 md:px-8 max-w-3xl mx-auto space-y-8">
+    <div className={`py-10 px-4 md:px-8 mx-auto space-y-8 transition-all duration-200 ${step === 2 ? 'max-w-6xl' : 'max-w-3xl'}`}>
       {/* Navigation & Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Registrar Nuevo Campo</h1>
@@ -344,52 +345,220 @@ export default function NewFarmPage() {
 
       {/* STEP 2 FORM */}
       {step === 2 && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm p-6 md:p-8 space-y-6"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-3">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-              <Ruler className="w-5 h-5 text-green-600" /> Delimitación
-            </h2>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <Ruler className="w-5 h-5 text-green-600" /> Paso 2: Delimitación del Campo
+              </h2>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Trazá el perímetro sobre el mapa satelital. Marcá los vértices de cada esquina de tu establecimiento.
+              </p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+              {formData.name || 'Establecimiento'}
+            </span>
           </div>
 
-          {/* Interactive Satellite Polygon Drawer */}
-          <PolygonDrawerMap points={polygonPoints} onChangePoints={handlePolygonChange} center={mapCenter} zoom={15} />
-
-          {/* Superficie Total Calculation & Override */}
-          <div className="bg-zinc-50 dark:bg-zinc-950 p-5 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <label className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider block">
-                  Superficie Total (Hectáreas)
-                </label>
-              </div>
-              <div className="flex items-center gap-2 sm:w-48 shrink-0">
-                <input
-                  required
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  name="totalAreaHa"
-                  value={formData.totalAreaHa}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, totalAreaHa: e.target.value }))}
-                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white font-bold text-base focus:outline-none focus:ring-1 focus:ring-green-500 text-right"
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column: Map canvas */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-xs">
+                <PolygonDrawerMap
+                  points={polygonPoints}
+                  onChangePoints={handlePolygonChange}
+                  center={mapCenter}
+                  zoom={15}
+                  selectedVertexIndex={selectedVertexIndex}
+                  onSelectVertex={setSelectedVertexIndex}
+                  strokeColor="#16a34a"
+                  fillColor="#22c55e"
                 />
-                <span className="text-xs font-bold text-zinc-500">Ha</span>
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-2">
+                <Button type="button" variant="outline" size="md" onClick={() => setStep(1)}>
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Volver a Identificación
+                </Button>
+
+                <Button type="submit" variant="success" size="md" disabled={loading}>
+                  {loading ? 'Guardando...' : 'Registrar Campo'}
+                </Button>
               </div>
             </div>
-          </div>
 
-          {/* Step 2 Actions */}
-          <div className="pt-4 flex flex-col-reverse sm:flex-row items-center justify-between gap-3">
-            <Button type="button" variant="outline" size="md" onClick={() => setStep(1)}>
-              Anterior
-            </Button>
+            {/* Right Column: Interactive Vertices and Exact Coordinates Panel */}
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs space-y-4 sticky top-6">
+                {/* Header with Vertices Count & Quick Actions */}
+                <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                  <span className="font-bold text-xs uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-green-600" />
+                    Vértices Colocados ({polygonPoints.length})
+                  </span>
 
-            <Button type="submit" variant="success" size="md" disabled={loading}>
-              {loading ? 'Guardando...' : 'Registrar Campo'}
-            </Button>
+                  {polygonPoints.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            window.dispatchEvent(
+                              new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+                            );
+                          }
+                        }}
+                        className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold cursor-pointer text-xs flex items-center gap-1"
+                        title="Deshacer última acción (Ctrl + Z)"
+                      >
+                        <span>Deshacer</span>
+                        <kbd className="px-1 py-0.2 bg-zinc-200 dark:bg-zinc-800 text-[10px] rounded text-zinc-500">
+                          Ctrl+Z
+                        </kbd>
+                      </button>
+                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handlePolygonChange([]);
+                          setSelectedVertexIndex(null);
+                        }}
+                        className="text-red-500 hover:text-red-600 font-semibold cursor-pointer text-xs"
+                      >
+                        Reiniciar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Real-time Calculated Surface Area */}
+                <div className="p-3.5 rounded-xl bg-green-50/60 dark:bg-green-950/20 border border-green-200/80 dark:border-green-800/40 flex items-center justify-between">
+                  <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-green-800 dark:text-green-400">
+                      Superficie Calculada
+                    </div>
+                    <div className="text-[11px] text-green-700/70 dark:text-green-500">
+                      Proyección cartográfica equivalente
+                    </div>
+                  </div>
+                  <span className="font-mono font-bold text-lg text-green-700 dark:text-green-300">
+                    {formData.totalAreaHa && Number(formData.totalAreaHa) > 0 ? `${formData.totalAreaHa} Ha` : '0.00 Ha'}
+                  </span>
+                </div>
+
+                {/* Vertices List or Empty State */}
+                {polygonPoints.length === 0 ? (
+                  <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center space-y-1">
+                    <p className="font-medium text-zinc-600 dark:text-zinc-300">
+                      Ningún vértice marcado todavía
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      Hacé clics sobre el mapa para marcar las esquinas del campo. Podés arrastrar cualquier punto para corregirlo.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs px-1 text-zinc-500">
+                      <span>Coordenadas exactas (Lat, Lng):</span>
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                        {polygonPoints.length} esquinas
+                      </span>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                      {polygonPoints.map((pt, idx) => {
+                        const isSelected = selectedVertexIndex === idx;
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => setSelectedVertexIndex(isSelected ? null : idx)}
+                            className={`flex justify-between items-center border rounded-xl px-2.5 py-2 cursor-pointer transition-all ${
+                              isSelected
+                                ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 shadow-xs'
+                                : 'border-zinc-200/70 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850/60 bg-white dark:bg-zinc-900'
+                            }`}
+                          >
+                            <span className="font-sans flex items-center gap-2">
+                              <span
+                                className={`w-5 h-5 rounded-full text-[10px] font-extrabold inline-flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? 'bg-amber-500 text-white shadow-xs'
+                                    : 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400'
+                                }`}
+                              >
+                                {idx + 1}
+                              </span>
+                              <span className={isSelected ? 'font-bold text-amber-950 dark:text-amber-200' : 'font-medium text-zinc-800 dark:text-zinc-200'}>
+                                Vértice #{idx + 1}
+                              </span>
+                              {isSelected && (
+                                <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                                  Activo
+                                </span>
+                              )}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-zinc-500 dark:text-zinc-400 text-[11px]">
+                                {pt[0].toFixed(5)}, {pt[1].toFixed(5)}
+                              </span>
+                              <button
+                                type="button"
+                                title="Eliminar este vértice"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = polygonPoints.filter((_, i) => i !== idx);
+                                  handlePolygonChange(updated);
+                                  if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
+                                  else if (selectedVertexIndex !== null && selectedVertexIndex > idx)
+                                    setSelectedVertexIndex(selectedVertexIndex - 1);
+                                }}
+                                className="text-zinc-400 hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {selectedVertexIndex !== null && (
+                      <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                        <span>
+                          📍 Vértice #{selectedVertexIndex + 1} activo para inserción contigua.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedVertexIndex(null)}
+                          className="underline hover:no-underline font-semibold cursor-pointer ml-1"
+                        >
+                          Deseleccionar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Field Details summary */}
+                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
+                  <div className="font-semibold text-zinc-700 dark:text-zinc-300">
+                    {formData.name || 'Campo nuevo'}
+                  </div>
+                  <div>
+                    {formData.department ? `${formData.department}, ` : ''}
+                    {formData.province || 'Argentina'}
+                  </div>
+                  {formData.renspa && (
+                    <div className="font-mono text-[11px] text-zinc-400">
+                      RENSPA: {formData.renspa}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </form>
       )}

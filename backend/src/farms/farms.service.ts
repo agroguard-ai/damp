@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { GlobalRole } from '@generated/prisma';
 import { CreateFarmDto } from './dto/create-farm.dto';
+import { isPointInPolygon } from '@/iot/utils/geofencing.utils';
 
 @Injectable()
 export class FarmsService {
@@ -114,6 +115,52 @@ export class FarmsService {
 
       if (!adminMember) {
         throw new ForbiddenException('Solo el administrador de la granja puede modificarla');
+      }
+    }
+
+    if (
+      updateFarmDto.polygonCoordinates &&
+      Array.isArray(updateFarmDto.polygonCoordinates) &&
+      updateFarmDto.polygonCoordinates.length >= 3
+    ) {
+      const newFarmCoords = updateFarmDto.polygonCoordinates as [number, number][];
+
+      // Validate that all existing zones assigned to this farm remain inside the new farm geometry
+      const existingZones = await this.prisma.zone.findMany({
+        where: { farmId: id },
+        select: { id: true, name: true, polygonCoordinates: true },
+      });
+
+      const conflictingZones: string[] = [];
+      for (const zone of existingZones) {
+        if (!zone.polygonCoordinates) continue;
+        let zoneCoords: [number, number][] = [];
+        try {
+          zoneCoords =
+            typeof zone.polygonCoordinates === 'string'
+              ? JSON.parse(zone.polygonCoordinates as string)
+              : (zone.polygonCoordinates as [number, number][]);
+        } catch {
+          zoneCoords = [];
+        }
+
+        if (Array.isArray(zoneCoords) && zoneCoords.length >= 3) {
+          const hasPointsOutside = zoneCoords.some((pt) => {
+            if (!Array.isArray(pt) || pt.length !== 2) return false;
+            return !isPointInPolygon([pt[0], pt[1]], newFarmCoords);
+          });
+
+          if (hasPointsOutside) {
+            conflictingZones.push(`"${zone.name}"`);
+          }
+        }
+      }
+
+      if (conflictingZones.length > 0) {
+        const zoneNames = conflictingZones.join(', ');
+        throw new BadRequestException(
+          `No se puede reducir el perímetro del campo: las siguientes zonas quedarían fuera de sus nuevos límites: ${zoneNames}. Modificá o eliminá las zonas en conflicto antes de achicar el establecimiento.`
+        );
       }
     }
 

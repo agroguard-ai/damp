@@ -97,7 +97,7 @@ export function projectPointOnSegment(
 export function snapPointToPolygonEdge(
   point: LatLngTuple,
   polygon: LatLngTuple[],
-  snapThresholdMeters: number = 25
+  snapThresholdMeters: number = 20
 ): {
   point: LatLngTuple;
   isSnapped: boolean;
@@ -131,44 +131,98 @@ export function snapPointToPolygonEdge(
   };
 }
 
-export interface ZonePointValidationResult {
+export type BoundaryValidationStatus =
+  | 'valid_inside'
+  | 'snapped_to_border'
+  | 'rejected_outside'
+  | 'clamped_to_border';
+
+export interface BoundaryPointValidationResult {
   point: LatLngTuple;
-  status: 'valid_inside' | 'snapped_to_border' | 'clamped_to_border';
+  status: BoundaryValidationStatus;
   message?: string;
+  isValid: boolean;
 }
 
+export type ZonePointValidationResult = BoundaryPointValidationResult;
+
 /**
- * Enforces boundary containment and snap-to-edge logic for zone point creation.
+ * Generic point-in-boundary validator with edge snapping.
+ * Strictly rejects points outside the boundary (outside snap threshold) instead of silently clamping them.
  */
-export function validateAndSnapZonePoint(
+export function validatePointInBoundary(
   clickedPoint: LatLngTuple,
-  farmPolygon: LatLngTuple[],
-  snapThresholdMeters: number = 25
-): ZonePointValidationResult {
-  if (!farmPolygon || farmPolygon.length < 3) {
-    return { point: clickedPoint, status: 'valid_inside' };
+  boundaryPolygon: LatLngTuple[],
+  boundaryLabel: string = 'del establecimiento',
+  snapThresholdMeters: number = 20
+): BoundaryPointValidationResult {
+  if (!boundaryPolygon || boundaryPolygon.length < 3) {
+    return { point: clickedPoint, status: 'valid_inside', isValid: true };
   }
 
-  // 1. Try snapping to nearest edge within threshold
-  const snapResult = snapPointToPolygonEdge(clickedPoint, farmPolygon, snapThresholdMeters);
+  // 1. Check if point is inside polygon
+  const inside = isPointInPolygon(clickedPoint, boundaryPolygon);
+  if (inside) {
+    return { point: clickedPoint, status: 'valid_inside', isValid: true };
+  }
+
+  // 2. Check if close to polygon edge within snapping threshold
+  const snapResult = snapPointToPolygonEdge(clickedPoint, boundaryPolygon, snapThresholdMeters);
   if (snapResult.isSnapped) {
     return {
       point: snapResult.point,
       status: 'snapped_to_border',
-      message: 'Vértice adherido al perímetro del campo.',
+      message: `Vértice adherido al perímetro ${boundaryLabel}.`,
+      isValid: true,
     };
   }
 
-  // 2. Check if inside polygon
-  const inside = isPointInPolygon(clickedPoint, farmPolygon);
-  if (inside) {
-    return { point: clickedPoint, status: 'valid_inside' };
+  // 3. Point is strictly outside boundary: REJECT
+  return {
+    point: clickedPoint,
+    status: 'rejected_outside',
+    message: `Punto fuera de los límites ${boundaryLabel}. Debe situarse dentro del perímetro.`,
+    isValid: false,
+  };
+}
+
+/**
+ * Validates whether all vertices of a child polygon are strictly inside a parent polygon.
+ */
+export function isPolygonInsideBoundary(
+  childPolygon: LatLngTuple[],
+  parentPolygon: LatLngTuple[],
+  snapThresholdMeters: number = 20
+): { isInside: boolean; outsideCount: number } {
+  if (!parentPolygon || parentPolygon.length < 3) {
+    return { isInside: true, outsideCount: 0 };
+  }
+  if (!childPolygon || childPolygon.length === 0) {
+    return { isInside: true, outsideCount: 0 };
   }
 
-  // 3. If outside and not within threshold, clamp automatically to closest boundary edge point
+  let outsideCount = 0;
+  for (const pt of childPolygon) {
+    const validation = validatePointInBoundary(pt, parentPolygon, '', snapThresholdMeters);
+    if (!validation.isValid) {
+      outsideCount++;
+    }
+  }
+
   return {
-    point: snapResult.point,
-    status: 'clamped_to_border',
-    message: 'El punto estaba fuera del campo y se ajustó automáticamente al límite.',
+    isInside: outsideCount === 0,
+    outsideCount,
   };
+}
+
+/**
+ * Enforces boundary containment and snap-to-edge logic for zone point creation.
+ * Maintained for backward compatibility.
+ */
+export function validateAndSnapZonePoint(
+  clickedPoint: LatLngTuple,
+  farmPolygon: LatLngTuple[],
+  snapThresholdMeters: number = 20
+): ZonePointValidationResult {
+  return validatePointInBoundary(clickedPoint, farmPolygon, 'del establecimiento', snapThresholdMeters);
 }

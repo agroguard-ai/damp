@@ -15,6 +15,13 @@ export const zonesApi = {
       body: JSON.stringify(data),
     }),
 
+  /** PATCH /api/zones/[id] — updates an existing zone */
+  update: ({ id, ...data }: { id: string } & Partial<CreateZonePayload>): Promise<Zone> =>
+    apiFetch<Zone>(`/api/zones/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
   /** DELETE /api/zones/[id] — deletes a zone */
   delete: (id: string): Promise<void> => apiFetch<void>(`/api/zones/${id}`, { method: 'DELETE' }),
 };
