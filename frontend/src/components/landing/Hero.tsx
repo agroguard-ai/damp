@@ -1,44 +1,49 @@
+'use client';
+
 import Link from 'next/link';
-import { MapPin, HeartPulse, BellRing, Cpu, CheckCircle2, ArrowRight } from 'lucide-react';
+import { MapPin, HeartPulse, BellRing, Cpu, CheckCircle2 } from 'lucide-react';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function Hero() {
+  const contentRef = useScrollReveal<HTMLDivElement>({ stagger: 0.15 });
+  const mockupRef = useScrollReveal<HTMLDivElement>();
+
   return (
     <section className="relative overflow-hidden">
       {/* Tech grid background */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_65%_55%_at_50%_0%,black,transparent)]"
+        className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-size-[56px_56px] mask-[radial-gradient(ellipse_65%_55%_at_50%_0%,black,transparent)]"
       />
       {/* Glow blobs */}
       <div aria-hidden className="absolute -top-24 -left-32 w-96 h-96 rounded-full bg-primary-500/20 blur-3xl" />
-      <div
-        aria-hidden
-        className="absolute -top-10 right-0 w-[28rem] h-[28rem] rounded-full bg-secondary-400/20 blur-3xl"
-      />
+      <div aria-hidden className="absolute -top-10 right-0 w-md h-112 rounded-full bg-secondary-400/20 blur-3xl" />
 
       <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-24 lg:pt-28 lg:pb-32">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-              Monitoreá tu campo{' '}
-              <span className="bg-gradient-to-r from-primary-700 via-primary-600 to-secondary-600 bg-clip-text text-transparent">
+          <div ref={contentRef}>
+            <h1
+              data-reveal-item
+              className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]"
+            >
+              Monitoreá tu ganado{' '}
+              <span className="bg-linear-to-r from-primary-700 via-primary-600 to-secondary-600 bg-clip-text text-transparent">
                 en tiempo real
               </span>
-              , de punta a punta.
+              , esté donde esté.
             </h1>
 
-            <p className="mt-6 text-lg text-muted max-w-xl">
+            <p data-reveal-item className="mt-6 text-lg text-muted max-w-xl leading-relaxed">
               DAMP Agro combina collares GPS, cercos virtuales e inteligencia artificial para que sepas dónde está cada
-              animal, cómo está su salud, y te enterés de un problema antes de que sea tarde.
+              animal, cómo está su salud y te enterés de un problema antes de que sea grave.
             </p>
 
-            <div className="mt-9 flex flex-wrap items-center gap-4">
+            <div data-reveal-item className="mt-9 flex flex-wrap items-center gap-4">
               <a
                 href="mailto:ventas@damp.com"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 active:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-700 transition-all shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-all shadow-md hover:shadow-lg"
               >
                 Solicitar Demo
-                <ArrowRight className="w-4 h-4" />
               </a>
               <Link
                 href="/arquitectura"
@@ -49,7 +54,7 @@ export function Hero() {
               </Link>
             </div>
 
-            <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+            <div data-reveal-item className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-primary-600" />
                 Sin tarjeta de crédito
@@ -61,7 +66,9 @@ export function Hero() {
             </div>
           </div>
 
-          <HeroMockup />
+          <div ref={mockupRef}>
+            <HeroMockup />
+          </div>
         </div>
       </div>
     </section>
