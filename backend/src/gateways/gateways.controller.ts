@@ -13,7 +13,7 @@ import {
 import { GatewaysService } from './gateways.service';
 import { CreateGatewayDto } from './dto/create-gateway.dto';
 import { UpdateGatewayDto } from './dto/update-gateway.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
@@ -21,7 +21,7 @@ import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
 @Controller('gateways')
-@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class GatewaysController {
   constructor(private readonly gatewaysService: GatewaysService) {}
 

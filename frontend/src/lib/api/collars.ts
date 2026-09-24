@@ -28,4 +28,10 @@ export const collarsApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+
+  /** DELETE /api/collars/[id] — permanently deletes a collar from the inventory */
+  delete: (id: number): Promise<void> =>
+    apiFetch<void>(`/api/collars/${id}`, {
+      method: 'DELETE',
+    }),
 };

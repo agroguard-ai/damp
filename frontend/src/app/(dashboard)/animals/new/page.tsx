@@ -9,8 +9,11 @@ import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
 import { collarsApi } from '@/lib/api/collars';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 export default function NewAnimalPage() {
+  const { user, emulatedUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -51,6 +54,10 @@ export default function NewAnimalPage() {
       router.push('/animals');
     } catch {}
   };
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="el Alta y Gestión de Animales" />;
+  }
 
   return (
     <div className="py-10 px-4 md:px-8 max-w-2xl mx-auto">

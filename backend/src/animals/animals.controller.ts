@@ -2,18 +2,15 @@ import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards } from '@ne
 import { AnimalsService } from './animals.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
 import { ArchiveAnimalDto } from './dto/archive-animal.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
 import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
-// findAll queda solo con ClerkAuthGuard: sin farmId agrega animales de TODAS las granjas del
-// usuario (comportamiento intencional de animalsService.findAll, ver ahí) — FarmRoleGuard a
-// nivel de granja no aplica a una vista multi-granja, y el propio service ya filtra por dueño.
 @Controller('animals')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class AnimalsController {
   constructor(private readonly animalsService: AnimalsService) {}
 

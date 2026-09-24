@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { animalTypesApi } from '@/lib/api/animal-types';
@@ -10,9 +12,26 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 
 export default function AnimalTypesPage() {
+  const { user, emulatedUser, loading: authLoading } = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { data: types = [], loading, error: loadError, refetch } = useApi(animalTypesApi.getAll);
+
+  useEffect(() => {
+    if (!authLoading && (user?.globalRole !== 'SUPER_ADMIN' || emulatedUser)) {
+      router.replace('/dashboard');
+    }
+  }, [user, emulatedUser, authLoading, router]);
+
+  const isAuthorized = user?.globalRole === 'SUPER_ADMIN' && !emulatedUser;
+
+  const {
+    data: types = [],
+    loading,
+    error: loadError,
+    refetch,
+  } = useApi(isAuthorized ? animalTypesApi.getAll : () => Promise.resolve([]));
+
   const {
     mutate: createType,
     loading: submitting,
@@ -60,6 +79,19 @@ export default function AnimalTypesPage() {
   };
 
   const formError = createError;
+
+  if (authLoading) return null;
+
+  if (!isAuthorized) {
+    return (
+      <div className="p-8 max-w-lg mx-auto text-center space-y-3">
+        <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          Los tipos de animal son administrados centralmente por la plataforma.
+        </div>
+        <p className="text-xs text-zinc-500">Redirigiendo al panel...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">

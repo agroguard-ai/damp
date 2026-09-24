@@ -10,7 +10,7 @@ describe('MlHealthService', () => {
     configService = { get: jest.fn().mockReturnValue('http://ml-service.test') };
     service = new MlHealthService(configService as unknown as ConfigService);
     fetchMock = jest.fn();
-    global.fetch = fetchMock as unknown as typeof fetch;
+    global.fetch = fetchMock;
   });
 
   afterEach(() => {
@@ -49,7 +49,7 @@ describe('MlHealthService', () => {
   });
 
   it('falls back to http://localhost:8000 when ML_SERVICE_URL is not configured', async () => {
-    (configService.get as jest.Mock).mockReturnValue(undefined);
+    configService.get.mockReturnValue(undefined);
     const localService = new MlHealthService(configService as unknown as ConfigService);
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ready: false, events: {} }) });
 

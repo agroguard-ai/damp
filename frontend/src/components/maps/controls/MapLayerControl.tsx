@@ -3,7 +3,7 @@
 import { Layers } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-export type MapLayerType = 'satellite' | 'topo' | 'dark';
+export type MapLayerType = 'satellite' | 'streets' | 'topo' | 'dark';
 
 export interface MapLayerControlProps {
   currentLayer: MapLayerType;
@@ -28,9 +28,15 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
   const layerOptions: { id: MapLayerType; label: string; description: string; badge?: string }[] = [
     {
       id: 'satellite',
-      label: 'Satelital',
-      description: 'Ideal para pasturas y agua',
-      badge: 'HD Satélites',
+      label: 'Satelital Híbrido',
+      description: 'Fotografía con rutas y ciudades',
+      badge: 'Recomendado',
+    },
+    {
+      id: 'streets',
+      label: 'Calles y Rutas',
+      description: 'Mapa vial detallado y poblados',
+      badge: 'Vial',
     },
     {
       id: 'topo',
@@ -59,7 +65,7 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-450 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute right-0 mt-2 w-64 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-1 z-450 animate-in fade-in zoom-in-95 duration-100">
           <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2 py-1">Tipo de Lienzo</p>
           {layerOptions.map((opt) => (
             <button

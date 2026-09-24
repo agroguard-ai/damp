@@ -1,0 +1,18 @@
+{
+  "baseUrl": "https://tu-backend-en-produccion.com",
+  "gatewayId": "pegar-aca-el-id-uuid-del-gateway",
+  "apiKey": "pegar-aca-el-x-api-key-que-mostro-el-gateway-al-crearlo",
+  "geofencePolygon": [
+    [-34.6037, -58.3816],
+    [-34.6027, -58.3816],
+    [-34.6027, -58.3806],
+    [-34.6037, -58.3806]
+  ],
+  "collars": [
+    { "collarId": 1, "identifier": "COLLAR-SIM-01" },
+    { "collarId": 2, "identifier": "COLLAR-SIM-02" }
+  ],
+  "escapeCount": 3,
+  "feverCount": 1,
+  "tickIntervalMs": 5000
+}

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { ZonesService } from './zones.service';
 import { CreateZoneDto } from './dto/create-zone.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
@@ -9,7 +9,7 @@ import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
 @Controller('zones')
-@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class ZonesController {
   constructor(private readonly zonesService: ZonesService) {}
 

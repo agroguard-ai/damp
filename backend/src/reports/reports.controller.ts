@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { ReportsService } from './reports.service';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
@@ -10,7 +10,7 @@ import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decora
 // Todos los reportes son de solo lectura -> cualquier miembro de la granja (VIEWER incluido,
 // CU017 lo pide explícitamente), sin @RequireFarmRole.
 @Controller('reports')
-@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
@@ -93,5 +93,10 @@ export class ReportsController {
   async farmSummary(@Param('farmId') farmId: string, @CurrentUser('sub') userId: string, @Res() res: Response) {
     const buffer = await this.reportsService.farmSummaryPdf(farmId, userId);
     this.sendPdf(res, `resumen-${farmId}.pdf`, buffer);
+  }
+
+  @Get('farms/:farmId/dashboard')
+  farmDashboard(@Param('farmId') farmId: string, @CurrentUser('sub') userId: string) {
+    return this.reportsService.farmDashboard(farmId, userId);
   }
 }

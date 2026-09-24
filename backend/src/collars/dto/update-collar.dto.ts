@@ -5,4 +5,8 @@ export class UpdateCollarDto {
   @IsNotEmpty()
   @IsOptional()
   identifier?: string;
+
+  @IsString()
+  @IsOptional()
+  farmId?: string | null;
 }

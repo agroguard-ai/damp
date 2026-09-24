@@ -4,7 +4,6 @@ import { AppController } from '@/app.controller';
 import { AppService } from '@/app.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { AuthModule } from '@/auth/auth.module';
-import { WebhookModule } from '@/webhook/webhook.module';
 import { AnimalsModule } from './animals/animals.module';
 import { FarmsModule } from './farms/farms.module';
 import { ZonesModule } from './zones/zones.module';
@@ -25,7 +24,6 @@ import { ReportsModule } from './reports/reports.module';
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
-    WebhookModule,
     AnimalsModule,
     FarmsModule,
     ZonesModule,

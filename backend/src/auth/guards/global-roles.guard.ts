@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from '@/auth/current-user.decorator';
 
 export interface AuthorizedRequest extends AuthenticatedRequest {
   dbUser?: User;
+  realSuperAdmin?: User;
 }
 
 @Injectable()
@@ -27,15 +28,15 @@ export class GlobalRolesGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<AuthorizedRequest>();
-    const clerkUser = request.user;
+    const user = request.user;
 
-    if (!clerkUser?.sub) {
+    if (!user?.sub) {
       throw new UnauthorizedException('Authentication token missing or invalid');
     }
 
     if (!request.dbUser) {
       const dbUser = await this.prisma.user.findUnique({
-        where: { clerkId: clerkUser.sub },
+        where: { id: user.sub },
       });
 
       if (!dbUser) {
@@ -45,7 +46,8 @@ export class GlobalRolesGuard implements CanActivate {
       request.dbUser = dbUser;
     }
 
-    if (requiredRoles.includes(request.dbUser.globalRole)) {
+    const effectiveRole = request.realSuperAdmin?.globalRole ?? request.dbUser.globalRole;
+    if (requiredRoles.includes(effectiveRole)) {
       return true;
     }
 

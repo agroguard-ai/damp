@@ -4,9 +4,14 @@ import { useState, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
+import { reportsApi } from '@/lib/api/reports';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
+import DashboardCharts from '@/components/reports/DashboardCharts';
 
 export default function ReportesPage() {
+  const { user, emulatedUser } = useAuth();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -18,9 +23,19 @@ export default function ReportesPage() {
   const { data: farmAnimals = [] } = useApi(fetchAnimals, [activeFarmId]);
   const [selectedAnimal, setSelectedAnimal] = useState('');
 
+  const fetchDashboard = useCallback(
+    () => (activeFarmId ? reportsApi.getDashboard(activeFarmId) : Promise.resolve(undefined)),
+    [activeFarmId]
+  );
+  const { data: dashboard } = useApi(fetchDashboard, [activeFarmId]);
+
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [alertsFormat, setAlertsFormat] = useState<'pdf' | 'xlsx'>('pdf');
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="los Reportes y Exportaciones de Campo" />;
+  }
 
   const rangeQuery = () => {
     const params = new URLSearchParams();
@@ -47,6 +62,8 @@ export default function ReportesPage() {
         <EmptyFarmState />
       ) : (
         <div className="space-y-6">
+          {dashboard && <DashboardCharts data={dashboard} />}
+
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>

@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { CollarStatus, Prisma } from '@generated/prisma';
+import { CollarStatus, GlobalRole, Prisma } from '@generated/prisma';
 import { CreateCollarDto } from './dto/create-collar.dto';
 import { UpdateCollarDto } from './dto/update-collar.dto';
+import { JwtPayload } from '@/auth/current-user.decorator';
 
 @Injectable()
 export class CollarsService {
@@ -14,10 +15,12 @@ export class CollarsService {
     status: CollarStatus;
     lastTelemetryDate: Date | null;
     createdAt: Date;
+    farmId?: string | null;
+    farm?: { id: string; name: string | null } | null;
   }) {
     const activeAssignment = await this.prisma.animalCollar.findFirst({
       where: { collarId: collar.id, endAt: null },
-      include: { animal: { select: { id: true, tag: true } } },
+      include: { animal: { select: { id: true, tag: true, farmId: true } } },
     });
 
     return {
@@ -29,10 +32,15 @@ export class CollarsService {
   async create(dto: CreateCollarDto) {
     try {
       return await this.prisma.collar.create({
-        data: { identifier: dto.identifier },
+        data: {
+          identifier: dto.identifier,
+          ...(dto.farmId ? { farmId: dto.farmId } : {}),
+        },
+        include: {
+          farm: { select: { id: true, name: true } },
+        },
       });
     } catch (err) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Prisma's generated error type doesn't narrow `code` cleanly here
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException(`A collar with identifier "${dto.identifier}" already exists`);
       }
@@ -40,10 +48,48 @@ export class CollarsService {
     }
   }
 
-  async findAll() {
+  async findAll(user?: JwtPayload) {
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+
+    if (isSuperAdmin) {
+      const collars = await this.prisma.collar.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          farm: { select: { id: true, name: true } },
+          telemetryReadings: {
+            orderBy: { timestamp: 'desc' },
+            take: 1,
+          },
+        },
+      });
+      return Promise.all(collars.map((c) => this.withAssignment(c)));
+    }
+
+    // Granjero o SuperAdmin emulando a un granjero:
+    // Solo puede ver los collares contratados/asignados a sus granjas
+    const userId = user?.sub;
+    if (!userId) {
+      return [];
+    }
+
+    const userFarms = await this.prisma.farm.findMany({
+      where: {
+        OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+      },
+      select: { id: true },
+    });
+    const farmIds = userFarms.map((f) => f.id);
+
     const collars = await this.prisma.collar.findMany({
+      where: {
+        OR: [
+          { farmId: { in: farmIds } },
+          { animalCollars: { some: { endAt: null, animal: { farmId: { in: farmIds } } } } },
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
+        farm: { select: { id: true, name: true } },
         telemetryReadings: {
           orderBy: { timestamp: 'desc' },
           take: 1,
@@ -54,23 +100,44 @@ export class CollarsService {
     return Promise.all(collars.map((c) => this.withAssignment(c)));
   }
 
-  async findOne(id: number) {
+  async findOne(id: number, user?: JwtPayload) {
     const collar = await this.prisma.collar.findUnique({
       where: { id },
       include: {
+        farm: { select: { id: true, name: true } },
         telemetryReadings: {
           orderBy: { timestamp: 'desc' },
           take: 1,
         },
         animalCollars: {
           orderBy: { startAt: 'desc' },
-          include: { animal: { select: { id: true, tag: true } } },
+          include: { animal: { select: { id: true, tag: true, farmId: true } } },
         },
       },
     });
 
     if (!collar) {
       throw new NotFoundException(`Collar with id ${id} not found`);
+    }
+
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+    if (!isSuperAdmin && user?.sub) {
+      const userFarms = await this.prisma.farm.findMany({
+        where: {
+          OR: [{ userId: user.sub }, { farmUsers: { some: { userId: user.sub, isActive: true } } }],
+        },
+        select: { id: true },
+      });
+      const farmIds = userFarms.map((f) => f.id);
+
+      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
+      const assignedToFarmAnimal = collar.animalCollars.some(
+        (ac) => ac.endAt === null && farmIds.includes(ac.animal.farmId)
+      );
+
+      if (!belongsToFarm && !assignedToFarmAnimal) {
+        throw new ForbiddenException('No tienes acceso a este collar');
+      }
     }
 
     return this.withAssignment(collar);
@@ -81,10 +148,15 @@ export class CollarsService {
     try {
       return await this.prisma.collar.update({
         where: { id },
-        data: { identifier: dto.identifier },
+        data: {
+          ...(dto.identifier !== undefined ? { identifier: dto.identifier } : {}),
+          ...(dto.farmId !== undefined ? { farmId: dto.farmId } : {}),
+        },
+        include: {
+          farm: { select: { id: true, name: true } },
+        },
       });
     } catch (err) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access -- Prisma's generated error type doesn't narrow `code` cleanly here
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException(`A collar with identifier "${dto.identifier}" already exists`);
       }
@@ -106,7 +178,19 @@ export class CollarsService {
     return this.prisma.collar.update({
       where: { id },
       data: { status },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
     });
+  }
+
+  async remove(id: number) {
+    await this.getOrThrow(id);
+    await this.prisma.animalCollar.updateMany({
+      where: { collarId: id, endAt: null },
+      data: { endAt: new Date() },
+    });
+    return this.prisma.collar.delete({ where: { id } });
   }
 
   async assertAvailableForAssignment(id: number) {

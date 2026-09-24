@@ -8,67 +8,36 @@ import MapActionControls from './controls/MapActionControls';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
 
-// Fix Leaflet marker icons in Next.js
-if (typeof window !== 'undefined') {
-  // @ts-expect-error - Merging Leaflet Icon default prototype is required in NextJS environment
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  });
-}
-
-// Single animal icons
-const normalIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-const alertIcon = new L.DivIcon({
-  className: 'alert-marker',
-  html: `
-    <div style="position:relative;width:30px;height:42px;">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="42">
-        <path d="M12 0C5.383 0 0 5.383 0 12c0 9 12 24 12 24s12-15 12-24c0-6.617-5.383-12-12-12z" fill="#dc2626"/>
-        <circle cx="12" cy="12" r="6" fill="white"/>
-        <text x="12" y="15" text-anchor="middle" fill="#dc2626" font-size="10" font-weight="bold">!</text>
-      </svg>
-      <div style="position:absolute;top:-4px;right:-4px;width:12px;height:12px;background:#ef4444;border-radius:50%;animation:pulse-alert 1s ease-in-out infinite;"></div>
-    </div>
-  `,
-  iconSize: [30, 42],
-  iconAnchor: [15, 42],
-  popupAnchor: [0, -36],
-});
-
-// Cluster Icon generator with badge counter [ N ]
-const createClusterIcon = (count: number, hasAlert: boolean) => {
+// Ícono redondo único para animales — tanto solos como agrupados en cluster, así no se mezclan
+// dos lenguajes visuales distintos (antes: pin celeste de Leaflet para uno solo, círculo verde
+// para clusters). `label` es "🐄" para un animal individual, o el conteo ("3") para un cluster.
+const createAnimalIcon = (label: string, hasAlert: boolean) => {
   const bg = hasAlert ? 'linear-gradient(135deg, #ef4444, #b91c1c)' : 'linear-gradient(135deg, #22c55e, #15803d)';
+  const fontSize = label.length > 2 ? '13px' : '18px';
   return new L.DivIcon({
     className: 'animal-cluster-badge',
     html: `
-      <div style="
-        width: 38px;
-        height: 38px;
-        background: ${bg};
-        color: white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 13px;
-        border: 2.5px solid white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-        letter-spacing: -0.5px;
-      ">
-        ${count}
+      <div style="position:relative;width:38px;height:38px;">
+        <div style="
+          width: 38px;
+          height: 38px;
+          background: ${bg};
+          color: white;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: ${fontSize};
+          border: 2.5px solid white;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+          letter-spacing: -0.5px;
+        ">${label}</div>
+        ${
+          hasAlert
+            ? '<div style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid white;animation:pulse-alert 1s ease-in-out infinite;"></div>'
+            : ''
+        }
       </div>
     `,
     iconSize: [38, 38],
@@ -99,28 +68,56 @@ interface AnimalLocation {
   } | null;
 }
 
+interface Geofence {
+  id: string;
+  name: string;
+  active: boolean;
+  polygonCoordinates: unknown;
+}
+
 interface LiveTrackingMapProps {
   zones: Zone[];
+  geofences: Geofence[];
   animals: AnimalLocation[];
 }
 
-function MapAutoBounds({ zones, animals }: { zones: Zone[]; animals: AnimalLocation[] }) {
+function parsePolygon(raw: unknown): [number, number][] {
+  try {
+    const poly = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(poly)) return [];
+    return poly.filter((pt): pt is [number, number] => Array.isArray(pt) && pt.length === 2);
+  } catch {
+    return [];
+  }
+}
+
+function MapAutoBounds({
+  zones,
+  geofences,
+  animals,
+  recenterTick,
+}: {
+  zones: Zone[];
+  geofences: Geofence[];
+  animals: AnimalLocation[];
+  recenterTick: number;
+}) {
   const map = useMap();
+  // Solo encuadra una vez sola (al cargar) o cuando el usuario aprieta "Centrar" — no en cada
+  // poll de 30s. Si no, un animal que se aleja del cerco (escape) hace que el mapa se achique
+  // cada vez más para que siga entrando, "alejándose" del campo en cada actualización en vez
+  // de quedarse quieto donde el usuario lo dejó.
+  const didInitialFit = useRef(false);
+  const lastRecenterTick = useRef(recenterTick);
+
   useEffect(() => {
+    const manualRecenter = recenterTick !== lastRecenterTick.current;
+    lastRecenterTick.current = recenterTick;
+    if (didInitialFit.current && !manualRecenter) return;
+
     const coords: [number, number][] = [];
-    zones.forEach((zone) => {
-      try {
-        const poly =
-          typeof zone.polygonCoordinates === 'string' ? JSON.parse(zone.polygonCoordinates) : zone.polygonCoordinates;
-        if (Array.isArray(poly)) {
-          poly.forEach((pt) => {
-            if (Array.isArray(pt) && pt.length === 2) {
-              coords.push([pt[0], pt[1]]);
-            }
-          });
-        }
-      } catch {}
-    });
+    zones.forEach((zone) => coords.push(...parsePolygon(zone.polygonCoordinates)));
+    geofences.forEach((geofence) => coords.push(...parsePolygon(geofence.polygonCoordinates)));
 
     animals.forEach((animal) => {
       if (animal.latestReading) {
@@ -130,8 +127,9 @@ function MapAutoBounds({ zones, animals }: { zones: Zone[]; animals: AnimalLocat
 
     if (coords.length > 0) {
       map.fitBounds(coords, { padding: [40, 40] });
+      didInitialFit.current = true;
     }
-  }, [zones, animals, map]);
+  }, [zones, geofences, animals, map, recenterTick]);
 
   return null;
 }
@@ -205,7 +203,7 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
             <Marker
               key={animal.id}
               position={[latitude, longitude]}
-              icon={animal.hasActiveAlert ? alertIcon : normalIcon}
+              icon={createAnimalIcon('🐄', !!animal.hasActiveAlert)}
             >
               <Popup>
                 <div className="p-2 space-y-2 text-xs min-w-45 text-zinc-900">
@@ -241,7 +239,7 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
           <Marker
             key={cluster.id}
             position={[cluster.lat, cluster.lng]}
-            icon={createClusterIcon(cluster.animals.length, cluster.hasAlert)}
+            icon={createAnimalIcon(String(cluster.animals.length), cluster.hasAlert)}
             eventHandlers={{
               click: () => {
                 map.setView([cluster.lat, cluster.lng], Math.min(zoom + 2, 18));
@@ -273,8 +271,10 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
   );
 }
 
-export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps) {
+export default function LiveTrackingMap({ zones, geofences, animals }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
+  const [showLabels, setShowLabels] = useState<boolean>(true);
+  const [recenterTick, setRecenterTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const center: [number, number] = [-34.6037, -58.3816];
 
@@ -285,37 +285,76 @@ export default function LiveTrackingMap({ zones, animals }: LiveTrackingMapProps
       ref={containerRef}
       className="w-full h-137.5 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
     >
-      <MapActionControls targetRef={containerRef} currentLayer={currentLayer} onChangeLayer={setCurrentLayer} />
+      <MapActionControls
+        targetRef={containerRef}
+        currentLayer={currentLayer}
+        onChangeLayer={setCurrentLayer}
+        showLabels={showLabels}
+        onToggleLabels={() => setShowLabels((prev) => !prev)}
+        onRecenter={() => setRecenterTick((t) => t + 1)}
+      />
 
       <MapContainer center={center} zoom={13} className="w-full h-full">
-        <TileLayer key={currentLayer} attribution={activeProvider.attribution} url={activeProvider.url} />
+        <TileLayer
+          key={currentLayer}
+          attribution={activeProvider.attribution}
+          url={activeProvider.url}
+          maxZoom={activeProvider.maxZoom || 19}
+        />
+        {showLabels && activeProvider.roadsUrl && (
+          <TileLayer
+            key={`${currentLayer}-roads`}
+            url={activeProvider.roadsUrl}
+            zIndex={10}
+            opacity={0.9}
+            maxZoom={activeProvider.maxZoom || 19}
+          />
+        )}
+        {showLabels && activeProvider.labelsUrl && (
+          <TileLayer
+            key={`${currentLayer}-labels`}
+            url={activeProvider.labelsUrl}
+            zIndex={11}
+            opacity={0.95}
+            maxZoom={activeProvider.maxZoom || 19}
+          />
+        )}
 
-        {/* Render Zones background */}
+        {/* Límite del potrero (Zone) — perímetro del lote, sin implicancia de alerta */}
         {zones.map((zone) => {
-          if (!zone.polygonCoordinates) return null;
-          try {
-            const coords =
-              typeof zone.polygonCoordinates === 'string'
-                ? JSON.parse(zone.polygonCoordinates)
-                : zone.polygonCoordinates;
+          const coords = parsePolygon(zone.polygonCoordinates);
+          if (coords.length === 0) return null;
+          return (
+            <Polygon
+              key={zone.id}
+              positions={coords}
+              pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }}
+            />
+          );
+        })}
 
-            if (Array.isArray(coords) && coords.length > 0) {
-              return (
-                <Polygon
-                  key={zone.id}
-                  positions={coords}
-                  pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.15, weight: 2 }}
-                />
-              );
-            }
-          } catch {}
-          return null;
+        {/* Cerco virtual (Geofence) — el límite que dispara la alerta ESCAPE si un animal lo cruza */}
+        {geofences.map((geofence) => {
+          if (!geofence.active) return null;
+          const coords = parsePolygon(geofence.polygonCoordinates);
+          if (coords.length === 0) return null;
+          return (
+            <Polygon
+              key={geofence.id}
+              positions={coords}
+              pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.06, weight: 3, dashArray: '10 6' }}
+            >
+              <Popup>
+                <span className="text-xs font-semibold text-zinc-900">⚡ Cerco: {geofence.name}</span>
+              </Popup>
+            </Polygon>
+          );
         })}
 
         {/* Clustered Animals */}
         <ClusteredAnimalMarkers animals={animals} />
 
-        <MapAutoBounds zones={zones} animals={animals} />
+        <MapAutoBounds zones={zones} geofences={geofences} animals={animals} recenterTick={recenterTick} />
       </MapContainer>
     </div>
   );

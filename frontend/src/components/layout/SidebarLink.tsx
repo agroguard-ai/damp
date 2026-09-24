@@ -18,8 +18,8 @@ export function SidebarLink({ href, label, logo, isCollapsed }: SidebarLinkProps
   let isActive = false;
   if (href === '/dashboard') {
     isActive = pathname === '/dashboard';
-  } else if (href === '/farms/new') {
-    // Campos is at /farms/new but checks for /farms base route
+  } else if (href === '/farms') {
+    // Campos is at /farms and includes subroutes like /farms/new or /farms/[id]
     isActive = pathname.startsWith('/farms');
   } else if (href === '/animals') {
     // Hacienda is active for /animals, but not when registering animal (/animals/new)

@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Delete, Param, UseGuards } from '@nestjs/common';
 import { AnimalTypesService } from './animal-types.service';
 import { CreateAnimalTypeDto } from './dto/create-animal-type.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { GlobalRoles } from '@/auth/decorators/global-roles.decorator';
 import { GlobalRole } from '@generated/prisma';
@@ -10,7 +10,7 @@ import { GlobalRole } from '@generated/prisma';
 // plataforma, no un recurso de una granja puntual -> altas/bajas/ediciones se restringen a
 // SUPER_ADMIN para que una granja no pueda romper el catálogo de otra. Lectura abierta.
 @Controller('animal-types')
-@UseGuards(ClerkAuthGuard)
+@UseGuards(JwtAuthGuard)
 export class AnimalTypesController {
   constructor(private readonly animalTypesService: AnimalTypesService) {}
 

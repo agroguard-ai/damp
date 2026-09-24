@@ -1,6 +1,10 @@
+'use client';
+
 import React from 'react';
 import { LucideIcon, Tractor, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 export interface EmptyStateProps {
   icon?: LucideIcon;
@@ -49,6 +53,12 @@ export function EmptyFarmState({
   actionLabel = 'Registrar Mi Primer Campo',
   actionHref = '/farms/new',
 }: Partial<EmptyStateProps>) {
+  const { user, emulatedUser } = useAuth();
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="los Recursos del Campo" />;
+  }
+
   return (
     <EmptyState
       icon={Tractor}

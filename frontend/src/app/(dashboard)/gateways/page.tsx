@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
@@ -27,9 +28,42 @@ const STATUS_CLASSES: Record<GatewayStatus, string> = {
 };
 
 export default function GatewaysPage() {
+  const { user, emulatedUser } = useAuth();
+  const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN' && !emulatedUser;
+
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
+
+  const [adminFarms, setAdminFarms] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingAdminFarms, setLoadingAdminFarms] = useState(false);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      async function loadAdminFarms() {
+        try {
+          setLoadingAdminFarms(true);
+          const res = await fetch('/api/admin/farms');
+          if (res.ok) {
+            const data = await res.json();
+            setAdminFarms(data);
+          }
+        } catch {
+          // ignore
+        } finally {
+          setLoadingAdminFarms(false);
+        }
+      }
+      void loadAdminFarms();
+    }
+  }, [isSuperAdmin]);
+
+  const { data: userFarms = [], loading: fetchingUserFarms } = useApi(
+    !isSuperAdmin ? farmsApi.getAll : () => Promise.resolve([])
+  );
+
+  const farms = isSuperAdmin ? adminFarms : userFarms;
+  const fetchingFarms = isSuperAdmin ? loadingAdminFarms : fetchingUserFarms;
+
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
 

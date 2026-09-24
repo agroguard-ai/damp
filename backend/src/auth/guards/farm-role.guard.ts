@@ -27,11 +27,17 @@ type FarmIdResolver = (prisma: PrismaClient, resourceId: string) => Promise<stri
 
 /** Cómo sacar el farmId de cada tipo de recurso cuando no viaja directo en la request. */
 const FARM_ID_RESOLVERS: Record<FarmIdResource, FarmIdResolver> = {
-  animal: async (prisma, id) => (await prisma.animal.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  zone: async (prisma, id) => (await prisma.zone.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  gateway: async (prisma, id) => (await prisma.gateway.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
+  animal: async (prisma, id) =>
+    (await prisma.animal.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
+  zone: async (prisma, id) =>
+    (await prisma.zone.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
+  gateway: async (prisma, id) =>
+    (await prisma.gateway.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
   geofence: async (prisma, id) => {
-    const geofence = await prisma.geofence.findUnique({ where: { id }, select: { zone: { select: { farmId: true } } } });
+    const geofence = await prisma.geofence.findUnique({
+      where: { id },
+      select: { zone: { select: { farmId: true } } },
+    });
     return geofence?.zone.farmId ?? null;
   },
   alert: async (prisma, id) => {
@@ -54,15 +60,15 @@ export class FarmRoleGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest<FarmAuthorizedRequest>();
-    const clerkUser = request.user;
+    const user = request.user;
 
-    if (!clerkUser?.sub) {
+    if (!user?.sub) {
       throw new UnauthorizedException('Authentication token missing or invalid');
     }
 
     if (!request.dbUser) {
       const dbUser = await this.prisma.user.findUnique({
-        where: { clerkId: clerkUser.sub },
+        where: { id: user.sub },
       });
 
       if (!dbUser) {

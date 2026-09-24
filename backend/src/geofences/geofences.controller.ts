@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { GeofencesService } from './geofences.service';
 import { CreateGeofenceDto } from './dto/create-geofence.dto';
-import { ClerkAuthGuard } from '@/auth/clerk-auth.guard';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
@@ -9,7 +9,7 @@ import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
 @Controller('geofences')
-@UseGuards(ClerkAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
 export class GeofencesController {
   constructor(private readonly geofencesService: GeofencesService) {}
 

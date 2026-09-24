@@ -5,14 +5,18 @@ import dynamic from 'next/dynamic';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
+import { geofencesApi } from '@/lib/api/geofences';
 import { animalsApi } from '@/lib/api/animals';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 
 // Load Map with SSR disabled
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
 export default function GeolocalizacionPage() {
+  const { user, emulatedUser } = useAuth();
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
@@ -31,11 +35,26 @@ export default function GeolocalizacionPage() {
 
   const { data: zones = [], loading: loadingZones } = useApi(fetchZones, [activeFarmId]);
 
+  // Geofences fetcher — una vez que tenemos las zonas, pedimos el cerco virtual de cada una
+  // (es un modelo aparte de Zone: Zone es el potrero, Geofence es el límite eléctrico virtual).
+  const fetchGeofences = useCallback(async () => {
+    if (zones.length === 0) return [];
+    const results = await Promise.all(zones.map((zone) => geofencesApi.getByZone(zone.id)));
+    return results.flat();
+  }, [zones]);
+
+  const { data: geofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [zones]);
+
   const {
     data: animals = [],
     loading: loadingAnimals,
     refetch: refetchLocations,
   } = useApi(fetchLocations, [activeFarmId]);
+
+  const refreshAll = useCallback(() => {
+    refetchLocations();
+    refetchGeofences();
+  }, [refetchLocations, refetchGeofences]);
 
   // 30-second polling for live locations
   useEffect(() => {
@@ -51,6 +70,10 @@ export default function GeolocalizacionPage() {
   // Derived statistics
   const activeAnimalsWithGps = animals.filter((a) => a.latestReading !== null);
   const offlineCollars = animals.filter((a) => a.collar && !a.latestReading);
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="la Geolocalización y Monitoreo en Tiempo Real" />;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">
@@ -99,9 +122,18 @@ export default function GeolocalizacionPage() {
                   ))}
                 </select>
               </div>
-              <div className="text-xs text-zinc-400 font-medium flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
-                <span>Rastreo activo (actualizaciones automáticas)</span>
+              <div className="flex items-center gap-4">
+                <div className="text-xs text-zinc-400 font-medium flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></span>
+                  <span>Rastreo activo (actualizaciones automáticas)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshAll}
+                  className="text-xs font-semibold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 rounded-lg px-3 py-1.5 hover:bg-green-100 dark:hover:bg-green-950/40 transition-colors"
+                >
+                  ↻ Actualizar ahora
+                </button>
               </div>
             </div>
 
@@ -110,7 +142,7 @@ export default function GeolocalizacionPage() {
               {loadingMapData && zones.length === 0 && animals.length === 0 ? (
                 <Skeleton className="w-full h-137.5" />
               ) : (
-                <LiveTrackingMap zones={zones} animals={animals} />
+                <LiveTrackingMap zones={zones} geofences={geofences} animals={animals} />
               )}
             </div>
           </div>

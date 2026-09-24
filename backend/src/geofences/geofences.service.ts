@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateGeofenceDto } from './dto/create-geofence.dto';
+import { isPointInPolygon } from '@/iot/utils/geofencing.utils';
 
 @Injectable()
 export class GeofencesService {
@@ -21,7 +22,35 @@ export class GeofencesService {
   }
 
   async create(dto: CreateGeofenceDto, userId: string) {
-    await this.getOwnedZone(dto.zoneId, userId);
+    const zone = await this.getOwnedZone(dto.zoneId, userId);
+
+    // Validate that the geofence coordinates are strictly within the zone polygon boundary
+    if (dto.polygonCoordinates && Array.isArray(dto.polygonCoordinates) && dto.polygonCoordinates.length >= 3) {
+      if (zone.polygonCoordinates) {
+        let zoneCoords: [number, number][] = [];
+        try {
+          zoneCoords =
+            typeof zone.polygonCoordinates === 'string'
+              ? JSON.parse(zone.polygonCoordinates)
+              : (zone.polygonCoordinates as [number, number][]);
+        } catch {
+          zoneCoords = [];
+        }
+
+        if (Array.isArray(zoneCoords) && zoneCoords.length >= 3) {
+          for (const pt of dto.polygonCoordinates) {
+            if (Array.isArray(pt) && pt.length === 2) {
+              const inside = isPointInPolygon([pt[0], pt[1]], zoneCoords);
+              if (!inside) {
+                throw new BadRequestException(
+                  `La coordenada [${pt[0].toFixed(5)}, ${pt[1].toFixed(5)}] del cerco eléctrico está fuera de los límites de la zona "${zone.name}". El cerco debe estar completamente contenido dentro del perímetro de la zona.`
+                );
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (dto.animalIds.length > 0) {
       const animals = await this.prisma.animal.findMany({

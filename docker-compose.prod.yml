@@ -1,0 +1,83 @@
+version: '3.8'
+
+# Compose de PRODUCCIÓN para desplegar en Dockploy — a diferencia de docker-compose.yml
+# (desarrollo local, incluye el servicio "db"), acá NO se dockeriza la base de datos:
+# se asume un Postgres+PostGIS externo (el nativo de Dockploy, o uno gestionado como
+# Neon/Supabase), cuyo DATABASE_URL se carga como variable de entorno del proyecto en
+# Dockploy. Ver damp/DEPLOY.md para la guía paso a paso completa.
+#
+# Todas las variables ${...} se toman de las Environment Variables que se cargan en la
+# UI de Dockploy para esta app (Dockploy las expone como si fuera un .env de compose).
+
+services:
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: damp-ml-service
+    restart: always
+    ports:
+      - '8000:8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - damp-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: damp-backend
+    restart: always
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      FRONTEND_URL: ${FRONTEND_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ML_SERVICE_URL: http://ml-service:8000
+    depends_on:
+      ml-service:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - damp-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: damp-frontend
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      API_BASE_URL: http://backend:3001
+    depends_on:
+      - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - damp-network
+
+networks:
+  damp-network:
+    driver: bridge

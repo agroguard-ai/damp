@@ -87,3 +87,6 @@ generated/prisma
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Simulador de collares — contiene X-API-Key de gateway en texto plano
+scripts/fleet-simulator.config.json

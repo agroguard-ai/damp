@@ -4,6 +4,8 @@ import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonCardGrid } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
+import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { useApi } from '@/hooks/useApi';
@@ -18,6 +20,7 @@ import type { MedicalEventType } from '@/types';
 import { CirclePlus } from 'lucide-react';
 
 export default function AnimalsListPage() {
+  const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
   const confirm = useConfirm();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
@@ -202,6 +205,10 @@ export default function AnimalsListPage() {
         };
     }
   };
+
+  if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
+    return <EmulationRequiredState title="la Hacienda y Animales" />;
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-8">
