@@ -7,16 +7,38 @@ import { isPointInPolygon } from '@/iot/utils/geofencing.utils';
 export class ZonesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createZoneDto: CreateZoneDto, userId: string) {
+  private async checkFarmAccess(farmId: string, userId: string, requireAdmin: boolean = false) {
     const farm = await this.prisma.farm.findUnique({
-      where: { id: createZoneDto.farmId },
+      where: { id: farmId },
+      include: {
+        farmUsers: {
+          where: { userId, isActive: true },
+          include: { role: true },
+        },
+      },
     });
-    if (!farm) {
-      throw new NotFoundException('Farm not found');
+
+    if (!farm || farm.isActive === false) {
+      throw new NotFoundException('Establecimiento no encontrado o inactivo');
     }
-    if (farm.userId !== userId) {
-      throw new ForbiddenException('You do not have permission to add zones to this farm');
+
+    const isOwner = farm.userId === userId;
+    const userRole = farm.farmUsers?.[0]?.role?.name;
+    const isAdmin = isOwner || userRole === 'ADMIN';
+
+    if (requireAdmin && !isAdmin) {
+      throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
     }
+
+    if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
+      throw new ForbiddenException('No tenés acceso a este establecimiento');
+    }
+
+    return { farm, isAdmin, isOwner };
+  }
+
+  async create(createZoneDto: CreateZoneDto, userId: string) {
+    const { farm } = await this.checkFarmAccess(createZoneDto.farmId, userId, true);
 
     // Validate that zone coordinates are strictly within the farm's polygon boundary
     if (
@@ -73,15 +95,7 @@ export class ZonesService {
   }
 
   async findByFarm(farmId: string, userId: string) {
-    const farm = await this.prisma.farm.findUnique({
-      where: { id: farmId },
-    });
-    if (!farm) {
-      throw new NotFoundException('Farm not found');
-    }
-    if (farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this farm');
-    }
+    await this.checkFarmAccess(farmId, userId, false);
 
     return this.prisma.zone.findMany({
       where: { farmId },
@@ -99,7 +113,7 @@ export class ZonesService {
         },
         _count: {
           select: {
-            animals: true,
+            animals: { where: { isArchived: false } },
             geofences: true,
           },
         },
@@ -112,7 +126,14 @@ export class ZonesService {
     const zone = await this.prisma.zone.findUnique({
       where: { id },
       include: {
-        farm: true,
+        farm: {
+          include: {
+            farmUsers: {
+              where: { userId, isActive: true },
+              include: { role: true },
+            },
+          },
+        },
         geofences: {
           where: { active: true },
           include: {
@@ -122,19 +143,48 @@ export class ZonesService {
             },
           },
         },
+        _count: {
+          select: {
+            animals: { where: { isArchived: false } },
+            geofences: true,
+          },
+        },
       },
     });
     if (!zone) {
       throw new NotFoundException('Zone not found');
     }
-    if (zone.farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this zone');
+
+    const farm = zone.farm;
+    if (farm) {
+      if (farm.isActive === false) {
+        throw new NotFoundException('Establecimiento no encontrado o inactivo');
+      }
+      const isOwner = farm.userId === userId;
+      if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
+        throw new ForbiddenException('No tenés acceso a este establecimiento');
+      }
+    } else {
+      await this.checkFarmAccess(zone.farmId, userId, false);
     }
+
     return zone;
   }
 
   async update(id: string, updateZoneDto: Partial<CreateZoneDto>, userId: string) {
-    const existingZone = await this.findOne(id, userId); // Ownership check
+    const existingZone = await this.findOne(id, userId);
+
+    const farm = existingZone.farm;
+    if (farm) {
+      const isOwner = farm.userId === userId;
+      const userRole = farm.farmUsers?.[0]?.role?.name;
+      const isAdmin = isOwner || userRole === 'ADMIN';
+      if (!isAdmin) {
+        throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
+      }
+    } else {
+      await this.checkFarmAccess(existingZone.farmId, userId, true);
+    }
 
     if (
       updateZoneDto.polygonCoordinates &&
@@ -144,7 +194,7 @@ export class ZonesService {
       const newZoneCoords = updateZoneDto.polygonCoordinates as [number, number][];
 
       // 1. Validate that the new zone coordinates remain within the parent farm perimeter
-      if (existingZone.farm.polygonCoordinates) {
+      if (existingZone.farm?.polygonCoordinates) {
         let farmCoords: [number, number][] = [];
         try {
           farmCoords =
@@ -221,9 +271,36 @@ export class ZonesService {
   }
 
   async remove(id: string, userId: string) {
-    await this.findOne(id, userId); // Ownership check
-    return this.prisma.zone.delete({
-      where: { id },
+    const existingZone = await this.findOne(id, userId);
+
+    const farm = existingZone.farm;
+    if (farm) {
+      const isOwner = farm.userId === userId;
+      const userRole = farm.farmUsers?.[0]?.role?.name;
+      const isAdmin = isOwner || userRole === 'ADMIN';
+      if (!isAdmin) {
+        throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
+      }
+    } else {
+      await this.checkFarmAccess(existingZone.farmId, userId, true);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Unassign animals from this zone without deleting them (preserves medical and telemetry history)
+      await tx.animal.updateMany({
+        where: { zoneId: id },
+        data: { zoneId: null },
+      });
+
+      // 2. Cascade delete geofences belonging to this zone
+      await tx.geofence.deleteMany({
+        where: { zoneId: id },
+      });
+
+      // 3. Delete the zone safely
+      return tx.zone.delete({
+        where: { id },
+      });
     });
   }
 }
