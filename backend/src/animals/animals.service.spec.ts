@@ -17,9 +17,10 @@ function makePrismaMock() {
     zone: { findFirst: jest.fn(), findUnique: jest.fn() },
     geofence: { findUnique: jest.fn() },
     collar: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
-    animalCollar: { create: jest.fn(), updateMany: jest.fn() },
+    animalCollar: { create: jest.fn(), updateMany: jest.fn(), findMany: jest.fn() },
     animalGeofence: { create: jest.fn(), updateMany: jest.fn() },
     medicalEvent: { create: jest.fn() },
+    telemetryReading: { findMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(prisma)),
   };
 }
@@ -95,7 +96,7 @@ describe('AnimalsService', () => {
         id: 'animal-1',
         farmId: 'farm-1',
         zoneId: 'zone-1',
-        animalCollars: [], // SIN COLLAR
+        animalCollars: [],
         animalGeofences: [],
       });
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
@@ -233,6 +234,71 @@ describe('AnimalsService', () => {
             type: 'WEIGHING',
             value: 415,
           }),
+        })
+      );
+    });
+  });
+
+  describe('CU010 - Seguimiento Histórico y Mapa de Calor', () => {
+    it('obtiene el recorrido histórico ordenado cronológicamente para un animal', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: 'TAG-1',
+        breed: 'Angus',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, startAt: new Date(), endAt: null }],
+        animalType: { id: 't1', name: 'Bovino', species: 'Bovino' },
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.telemetryReading.findMany.mockResolvedValue([
+        { id: 'r1', latitude: -34.5, longitude: -58.5, temperature: 38.5, timestamp: new Date('2026-02-01T10:00:00Z') },
+        { id: 'r2', latitude: -34.6, longitude: -58.6, temperature: 38.7, timestamp: new Date('2026-02-01T11:00:00Z') },
+      ]);
+
+      const res = await service.getAnimalTrajectory('animal-1', 'user-1', '2026-02-01', '2026-02-02');
+
+      expect(res.totalPoints).toBe(2);
+      expect(res.points[0].latitude).toBe(-34.5);
+      expect(prisma.telemetryReading.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ collarId: { in: [10] } }),
+          orderBy: { timestamp: 'asc' },
+        })
+      );
+    });
+
+    it('devuelve array vacío si el animal nunca tuvo collares asignados', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-2',
+        tag: 'TAG-2',
+        breed: 'Hereford',
+        farmId: 'farm-1',
+        animalCollars: [],
+        animalType: null,
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+
+      const res = await service.getAnimalTrajectory('animal-2', 'user-1');
+
+      expect(res.totalPoints).toBe(0);
+      expect(res.points).toEqual([]);
+      expect(prisma.telemetryReading.findMany).not.toHaveBeenCalled();
+    });
+
+    it('obtiene puntos para el mapa de calor del campo', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10 }, { collarId: 20 }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([
+        { latitude: -34.5, longitude: -58.5 },
+        { latitude: -34.501, longitude: -58.502 },
+      ]);
+
+      const res = await service.getFarmHeatmap('farm-1', 'user-1', 7);
+
+      expect(res.totalPoints).toBe(2);
+      expect(prisma.telemetryReading.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ collarId: { in: [10, 20] } }),
         })
       );
     });

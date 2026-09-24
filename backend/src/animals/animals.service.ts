@@ -11,6 +11,7 @@ import { CreateAnimalDto } from './dto/create-animal.dto';
 import { UpdateAnimalDto } from './dto/update-animal.dto';
 import { BulkAssignZoneDto } from './dto/bulk-assign-zone.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
+import { Prisma } from '@generated/prisma';
 
 @Injectable()
 export class AnimalsService {
@@ -856,4 +857,126 @@ export class AnimalsService {
       };
     });
   }
+
+  async getAnimalTrajectory(animalId: string, userId: string, from?: string, to?: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id: animalId },
+      include: {
+        animalType: { select: { id: true, name: true, species: true } },
+        animalCollars: {
+          select: {
+            collarId: true,
+            startAt: true,
+            endAt: true,
+          },
+        },
+      },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`Animal con ID "${animalId}" no encontrado`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    const collarIds = animal.animalCollars.map((ac) => ac.collarId);
+    if (collarIds.length === 0) {
+      return {
+        points: [],
+        totalPoints: 0,
+        animal: {
+          id: animal.id,
+          tag: animal.tag,
+          breed: animal.breed,
+          animalType: animal.animalType,
+        },
+      };
+    }
+
+    const timestampFilter: Prisma.DateTimeFilter = {};
+    if (from) {
+      timestampFilter.gte = new Date(from);
+    }
+    if (to) {
+      const toDate = new Date(to);
+      if (to.length === 10) {
+        toDate.setHours(23, 59, 59, 999);
+      }
+      timestampFilter.lte = toDate;
+    }
+
+    const readings = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: collarIds },
+        ...(from || to ? { timestamp: timestampFilter } : {}),
+      },
+      orderBy: { timestamp: 'asc' },
+      select: {
+        id: true,
+        latitude: true,
+        longitude: true,
+        temperature: true,
+        timestamp: true,
+      },
+      take: 1000,
+    });
+
+    return {
+      points: readings,
+      totalPoints: readings.length,
+      animal: {
+        id: animal.id,
+        tag: animal.tag,
+        breed: animal.breed,
+        animalType: animal.animalType,
+      },
+    };
+  }
+
+  async getFarmHeatmap(farmId: string, userId: string, days = 7, from?: string, to?: string) {
+    await this.checkFarmAccess(farmId, userId);
+
+    const animalCollars = await this.prisma.animalCollar.findMany({
+      where: {
+        animal: { farmId, isArchived: false },
+      },
+      select: { collarId: true },
+    });
+
+    const collarIds = Array.from(new Set(animalCollars.map((ac) => ac.collarId)));
+    if (collarIds.length === 0) {
+      return { points: [], totalPoints: 0 };
+    }
+
+    const timestampFilter: Prisma.DateTimeFilter = {};
+    if (from || to) {
+      if (from) timestampFilter.gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        if (to.length === 10) toDate.setHours(23, 59, 59, 999);
+        timestampFilter.lte = toDate;
+      }
+    } else {
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      timestampFilter.gte = since;
+    }
+
+    const readings = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: collarIds },
+        timestamp: timestampFilter,
+      },
+      select: {
+        latitude: true,
+        longitude: true,
+      },
+      take: 2000,
+    });
+
+    return {
+      points: readings,
+      totalPoints: readings.length,
+    };
+  }
 }
+

@@ -11,9 +11,11 @@ import type {
   UpdateAnimalZonePayload,
   LinkAnimalCollarPayload,
   AssignAnimalGeofencePayload,
+  AnimalTrajectoryResponse,
+  FarmHeatmapResponse,
 } from '@/types';
 
-export type { Animal, AnimalLocation };
+export type { Animal, AnimalLocation, AnimalTrajectoryResponse, FarmHeatmapResponse };
 
 export const animalsApi = {
   /** GET /api/animals?farmId=xxx&... — returns animals with optional filters */
@@ -86,4 +88,30 @@ export const animalsApi = {
   /** GET /api/animals/locations?farmId=xxx — returns live geolocations */
   getLocations: (farmId: string): Promise<AnimalLocation[]> =>
     apiFetch<AnimalLocation[]>(`/api/animals/locations?farmId=${farmId}`),
+
+  /** GET /api/animals/[id]/trajectory?from=...&to=... — returns historical trajectory */
+  getTrajectory: (
+    animalId: string,
+    params?: { from?: string; to?: string }
+  ): Promise<AnimalTrajectoryResponse> => {
+    const query = new URLSearchParams();
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    const queryString = query.toString();
+    return apiFetch<AnimalTrajectoryResponse>(
+      `/api/animals/${animalId}/trajectory${queryString ? `?${queryString}` : ''}`
+    );
+  },
+
+  /** GET /api/animals/heatmap?farmId=...&days=...&from=...&to=... — returns density points */
+  getHeatmap: (
+    farmId: string,
+    params?: { days?: number; from?: string; to?: string }
+  ): Promise<FarmHeatmapResponse> => {
+    const query = new URLSearchParams({ farmId });
+    if (params?.days) query.set('days', String(params.days));
+    if (params?.from) query.set('from', params.from);
+    if (params?.to) query.set('to', params.to);
+    return apiFetch<FarmHeatmapResponse>(`/api/animals/heatmap?${query.toString()}`);
+  },
 };
