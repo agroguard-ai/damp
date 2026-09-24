@@ -96,8 +96,9 @@ model Geofence {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  zone            Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zone            Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   animalGeofences AnimalGeofence[]
+  rotationSteps   ZoneRotationStep[]
 
   @@map("geofences")
 }
@@ -212,10 +213,11 @@ model Zone {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  farm      Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  animals   Animal[]
-  geofences Geofence[]
-  gateways  Gateway[]
+  farm          Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  animals       Animal[]
+  geofences     Geofence[]
+  gateways      Gateway[]
+  rotationPlans ZoneRotationPlan[]
 
   @@map("zones")
 }
@@ -345,4 +347,56 @@ model CollarRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("collar_requests")
+}
+
+enum ZoneRotationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum RotationStepStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+model ZoneRotationPlan {
+  id               String             @id @default(uuid())
+  zoneId           String             @map("zone_id")
+  name             String             @default("Rotación de Pastoreo")
+  status           ZoneRotationStatus @default(ACTIVE)
+  frequencyHours   Int                @default(24) @map("frequency_hours")
+  currentStepIndex Int                @default(0) @map("current_step_index")
+  totalSteps       Int                @default(0) @map("total_steps")
+  autoRotate       Boolean            @default(true) @map("auto_rotate")
+  startedAt        DateTime           @default(now()) @map("started_at")
+  lastRotatedAt    DateTime           @default(now()) @map("last_rotated_at")
+  nextRotationAt   DateTime           @map("next_rotation_at")
+  completedAt      DateTime?          @map("completed_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  zone  Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  steps ZoneRotationStep[]
+
+  @@map("zone_rotation_plans")
+}
+
+model ZoneRotationStep {
+  id             String             @id @default(uuid())
+  rotationPlanId String             @map("rotation_plan_id")
+  geofenceId     String             @map("geofence_id")
+  orderIndex     Int                @map("order_index")
+  status         RotationStepStatus @default(PENDING)
+  activatedAt    DateTime?          @map("activated_at")
+  completedAt    DateTime?          @map("completed_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  rotationPlan ZoneRotationPlan @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
+  geofence     Geofence         @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
+
+  @@unique([rotationPlanId, orderIndex])
+  @@map("zone_rotation_steps")
 }
