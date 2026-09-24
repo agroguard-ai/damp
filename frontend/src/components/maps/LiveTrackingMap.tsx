@@ -228,6 +228,12 @@ function ClusteredAnimalMarkers({ animals }: { animals: AnimalLocation[] }) {
                       <span className="font-semibold text-zinc-800">{animal.zone?.name || 'Campo Abierto'}</span>
                     </div>
                   </div>
+                  <a
+                    href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
+                    className="block text-center mt-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors shadow-xs"
+                  >
+                    Ver ficha y asignación &rarr;
+                  </a>
                 </div>
               </Popup>
             </Marker>

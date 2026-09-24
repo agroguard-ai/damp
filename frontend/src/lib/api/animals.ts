@@ -1,5 +1,16 @@
 import { apiFetch } from './client';
-import type { Animal, AnimalLocation, AnimalsQueryParams, ArchiveAnimalPayload, CreateAnimalPayload } from '@/types';
+import type {
+  Animal,
+  AnimalLocation,
+  AnimalsQueryParams,
+  ArchiveAnimalPayload,
+  CreateAnimalPayload,
+  BulkAssignZonePayload,
+  BulkTransferFarmPayload,
+  UpdateAnimalZonePayload,
+  LinkAnimalCollarPayload,
+  AssignAnimalGeofencePayload,
+} from '@/types';
 
 export type { Animal, AnimalLocation };
 
@@ -26,6 +37,41 @@ export const animalsApi = {
   archive: (id: string, data: ArchiveAnimalPayload): Promise<Animal> =>
     apiFetch<Animal>(`/api/animals/${id}/archive`, {
       method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/animals/[id]/zone — updates an animal's zone */
+  updateZone: (id: string, data: UpdateAnimalZonePayload): Promise<Animal> =>
+    apiFetch<Animal>(`/api/animals/${id}/zone`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/animals/[id]/collar — links or unlinks collar */
+  updateCollar: (id: string, data: LinkAnimalCollarPayload): Promise<{ message: string; collarId?: number }> =>
+    apiFetch<{ message: string; collarId?: number }>(`/api/animals/${id}/collar`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/animals/[id]/geofence — assigns or unassigns virtual fence */
+  updateGeofence: (id: string, data: AssignAnimalGeofencePayload): Promise<{ message: string }> =>
+    apiFetch<{ message: string }>(`/api/animals/${id}/geofence`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  /** POST /api/animals/bulk/zone — bulk assign zone to multiple animals */
+  bulkAssignZone: (data: BulkAssignZonePayload): Promise<{ count: number; message: string }> =>
+    apiFetch<{ count: number; message: string }>('/api/animals/bulk/zone', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** POST /api/animals/bulk/transfer-farm — bulk transfer animals to another farm */
+  bulkTransferFarm: (data: BulkTransferFarmPayload): Promise<{ count: number; message: string }> =>
+    apiFetch<{ count: number; message: string }>('/api/animals/bulk/transfer-farm', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { ArrowRight } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { farmsApi } from '@/lib/api/farms';
 import { zonesApi } from '@/lib/api/zones';
@@ -184,12 +186,14 @@ export default function GeolocalizacionPage() {
                   animals.map((animal) => {
                     const hasGps = animal.latestReading !== null;
                     return (
-                      <div
+                      <Link
                         key={animal.id}
-                        className="p-3 border border-zinc-100 dark:border-zinc-850 rounded-lg flex items-center justify-between hover:bg-zinc-55/30 dark:hover:bg-zinc-950/30 transition-all"
+                        href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
+                        className="p-3 border border-zinc-100 dark:border-zinc-850 rounded-xl flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group"
+                        title="Ver ficha y gestionar animal"
                       >
                         <div className="space-y-1">
-                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white">
+                          <h4 className="font-bold text-xs text-zinc-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
                             {animal.tag || `ID: ${animal.id.slice(0, 5)}`}
                           </h4>
                           <div className="flex gap-1.5 text-[10px] text-zinc-400">
@@ -199,7 +203,7 @@ export default function GeolocalizacionPage() {
                           </div>
                         </div>
 
-                        <div>
+                        <div className="flex items-center gap-2">
                           {hasGps ? (
                             <span className="bg-green-150/10 dark:bg-green-950/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/30 px-2 py-0.5 rounded-full text-[9px] font-bold">
                               {animal.latestReading!.temperature.toFixed(1)}°C
@@ -209,8 +213,9 @@ export default function GeolocalizacionPage() {
                               Offline
                             </span>
                           )}
+                          <ArrowRight className="w-3.5 h-3.5 text-zinc-300 group-hover:text-green-600 transition-colors" />
                         </div>
-                      </div>
+                      </Link>
                     );
                   })
                 )}

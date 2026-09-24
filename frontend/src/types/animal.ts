@@ -66,3 +66,28 @@ export interface CreateAnimalPayload {
 export interface ArchiveAnimalPayload {
   status: 'SOLD' | 'DEAD';
 }
+
+export interface BulkAssignZonePayload {
+  farmId: string;
+  animalIds: string[];
+  zoneId?: string | null;
+}
+
+export interface BulkTransferFarmPayload {
+  sourceFarmId: string;
+  targetFarmId: string;
+  animalIds: string[];
+  farmId?: string;
+}
+
+export interface UpdateAnimalZonePayload {
+  zoneId: string | null;
+}
+
+export interface LinkAnimalCollarPayload {
+  collarId: number | null;
+}
+
+export interface AssignAnimalGeofencePayload {
+  geofenceId: string | null;
+}

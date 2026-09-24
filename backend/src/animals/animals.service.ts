@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CollarsService } from '@/collars/collars.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
+import { BulkAssignZoneDto } from './dto/bulk-assign-zone.dto';
+import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
 
 @Injectable()
 export class AnimalsService {
@@ -10,18 +12,51 @@ export class AnimalsService {
     private readonly collarsService: CollarsService
   ) {}
 
+  private async checkFarmAccess(farmId: string, userId: string, requireAdmin: boolean = false) {
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId },
+      include: {
+        farmUsers: {
+          where: { userId, isActive: true },
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!farm || farm.isActive === false) {
+      throw new NotFoundException('Establecimiento no encontrado o inactivo');
+    }
+
+    const isOwner = farm.userId === userId;
+    const userRole = farm.farmUsers?.[0]?.role?.name;
+    const isAdmin = isOwner || userRole === 'ADMIN';
+
+    if (requireAdmin && !isAdmin) {
+      throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
+    }
+
+    if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
+      throw new ForbiddenException('No tenés acceso a este establecimiento');
+    }
+
+    return { farm, isAdmin, isOwner };
+  }
+
   async create(createAnimalDto: CreateAnimalDto, userId: string) {
     const { farmId, tag, breed, weightKg, ageMonths, collarId, animalTypeId, zoneId } = createAnimalDto;
 
     const birthDate = new Date();
     birthDate.setMonth(birthDate.getMonth() - ageMonths);
 
-    const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
-    if (!farm) {
-      throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
-    }
-    if (farm.userId !== userId) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+    await this.checkFarmAccess(farmId, userId);
+
+    if (zoneId) {
+      const zone = await this.prisma.zone.findFirst({
+        where: { id: zoneId, farmId },
+      });
+      if (!zone) {
+        throw new NotFoundException(`La zona con ID ${zoneId} no pertenece a este establecimiento.`);
+      }
     }
 
     if (collarId) {
@@ -50,6 +85,12 @@ export class AnimalsService {
           startAt: new Date(),
         },
       });
+
+      // Asegurar que el collar quede asignado al farmId de este animal
+      await this.prisma.collar.update({
+        where: { id: collarId },
+        data: { farmId },
+      });
     }
 
     return {
@@ -73,19 +114,16 @@ export class AnimalsService {
     const { farmId, zoneId, animalType, healthStatus, status, hasActiveAlert } = query;
     const whereClause: any = {};
 
-    // Filtrado por establecimiento (farmId) obligatoriamente del usuario autenticado
+    // Filtrado por establecimiento del usuario autenticado (dueño o empleado activo)
     if (farmId) {
-      const farm = await this.prisma.farm.findFirst({
-        where: { id: farmId, userId },
-      });
-      if (!farm) {
-        throw new ForbiddenException('No tienes acceso a este establecimiento.');
-      }
+      await this.checkFarmAccess(farmId, userId);
       whereClause.farmId = farmId;
     } else {
-      // Si no se especifica farmId, traer solo animales de granjas del usuario
       const userFarms = await this.prisma.farm.findMany({
-        where: { userId },
+        where: {
+          OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+          isActive: true,
+        },
         select: { id: true },
       });
       const farmIds = userFarms.map((f) => f.id);
@@ -124,6 +162,7 @@ export class AnimalsService {
 
     return this.prisma.animal.findMany({
       where: whereClause,
+      orderBy: { createdAt: 'desc' },
       include: {
         animalType: true,
         zone: true,
@@ -162,6 +201,7 @@ export class AnimalsService {
         animalType: true,
         zone: true,
         animalCollars: {
+          where: { endAt: null },
           include: {
             collar: {
               include: {
@@ -174,6 +214,7 @@ export class AnimalsService {
           },
         },
         animalGeofences: {
+          where: { endAt: null },
           include: {
             geofence: true,
           },
@@ -188,16 +229,12 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    // Validar propiedad
-    if (animal.farm.userId !== userId) {
-      throw new ForbiddenException('No tienes acceso a este animal.');
-    }
+    await this.checkFarmAccess(animal.farmId, userId);
 
     return animal;
   }
 
   async archive(id: string, status: string, userId: string) {
-    // 1. Verificar existencia y propiedad
     const animal = await this.prisma.animal.findUnique({
       where: { id },
       include: {
@@ -211,9 +248,9 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    if (animal.farm.userId !== userId) {
-      throw new ForbiddenException('No tienes acceso a este animal.');
-    }
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    const now = new Date();
 
     // 2. Liberar el collar activo
     if (animal.animalCollars.length > 0) {
@@ -223,7 +260,7 @@ export class AnimalsService {
           endAt: null,
         },
         data: {
-          endAt: new Date(),
+          endAt: now,
         },
       });
     }
@@ -236,7 +273,7 @@ export class AnimalsService {
           endAt: null,
         },
         data: {
-          endAt: new Date(),
+          endAt: now,
         },
       });
     }
@@ -250,13 +287,13 @@ export class AnimalsService {
       },
     });
 
-    // 5. Registrar en el historial del animal (sin tipo médico: la baja no es un evento médico)
+    // 5. Registrar en el historial del animal
     await this.prisma.medicalEvent.create({
       data: {
         animalId: id,
         type: null,
         description: `Baja del animal del sistema. Motivo: ${status === 'SOLD' ? 'Vendido' : 'Fallecido'}.`,
-        occurredAt: new Date(),
+        occurredAt: now,
       },
     });
 
@@ -266,19 +303,349 @@ export class AnimalsService {
     };
   }
 
+  async updateZone(id: string, zoneId: string | null, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id },
+      include: {
+        animalGeofences: {
+          where: { endAt: null },
+          include: { geofence: true },
+        },
+      },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    if (zoneId) {
+      const zone = await this.prisma.zone.findFirst({
+        where: { id: zoneId, farmId: animal.farmId },
+      });
+      if (!zone) {
+        throw new NotFoundException(`La zona con ID ${zoneId} no existe en este establecimiento.`);
+      }
+    }
+
+    const now = new Date();
+
+    // Si la zona cambia y el animal estaba en un cerco que no pertenece a la nueva zona, se cierra
+    if (animal.animalGeofences.length > 0) {
+      const geofencesToClose = animal.animalGeofences
+        .filter((ag) => ag.geofence.zoneId !== zoneId)
+        .map((ag) => ag.id);
+
+      if (geofencesToClose.length > 0) {
+        await this.prisma.animalGeofence.updateMany({
+          where: { id: { in: geofencesToClose } },
+          data: { endAt: now },
+        });
+      }
+    }
+
+    return this.prisma.animal.update({
+      where: { id },
+      data: { zoneId: zoneId || null },
+      include: {
+        zone: true,
+        animalGeofences: { where: { endAt: null }, include: { geofence: true } },
+        animalCollars: { where: { endAt: null }, include: { collar: true } },
+      },
+    });
+  }
+
+  async bulkAssignZone(dto: BulkAssignZoneDto, userId: string) {
+    const { farmId, animalIds, zoneId } = dto;
+    await this.checkFarmAccess(farmId, userId);
+
+    if (zoneId) {
+      const zone = await this.prisma.zone.findFirst({
+        where: { id: zoneId, farmId },
+      });
+      if (!zone) {
+        throw new NotFoundException('La zona seleccionada no pertenece a este establecimiento.');
+      }
+    }
+
+    const animals = await this.prisma.animal.findMany({
+      where: { id: { in: animalIds }, farmId },
+      include: {
+        animalGeofences: {
+          where: { endAt: null },
+          include: { geofence: true },
+        },
+      },
+    });
+
+    if (animals.length === 0) {
+      return { count: 0, message: 'No se encontraron animales para actualizar' };
+    }
+
+    const now = new Date();
+    const targetAnimalIds = animals.map((a) => a.id);
+
+    const geofencesToClose = animals.flatMap((a) =>
+      a.animalGeofences.filter((ag) => ag.geofence.zoneId !== zoneId).map((ag) => ag.id)
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      if (geofencesToClose.length > 0) {
+        await tx.animalGeofence.updateMany({
+          where: { id: { in: geofencesToClose } },
+          data: { endAt: now },
+        });
+      }
+
+      await tx.animal.updateMany({
+        where: { id: { in: targetAnimalIds } },
+        data: { zoneId: zoneId || null },
+      });
+    });
+
+    return {
+      count: targetAnimalIds.length,
+      message: `Se actualizaron ${targetAnimalIds.length} animales a la zona ${zoneId ? 'seleccionada' : 'campo abierto'}.`,
+    };
+  }
+
+  async bulkTransferFarm(dto: BulkTransferFarmDto, userId: string) {
+    const { sourceFarmId, targetFarmId, animalIds } = dto;
+
+    if (sourceFarmId === targetFarmId) {
+      throw new BadRequestException('El establecimiento de origen y destino deben ser distintos.');
+    }
+
+    await this.checkFarmAccess(sourceFarmId, userId);
+    await this.checkFarmAccess(targetFarmId, userId);
+
+    const animals = await this.prisma.animal.findMany({
+      where: { id: { in: animalIds }, farmId: sourceFarmId },
+      include: {
+        animalCollars: { where: { endAt: null } },
+      },
+    });
+
+    if (animals.length === 0) {
+      return { count: 0, message: 'No se encontraron animales para transferir' };
+    }
+
+    const targetAnimalIds = animals.map((a) => a.id);
+    const collarIds = animals.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Cerrar cercos virtuales activos (pertenecían a zonas del campo origen)
+      await tx.animalGeofence.updateMany({
+        where: { animalId: { in: targetAnimalIds }, endAt: null },
+        data: { endAt: now },
+      });
+
+      // 2. Transferir animales al nuevo campo y resetear zona
+      await tx.animal.updateMany({
+        where: { id: { in: targetAnimalIds } },
+        data: {
+          farmId: targetFarmId,
+          zoneId: null,
+        },
+      });
+
+      // 3. Mantener collares alineados al nuevo establecimiento
+      if (collarIds.length > 0) {
+        await tx.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { farmId: targetFarmId },
+        });
+      }
+
+      // 4. Registrar en historial del animal
+      for (const animal of animals) {
+        await tx.medicalEvent.create({
+          data: {
+            animalId: animal.id,
+            type: null,
+            description: 'Traslado de establecimiento hacia nuevo campo.',
+            occurredAt: now,
+          },
+        });
+      }
+    });
+
+    return {
+      count: targetAnimalIds.length,
+      message: `Se trasladaron ${targetAnimalIds.length} animales al nuevo establecimiento exitosamente.`,
+    };
+  }
+
+  async linkCollar(id: string, collarId: number, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id },
+      include: { animalCollars: { where: { endAt: null } } },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+    await this.collarsService.assertAvailableForAssignment(collarId);
+
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      // Cerrar collar previo si hubiera
+      if (animal.animalCollars.length > 0) {
+        await tx.animalCollar.updateMany({
+          where: { animalId: id, endAt: null },
+          data: { endAt: now },
+        });
+      }
+
+      // Vincular nuevo collar
+      await tx.animalCollar.create({
+        data: {
+          animalId: id,
+          collarId,
+          startAt: now,
+        },
+      });
+
+      // Asegurar farmId en el collar
+      await tx.collar.update({
+        where: { id: collarId },
+        data: { farmId: animal.farmId },
+      });
+    });
+
+    return { message: 'Collar vinculado exitosamente', collarId };
+  }
+
+  async unlinkCollar(id: string, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id },
+      include: {
+        animalCollars: { where: { endAt: null } },
+        animalGeofences: { where: { endAt: null } },
+      },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      // Desvincular collar
+      await tx.animalCollar.updateMany({
+        where: { animalId: id, endAt: null },
+        data: { endAt: now },
+      });
+
+      // REGLA ESTRICTA: El cerco virtual REQUIERE collar.
+      // Al desvincular el collar, se desvincula automáticamente de cualquier cerco activo.
+      if (animal.animalGeofences.length > 0) {
+        await tx.animalGeofence.updateMany({
+          where: { animalId: id, endAt: null },
+          data: { endAt: now },
+        });
+      }
+    });
+
+    return { message: 'Collar desvinculado exitosamente y cerco virtual cerrado.' };
+  }
+
+  async assignGeofence(id: string, geofenceId: string | null, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id },
+      include: {
+        animalCollars: { where: { endAt: null } },
+        animalGeofences: { where: { endAt: null } },
+      },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    const now = new Date();
+
+    if (!geofenceId) {
+      await this.prisma.animalGeofence.updateMany({
+        where: { animalId: id, endAt: null },
+        data: { endAt: now },
+      });
+      return { message: 'Animal removido del cerco virtual.' };
+    }
+
+    // REGLA ESTRICTA: Cerco Eléctrico Virtual REQUIERE collar activo
+    if (animal.animalCollars.length === 0) {
+      throw new BadRequestException(
+        'No se puede asignar un animal a un cerco eléctrico virtual sin tener un collar activo vinculado.'
+      );
+    }
+
+    const geofence = await this.prisma.geofence.findUnique({
+      where: { id: geofenceId },
+      include: { zone: true },
+    });
+
+    if (!geofence || !geofence.active) {
+      throw new NotFoundException('El cerco virtual especificado no existe o no está activo.');
+    }
+
+    if (geofence.zone.farmId !== animal.farmId) {
+      throw new ForbiddenException('El cerco virtual pertenece a otro establecimiento.');
+    }
+
+    if (animal.zoneId && geofence.zoneId !== animal.zoneId) {
+      throw new BadRequestException(
+        `El cerco virtual pertenece a la zona "${geofence.zone.name}", pero el animal está en otra zona.`
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.animalGeofence.updateMany({
+        where: { animalId: id, endAt: null },
+        data: { endAt: now },
+      });
+
+      await tx.animalGeofence.create({
+        data: {
+          animalId: id,
+          geofenceId,
+          startAt: now,
+        },
+      });
+
+      // Si el animal no tenía zona asignada, se alinea automáticamente a la zona del cerco
+      if (!animal.zoneId) {
+        await tx.animal.update({
+          where: { id },
+          data: { zoneId: geofence.zoneId },
+        });
+      }
+    });
+
+    return { message: 'Animal asignado al cerco virtual exitosamente.' };
+  }
+
   async getLiveLocations(userId: string, farmId?: string) {
     let farmIds: string[] = [];
     if (farmId) {
-      const farm = await this.prisma.farm.findFirst({
-        where: { id: farmId, userId },
-      });
-      if (!farm) {
-        throw new ForbiddenException('No tienes acceso a este establecimiento.');
-      }
-      farmIds = [farmId];
+      const { farm } = await this.checkFarmAccess(farmId, userId);
+      farmIds = [farm.id];
     } else {
       const userFarms = await this.prisma.farm.findMany({
-        where: { userId },
+        where: {
+          OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+          isActive: true,
+        },
         select: { id: true },
       });
       farmIds = userFarms.map((f) => f.id);

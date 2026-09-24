@@ -55,6 +55,11 @@ export class GeofencesService {
     if (dto.animalIds.length > 0) {
       const animals = await this.prisma.animal.findMany({
         where: { id: { in: dto.animalIds } },
+        include: {
+          animalCollars: {
+            where: { endAt: null },
+          },
+        },
       });
       if (animals.length !== dto.animalIds.length) {
         throw new NotFoundException('One or more animals were not found');
@@ -63,6 +68,14 @@ export class GeofencesService {
       if (outsideZone.length > 0) {
         throw new BadRequestException(
           `Animals not assigned to this zone: ${outsideZone.map((a) => a.tag ?? a.id).join(', ')}`
+        );
+      }
+      const withoutCollar = animals.filter((a) => a.animalCollars.length === 0);
+      if (withoutCollar.length > 0) {
+        throw new BadRequestException(
+          `No se pueden asignar animales a un cerco virtual sin collar activo: ${withoutCollar
+            .map((a) => a.tag ?? a.id)
+            .join(', ')}`
         );
       }
     }

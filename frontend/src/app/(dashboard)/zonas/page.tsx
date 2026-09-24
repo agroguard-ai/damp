@@ -20,6 +20,7 @@ import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
 import { Tractor, Layers, Zap, Trash2, ArrowRight, ArrowLeft, ShieldCheck, AlertCircle, Edit3, Save, X } from 'lucide-react';
 import type { Zone } from '@/types';
+import { animalsApi } from '@/lib/api/animals';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
@@ -50,6 +51,16 @@ function ZonasPageContent() {
   const [newZonePasture, setNewZonePasture] = useState('');
   const [newPoints, setNewPoints] = useState<[number, number][]>([]);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
+  const [animalsModalZone, setAnimalsModalZone] = useState<Zone | null>(null);
+
+  const fetchZoneAnimals = useCallback(
+    () =>
+      animalsModalZone && activeFarmId
+        ? animalsApi.getAll({ farmId: activeFarmId, zoneId: animalsModalZone.id, status: 'ACTIVE' })
+        : Promise.resolve([]),
+    [animalsModalZone, activeFarmId]
+  );
+  const { data: zoneAnimals = [], loading: fetchingZoneAnimals } = useApi(fetchZoneAnimals, [animalsModalZone, activeFarmId]);
 
   const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
 
@@ -508,8 +519,16 @@ function ZonasPageContent() {
                               </Link>
                             </td>
 
-                            <td className="py-4 px-4 text-xs text-zinc-500 dark:text-zinc-400">
-                              {zone._count?.animals ?? '-'} cabezas
+                            <td className="py-4 px-4">
+                              <button
+                                type="button"
+                                onClick={() => setAnimalsModalZone(zone)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border border-green-200/80 dark:border-green-800/40 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors cursor-pointer"
+                                title="Ver hacienda asignada a esta zona"
+                              >
+                                <span>{zone._count?.animals ?? 0} cabezas</span>
+                                <ArrowRight className="w-3 h-3 opacity-60" />
+                              </button>
                             </td>
 
                             <td className="py-4 pl-4 text-right whitespace-nowrap space-x-1.5">
@@ -818,6 +837,89 @@ function ZonasPageContent() {
               </form>
             </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {animalsModalZone && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                  Hacienda en {animalsModalZone.name}
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {animalsModalZone.pastureType ? `Pastura: ${animalsModalZone.pastureType} • ` : ''}
+                  Total: {zoneAnimals.length} cabezas activas
+                </p>
+              </div>
+              <button
+                onClick={() => setAnimalsModalZone(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+              {fetchingZoneAnimals ? (
+                <SkeletonRowList count={3} />
+              ) : zoneAnimals.length === 0 ? (
+                <p className="text-zinc-400 text-sm text-center py-6">
+                  No hay animales asignados actualmente en esta zona.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {zoneAnimals.map((animal) => {
+                    const collar = animal.animalCollars[0]?.collar;
+                    const fence = animal.animalGeofences[0]?.geofence;
+                    return (
+                      <div
+                        key={animal.id}
+                        className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-zinc-900 dark:text-white">
+                            {animal.tag || `ID: ${animal.id.slice(0, 6)}`}
+                          </span>
+                          <div className="text-zinc-400 text-[11px]">
+                            {animal.breed} &bull; {animal.weightKg} kg
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {collar ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
+                              Collar #{collar.id}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-zinc-400">Sin collar</span>
+                          )}
+                          {fence && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800/40">
+                              ⚡ {fence.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 flex justify-between items-center">
+              <span className="text-xs text-zinc-400">
+                ¿Deseás mover o reasignar animales?
+              </span>
+              <Link
+                href={`/animals?farmId=${activeFarmId}&zoneId=${animalsModalZone.id}`}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <span>Gestión de Hacienda</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </div>
       )}
