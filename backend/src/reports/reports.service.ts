@@ -13,11 +13,26 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   private async getOwnedFarm(farmId: string, userId: string) {
-    const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId },
+      include: {
+        farmUsers: {
+          where: { userId, isActive: true },
+        },
+      },
+    });
     if (!farm) {
       throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
     }
-    if (farm.userId !== userId) {
+
+    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (dbUser?.globalRole === 'SUPER_ADMIN') {
+      return farm;
+    }
+
+    const isOwner = farm.userId === userId;
+    const isMember = farm.farmUsers && farm.farmUsers.length > 0;
+    if (!isOwner && !isMember) {
       throw new ForbiddenException('No tienes acceso a este establecimiento.');
     }
     return farm;
@@ -26,12 +41,28 @@ export class ReportsService {
   private async getOwnedAnimal(animalId: string, userId: string) {
     const animal = await this.prisma.animal.findUnique({
       where: { id: animalId },
-      include: { farm: true },
+      include: {
+        farm: {
+          include: {
+            farmUsers: {
+              where: { userId, isActive: true },
+            },
+          },
+        },
+      },
     });
     if (!animal) {
       throw new NotFoundException(`El animal con ID ${animalId} no existe.`);
     }
-    if (animal.farm.userId !== userId) {
+
+    const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (dbUser?.globalRole === 'SUPER_ADMIN') {
+      return animal;
+    }
+
+    const isOwner = animal.farm.userId === userId;
+    const isMember = animal.farm.farmUsers && animal.farm.farmUsers.length > 0;
+    if (!isOwner && !isMember) {
       throw new ForbiddenException('No tienes acceso a este animal.');
     }
     return animal;

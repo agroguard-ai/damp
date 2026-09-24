@@ -34,6 +34,7 @@ import {
   Tag,
   CheckCircle2,
   Edit2,
+  FileDown,
 } from 'lucide-react';
 
 function AnimalsContent() {
@@ -223,6 +224,7 @@ function AnimalsContent() {
     type: 'VACCINATION' as MedicalEventType,
     description: '',
     value: '',
+    occurredAt: new Date().toISOString().slice(0, 10),
   });
 
   const handleAddMedicalEvent = async (e: React.FormEvent) => {
@@ -234,8 +236,14 @@ function AnimalsContent() {
         type: medicalForm.type,
         description: medicalForm.description || undefined,
         value: medicalForm.value ? Number(medicalForm.value) : undefined,
+        occurredAt: medicalForm.occurredAt ? new Date(medicalForm.occurredAt).toISOString() : undefined,
       });
-      setMedicalForm({ type: 'VACCINATION', description: '', value: '' });
+      setMedicalForm({
+        type: 'VACCINATION',
+        description: '',
+        value: '',
+        occurredAt: new Date().toISOString().slice(0, 10),
+      });
       toast.success('Registro médico agregado con éxito');
       refetchMedicalEvents();
       refetchAnimals();
@@ -471,6 +479,53 @@ function AnimalsContent() {
           label: 'Saludable',
           class:
             'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30',
+        };
+    }
+  };
+
+  const getMedicalTypeBadge = (type: MedicalEventType | null | string, value: number | null) => {
+    switch (type) {
+      case 'VACCINATION':
+        return {
+          label: 'Vacunación',
+          badge:
+            'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40',
+          detail: value !== null ? `Dosis: ${value}` : null,
+        };
+      case 'WEIGHING':
+        return {
+          label: 'Pesaje',
+          badge:
+            'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800/40',
+          detail: value !== null ? `${value} kg` : null,
+        };
+      case 'TREATMENT':
+        return {
+          label: 'Tratamiento',
+          badge:
+            'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/40',
+          detail: value !== null ? `Dosis: ${value}` : null,
+        };
+      case 'SURGERY':
+        return {
+          label: 'Cirugía',
+          badge:
+            'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/40',
+          detail: value !== null ? `Valor: ${value}` : null,
+        };
+      case 'BIRTH':
+        return {
+          label: 'Parto',
+          badge:
+            'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40',
+          detail: value !== null ? `Crías: ${value}` : null,
+        };
+      default:
+        return {
+          label: 'Evento General',
+          badge:
+            'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800',
+          detail: value !== null ? `Valor: ${value}` : null,
         };
     }
   };
@@ -1593,90 +1648,159 @@ function AnimalsContent() {
       )}
 
       {/* Modal: Historial Médico */}
-      {medicalHistoryAnimalId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Historial Médico y Pesajes</h3>
-              <button
-                onClick={() => setMedicalHistoryAnimalId(null)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              {fetchingMedicalEvents ? (
-                <div className="flex justify-center py-8">
-                  <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
+      {medicalHistoryAnimalId && (() => {
+        const selectedMedicalAnimal = animals.find((a) => a.id === medicalHistoryAnimalId);
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                <div>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Historial Médico y Pesajes</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {selectedMedicalAnimal ? (
+                      <>
+                        Caravana:{' '}
+                        <strong className="text-zinc-700 dark:text-zinc-200 font-semibold">
+                          {selectedMedicalAnimal.tag || `ID: ${selectedMedicalAnimal.id.slice(0, 8)}`}
+                        </strong>
+                        {' • '}
+                        {selectedMedicalAnimal.breed}
+                      </>
+                    ) : (
+                      'Registros sanitarios del animal'
+                    )}
+                  </p>
                 </div>
-              ) : medicalEvents.length === 0 ? (
-                <p className="text-zinc-400 text-sm text-center py-4">
-                  Este animal todavía no tiene registros médicos ni pesajes.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {medicalEvents.map((ev) => (
-                    <li
-                      key={ev.id}
-                      className="border border-zinc-100 dark:border-zinc-800 rounded-xl p-3 text-xs flex justify-between items-start"
-                    >
-                      <div>
-                        <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                          {ev.type ?? 'Evento General'}
-                          {ev.value !== null ? ` — ${ev.value}` : ''}
-                        </span>
-                        {ev.description && <p className="text-zinc-500 dark:text-zinc-400 mt-0.5">{ev.description}</p>}
-                      </div>
-                      <span className="text-zinc-400 whitespace-nowrap ml-3">
-                        {new Date(ev.occurredAt).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <form
-              onSubmit={handleAddMedicalEvent}
-              className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
-            >
-              <div className="grid grid-cols-2 gap-3 pt-4">
-                <select
-                  value={medicalForm.type}
-                  onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="VACCINATION">Vacunación</option>
-                  <option value="WEIGHING">Pesaje</option>
-                  <option value="BIRTH">Parto</option>
-                  <option value="TREATMENT">Tratamiento</option>
-                  <option value="SURGERY">Cirugía</option>
-                </select>
-                <input
-                  type="number"
-                  step="0.1"
-                  placeholder={medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
-                  value={medicalForm.value}
-                  onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                />
+                <div className="flex items-center gap-2">
+                  <a
+                    href={`/api/reports/animals/${medicalHistoryAnimalId}/medical-history`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+                    title="Descargar Ficha Médica en PDF"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-red-500" />
+                    <span>PDF</span>
+                  </a>
+                  <button
+                    onClick={() => setMedicalHistoryAnimalId(null)}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <input
-                type="text"
-                placeholder="Descripción o anotación clínica..."
-                value={medicalForm.description}
-                onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-              />
-              <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
-                {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
-              </Button>
-            </form>
+
+              <div className="p-6 space-y-3 max-h-[50vh] overflow-y-auto">
+                {fetchingMedicalEvents ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : medicalEvents.length === 0 ? (
+                  <div className="py-8 px-4 text-center space-y-1.5 bg-zinc-50/60 dark:bg-zinc-950/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <HeartPulse className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mx-auto" />
+                    <p className="text-zinc-700 dark:text-zinc-300 font-semibold text-xs">
+                      Sin intervenciones previas
+                    </p>
+                    <p className="text-zinc-400 text-[11px]">
+                      Este animal todavía no tiene registros médicos ni pesajes asentados. Podés cargar el primero debajo.
+                    </p>
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {medicalEvents.map((ev) => {
+                      const badge = getMedicalTypeBadge(ev.type, ev.value);
+                      return (
+                        <li
+                          key={ev.id}
+                          className="border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-950/30 rounded-xl p-3 text-xs flex justify-between items-start gap-3"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide border ${badge.badge}`}
+                              >
+                                {badge.label}
+                              </span>
+                              {badge.detail && (
+                                <span className="font-bold text-zinc-800 dark:text-zinc-100 text-xs">
+                                  {badge.detail}
+                                </span>
+                              )}
+                            </div>
+                            {ev.description && (
+                              <p className="text-zinc-600 dark:text-zinc-300 text-xs mt-0.5">
+                                {ev.description}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-zinc-400 text-[11px] whitespace-nowrap shrink-0">
+                            {new Date(ev.occurredAt).toLocaleDateString()}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <form
+                onSubmit={handleAddMedicalEvent}
+                className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
+              >
+                <div className="grid grid-cols-3 gap-2.5 pt-4">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
+                    <select
+                      value={medicalForm.type}
+                      onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
+                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
+                    >
+                      <option value="VACCINATION">Vacunación</option>
+                      <option value="WEIGHING">Pesaje</option>
+                      <option value="BIRTH">Parto</option>
+                      <option value="TREATMENT">Tratamiento</option>
+                      <option value="SURGERY">Cirugía</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                      {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
+                      value={medicalForm.value}
+                      onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
+                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
+                    <input
+                      type="date"
+                      value={medicalForm.occurredAt}
+                      onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
+                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Descripción o anotación clínica..."
+                  value={medicalForm.description}
+                  onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
+                />
+                <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
+                  {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
+                </Button>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
