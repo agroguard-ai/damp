@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Delete, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { AnimalTypesService } from './animal-types.service';
 import { CreateAnimalTypeDto } from './dto/create-animal-type.dto';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
@@ -6,9 +6,6 @@ import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { GlobalRoles } from '@/auth/decorators/global-roles.decorator';
 import { GlobalRole } from '@generated/prisma';
 
-// AnimalType es un catálogo global (nombre único, sin farmId) compartido por toda la
-// plataforma, no un recurso de una granja puntual -> altas/bajas/ediciones se restringen a
-// SUPER_ADMIN para que una granja no pueda romper el catálogo de otra. Lectura abierta.
 @Controller('animal-types')
 @UseGuards(JwtAuthGuard)
 export class AnimalTypesController {
@@ -22,8 +19,8 @@ export class AnimalTypesController {
   }
 
   @Get()
-  findAll() {
-    return this.animalTypesService.findAll();
+  findAll(@Query('includeInactive') includeInactive?: string) {
+    return this.animalTypesService.findAll(includeInactive === 'true');
   }
 
   @Get(':id')
@@ -34,7 +31,7 @@ export class AnimalTypesController {
   @Patch(':id')
   @UseGuards(GlobalRolesGuard)
   @GlobalRoles(GlobalRole.SUPER_ADMIN)
-  update(@Param('id') id: string, @Body() updateAnimalTypeDto: Partial<CreateAnimalTypeDto>) {
+  update(@Param('id') id: string, @Body() updateAnimalTypeDto: Partial<CreateAnimalTypeDto> & { isActive?: boolean }) {
     return this.animalTypesService.update(id, updateAnimalTypeDto);
   }
 
@@ -43,5 +40,12 @@ export class AnimalTypesController {
   @GlobalRoles(GlobalRole.SUPER_ADMIN)
   remove(@Param('id') id: string) {
     return this.animalTypesService.remove(id);
+  }
+
+  @Patch(':id/reactivate')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
+  reactivate(@Param('id') id: string) {
+    return this.animalTypesService.reactivate(id);
   }
 }

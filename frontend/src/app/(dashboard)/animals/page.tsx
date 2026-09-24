@@ -1299,11 +1299,13 @@ function AnimalsContent() {
                   <option value="" disabled>
                     Seleccionar tipo...
                   </option>
-                  {animalTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.species})
-                    </option>
-                  ))}
+                  {animalTypes
+                    .filter((t) => t.isActive !== false)
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.species})
+                      </option>
+                    ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
