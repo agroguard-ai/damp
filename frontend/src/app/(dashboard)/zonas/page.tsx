@@ -13,7 +13,6 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
-import { HierarchyGuideBar } from '@/components/farms/HierarchyGuideBar';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
@@ -252,14 +251,6 @@ function ZonasPageContent() {
           </p>
         </div>
       </div>
-
-      {/* Visual Step-by-Step Hierarchy Guide Bar */}
-      <HierarchyGuideBar
-        currentLevel={2}
-        farmName={activeFarm?.name || undefined}
-        farmId={activeFarmId}
-        zonesCount={zones.length}
-      />
 
       {displayError && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2.5 shadow-xs">

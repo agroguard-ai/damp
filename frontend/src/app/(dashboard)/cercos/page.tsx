@@ -12,7 +12,6 @@ import { animalsApi } from '@/lib/api/animals';
 import { geofencesApi } from '@/lib/api/geofences';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
-import { HierarchyGuideBar } from '@/components/farms/HierarchyGuideBar';
 import { Select } from '@/components/ui/Select';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
@@ -267,16 +266,6 @@ function CercosHubContent() {
           </p>
         </div>
       </div>
-
-      {/* Visual Hierarchy Guide Bar */}
-      <HierarchyGuideBar
-        currentLevel={3}
-        farmName={activeFarm?.name || undefined}
-        farmId={activeFarmId}
-        zoneName={activeZone?.name || undefined}
-        zoneId={activeZoneId}
-        fencesCount={geofences.length}
-      />
 
       {/* Cascading Selectors: 1. Campo -> 2. Zona */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-xs">

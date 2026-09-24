@@ -9,6 +9,20 @@ export interface Farm {
   renspa?: string | null;
   userId: string;
   createdAt: string;
+  isActive?: boolean;
+  archivedAt?: string | null;
+  farmUsers?: Array<{
+    userId: string;
+    role?: {
+      id: string;
+      name: string;
+    };
+  }>;
+  _count?: {
+    animals: number;
+    zones: number;
+    farmUsers: number;
+  };
 }
 
 export interface CreateFarmPayload {
