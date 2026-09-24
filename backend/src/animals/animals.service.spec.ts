@@ -1,17 +1,19 @@
 import { AnimalsService } from './animals.service';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 
 function makePrismaMock() {
   return {
     farm: { findFirst: jest.fn(), findMany: jest.fn(), findUnique: jest.fn() },
     farmUser: { findUnique: jest.fn() },
     animal: {
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),
     },
+    animalType: { findUnique: jest.fn() },
     zone: { findFirst: jest.fn(), findUnique: jest.fn() },
     geofence: { findUnique: jest.fn() },
     collar: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
@@ -58,6 +60,32 @@ describe('AnimalsService', () => {
 
       const [{ where }] = prisma.animal.findMany.mock.calls[0];
       expect(where.alerts).toBeUndefined();
+    });
+
+    it('agrega el filtro de collares activos cuando hasCollar=true', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([]);
+
+      await service.findAll({ farmId: 'farm-1', hasCollar: 'true' }, 'user-1');
+
+      expect(prisma.animal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ animalCollars: { some: { endAt: null } } }),
+        })
+      );
+    });
+
+    it('agrega el filtro de animales sin collar cuando hasCollar=false', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([]);
+
+      await service.findAll({ farmId: 'farm-1', hasCollar: 'false' }, 'user-1');
+
+      expect(prisma.animal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ animalCollars: { none: { endAt: null } } }),
+        })
+      );
     });
   });
 
@@ -133,6 +161,80 @@ describe('AnimalsService', () => {
         where: { id: { in: ['a1', 'a2'] } },
         data: { zoneId: 'zone-1' },
       });
+    });
+  });
+
+  describe('CU007 - Gestión y Edición de Animales', () => {
+    it('actualiza correctamente los datos generales del animal', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        farmId: 'farm-1',
+        tag: 'TAG-OLD',
+        breed: 'Angus',
+        weightKg: 400,
+        animalCollars: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findFirst.mockResolvedValue(null);
+      prisma.animal.update.mockResolvedValue({
+        id: 'animal-1',
+        tag: 'TAG-NEW',
+        breed: 'Braford',
+      });
+
+      const res = await service.update(
+        'animal-1',
+        { tag: 'TAG-NEW', breed: 'Braford' },
+        'user-1'
+      );
+
+      expect(res.message).toContain('exitosamente');
+      expect(prisma.animal.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'animal-1' },
+          data: expect.objectContaining({ tag: 'TAG-NEW', breed: 'Braford' }),
+        })
+      );
+    });
+
+    it('lanza ConflictException si la caravana ya está en uso por otro animal activo del campo', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        farmId: 'farm-1',
+        tag: 'TAG-1',
+        animalCollars: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findFirst.mockResolvedValue({ id: 'animal-2', tag: 'TAG-DUPLICADA' });
+
+      await expect(
+        service.update('animal-1', { tag: 'TAG-DUPLICADA' }, 'user-1')
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('registra automáticamente un evento clínico WEIGHING cuando se modifica el peso', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        farmId: 'farm-1',
+        tag: 'TAG-1',
+        weightKg: 380,
+        animalCollars: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findFirst.mockResolvedValue(null);
+      prisma.animal.update.mockResolvedValue({ id: 'animal-1', weightKg: 415 });
+
+      await service.update('animal-1', { weightKg: 415 }, 'user-1');
+
+      expect(prisma.medicalEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            animalId: 'animal-1',
+            type: 'WEIGHING',
+            value: 415,
+          }),
+        })
+      );
     });
   });
 });

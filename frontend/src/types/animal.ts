@@ -50,6 +50,7 @@ export interface AnimalsQueryParams {
   healthStatus?: string;
   status?: string;
   hasActiveAlert?: string;
+  hasCollar?: string;
 }
 
 export interface CreateAnimalPayload {
@@ -61,6 +62,16 @@ export interface CreateAnimalPayload {
   collarId?: number;
   animalTypeId?: string;
   zoneId?: string;
+}
+
+export interface UpdateAnimalPayload {
+  tag?: string;
+  breed?: string;
+  weightKg?: number;
+  ageMonths?: number;
+  collarId?: number | null;
+  animalTypeId?: string | null;
+  zoneId?: string | null;
 }
 
 export interface ArchiveAnimalPayload {

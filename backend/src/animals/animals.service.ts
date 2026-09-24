@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CollarsService } from '@/collars/collars.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
+import { UpdateAnimalDto } from './dto/update-animal.dto';
 import { BulkAssignZoneDto } from './dto/bulk-assign-zone.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
 
@@ -108,10 +115,11 @@ export class AnimalsService {
       healthStatus?: string;
       status?: string;
       hasActiveAlert?: string;
+      hasCollar?: string;
     },
     userId: string
   ) {
-    const { farmId, zoneId, animalType, healthStatus, status, hasActiveAlert } = query;
+    const { farmId, zoneId, animalType, healthStatus, status, hasActiveAlert, hasCollar } = query;
     const whereClause: any = {};
 
     // Filtrado por establecimiento del usuario autenticado (dueño o empleado activo)
@@ -158,6 +166,12 @@ export class AnimalsService {
 
     if (hasActiveAlert === 'true') {
       whereClause.alerts = { some: { isResolved: false } };
+    }
+
+    if (hasCollar === 'true') {
+      whereClause.animalCollars = { some: { endAt: null } };
+    } else if (hasCollar === 'false') {
+      whereClause.animalCollars = { none: { endAt: null } };
     }
 
     return this.prisma.animal.findMany({
@@ -232,6 +246,124 @@ export class AnimalsService {
     await this.checkFarmAccess(animal.farmId, userId);
 
     return animal;
+  }
+
+  async update(id: string, updateAnimalDto: UpdateAnimalDto, userId: string) {
+    const animal = await this.prisma.animal.findUnique({
+      where: { id },
+      include: {
+        animalCollars: { where: { endAt: null } },
+      },
+    });
+
+    if (!animal) {
+      throw new NotFoundException(`El animal con ID ${id} no existe.`);
+    }
+
+    await this.checkFarmAccess(animal.farmId, userId);
+
+    // 1. Verificación de caravana duplicada en el mismo establecimiento
+    if (updateAnimalDto.tag && updateAnimalDto.tag !== animal.tag) {
+      const existingWithTag = await this.prisma.animal.findFirst({
+        where: {
+          farmId: animal.farmId,
+          tag: updateAnimalDto.tag,
+          isArchived: false,
+          id: { not: id },
+        },
+      });
+      if (existingWithTag) {
+        throw new ConflictException(
+          `Ya existe un animal activo con la caravana "${updateAnimalDto.tag}" en este establecimiento.`
+        );
+      }
+    }
+
+    // 2. Verificación de tipo de animal si fue provisto
+    if (updateAnimalDto.animalTypeId) {
+      const typeExists = await this.prisma.animalType.findUnique({
+        where: { id: updateAnimalDto.animalTypeId },
+      });
+      if (!typeExists) {
+        throw new NotFoundException('El tipo de animal especificado no existe.');
+      }
+    }
+
+    // 3. Verificación de potrero / zona si fue provista
+    if (updateAnimalDto.zoneId) {
+      const zone = await this.prisma.zone.findFirst({
+        where: { id: updateAnimalDto.zoneId, farmId: animal.farmId },
+      });
+      if (!zone) {
+        throw new NotFoundException(`La zona con ID ${updateAnimalDto.zoneId} no pertenece a este establecimiento.`);
+      }
+    }
+
+    // 4. Calcular fecha de nacimiento estimada si se especificó ageMonths
+    let birthDate: Date | undefined = undefined;
+    if (updateAnimalDto.ageMonths !== undefined && updateAnimalDto.ageMonths !== null) {
+      birthDate = new Date();
+      birthDate.setMonth(birthDate.getMonth() - updateAnimalDto.ageMonths);
+    }
+
+    // 5. Registro automático de pesaje en historial clínico si cambió el peso
+    const weightChanged =
+      updateAnimalDto.weightKg !== undefined &&
+      updateAnimalDto.weightKg !== null &&
+      updateAnimalDto.weightKg !== animal.weightKg;
+
+    if (weightChanged) {
+      await this.prisma.medicalEvent.create({
+        data: {
+          animalId: id,
+          type: 'WEIGHING',
+          value: updateAnimalDto.weightKg,
+          description: `Actualización de peso registrado: ${updateAnimalDto.weightKg} kg (peso previo: ${animal.weightKg ?? 'N/A'} kg).`,
+          occurredAt: new Date(),
+        },
+      });
+    }
+
+    // 6. Manejo de vinculación / desvinculación de collar si viene en el payload
+    if (updateAnimalDto.collarId !== undefined) {
+      const currentCollarId = animal.animalCollars[0]?.collarId;
+      if (updateAnimalDto.collarId && updateAnimalDto.collarId !== currentCollarId) {
+        await this.linkCollar(id, updateAnimalDto.collarId, userId);
+      } else if (updateAnimalDto.collarId === null && currentCollarId) {
+        await this.unlinkCollar(id, userId);
+      }
+    }
+
+    // 7. Preparar datos para actualización
+    const dataToUpdate: any = {};
+    if (updateAnimalDto.tag !== undefined) dataToUpdate.tag = updateAnimalDto.tag;
+    if (updateAnimalDto.breed !== undefined) dataToUpdate.breed = updateAnimalDto.breed;
+    if (updateAnimalDto.weightKg !== undefined) dataToUpdate.weightKg = updateAnimalDto.weightKg;
+    if (birthDate !== undefined) dataToUpdate.birthDate = birthDate;
+    if (updateAnimalDto.animalTypeId !== undefined) dataToUpdate.animalTypeId = updateAnimalDto.animalTypeId || null;
+    if (updateAnimalDto.zoneId !== undefined) dataToUpdate.zoneId = updateAnimalDto.zoneId || null;
+
+    const updatedAnimal = await this.prisma.animal.update({
+      where: { id },
+      data: dataToUpdate,
+      include: {
+        animalType: true,
+        zone: true,
+        animalCollars: {
+          where: { endAt: null },
+          include: { collar: true },
+        },
+        animalGeofences: {
+          where: { endAt: null },
+          include: { geofence: true },
+        },
+      },
+    });
+
+    return {
+      message: 'Animal actualizado exitosamente',
+      animal: updatedAnimal,
+    };
   }
 
   async archive(id: string, status: string, userId: string) {

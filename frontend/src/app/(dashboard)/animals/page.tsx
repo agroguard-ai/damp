@@ -33,6 +33,7 @@ import {
   AlertTriangle,
   Tag,
   CheckCircle2,
+  Edit2,
 } from 'lucide-react';
 
 function AnimalsContent() {
@@ -86,6 +87,7 @@ function AnimalsContent() {
     zoneId: urlZoneId || '',
     status: 'ACTIVE',
     hasActiveAlert: false,
+    hasCollar: '',
   });
 
   // Align filters if url params arrive
@@ -106,6 +108,7 @@ function AnimalsContent() {
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
             ...(filters.zoneId && { zoneId: filters.zoneId }),
             ...(filters.hasActiveAlert && { hasActiveAlert: 'true' }),
+            ...(filters.hasCollar && { hasCollar: filters.hasCollar }),
             status: filters.status,
           })
         : Promise.resolve([]),
@@ -187,6 +190,24 @@ function AnimalsContent() {
   const { mutate: updateAnimalZone, loading: updatingZone } = useMutation(animalsApi.updateZone);
   const { mutate: updateAnimalCollar, loading: updatingCollar } = useMutation(animalsApi.updateCollar);
   const { mutate: updateAnimalGeofence, loading: updatingGeofence } = useMutation(animalsApi.updateGeofence);
+  const {
+    mutate: updateAnimal,
+    loading: updatingAnimal,
+    error: editModalError,
+    reset: resetEditModal,
+  } = useMutation(animalsApi.update);
+
+  // Edit Animal state
+  const [editAnimal, setEditAnimal] = useState<Animal | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editAnimalForm, setEditAnimalForm] = useState({
+    tag: '',
+    breed: '',
+    weightKg: '',
+    ageMonths: '',
+    animalTypeId: '',
+    zoneId: '',
+  });
 
   // Medical events
   const {
@@ -272,6 +293,49 @@ function AnimalsContent() {
       refetchAnimals();
       refetchCollars();
     } catch {}
+  };
+
+  const handleOpenEditModal = (animal: Animal) => {
+    setEditAnimal(animal);
+    resetEditModal();
+    let calculatedMonths = '';
+    if (animal.birthDate) {
+      const bDate = new Date(animal.birthDate);
+      const now = new Date();
+      const diffMonths = (now.getFullYear() - bDate.getFullYear()) * 12 + (now.getMonth() - bDate.getMonth());
+      calculatedMonths = String(Math.max(0, diffMonths));
+    }
+
+    setEditAnimalForm({
+      tag: animal.tag || '',
+      breed: animal.breed || '',
+      weightKg: animal.weightKg ? String(animal.weightKg) : '',
+      ageMonths: calculatedMonths,
+      animalTypeId: animal.animalTypeId || '',
+      zoneId: animal.zoneId || '',
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditAnimalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editAnimal) return;
+    try {
+      await updateAnimal(editAnimal.id, {
+        tag: editAnimalForm.tag.trim(),
+        breed: editAnimalForm.breed.trim(),
+        weightKg: parseFloat(editAnimalForm.weightKg),
+        ...(editAnimalForm.ageMonths ? { ageMonths: parseInt(editAnimalForm.ageMonths, 10) } : {}),
+        animalTypeId: editAnimalForm.animalTypeId || null,
+        zoneId: editAnimalForm.zoneId || null,
+      });
+      toast.success(`Animal ${editAnimalForm.tag.trim() || editAnimal.id} actualizado exitosamente`);
+      setIsEditModalOpen(false);
+      setEditAnimal(null);
+      refetchAnimals();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al modificar los datos del animal');
+    }
   };
 
   const handleBulkAssignZone = async () => {
@@ -498,7 +562,7 @@ function AnimalsContent() {
             </div>
 
             {/* Granular Filters Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Potrero / Zona</label>
                 <select
@@ -541,6 +605,19 @@ function AnimalsContent() {
                       {t.name} ({t.species})
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Collar IoT</label>
+                <select
+                  value={filters.hasCollar}
+                  onChange={(e) => setFilters({ ...filters, hasCollar: e.target.value })}
+                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
+                >
+                  <option value="">Todos</option>
+                  <option value="true">Con collar</option>
+                  <option value="false">Sin collar</option>
                 </select>
               </div>
 
@@ -831,6 +908,17 @@ function AnimalsContent() {
 
                           {/* Quick Actions */}
                           <td className="py-3 pr-4 pl-2 text-right whitespace-nowrap space-x-1.5">
+                            {animal.status === 'ACTIVE' && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(animal)}
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors cursor-pointer inline-flex items-center"
+                                title="Editar datos del animal"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               onClick={() => setMedicalHistoryAnimalId(animal.id)}
@@ -1354,6 +1442,149 @@ function AnimalsContent() {
                 </Button>
                 <Button type="submit" disabled={modalLoading} variant="success" size="md">
                   {modalLoading ? 'Guardando...' : 'Guardar Animal'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Animal */}
+      {isEditModalOpen && editAnimal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Editar Animal</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Caravana: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{editAnimal.tag || `ID: ${editAnimal.id.slice(0, 8)}`}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditAnimal(null);
+                }}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editModalError && (
+              <div className="mx-6 mt-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-650 dark:text-red-400 p-3 rounded-xl text-xs text-center">
+                {editModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditAnimalSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Caravana / Identificador (Tag)
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={editAnimalForm.tag}
+                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, tag: e.target.value })}
+                    placeholder="Ej: Caravana #12"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Raza</label>
+                  <input
+                    required
+                    type="text"
+                    value={editAnimalForm.breed}
+                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, breed: e.target.value })}
+                    placeholder="Ej: Aberdeen Angus"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Peso (Kg)</label>
+                  <input
+                    required
+                    type="number"
+                    step="0.1"
+                    value={editAnimalForm.weightKg}
+                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, weightKg: e.target.value })}
+                    placeholder="Ej: 420"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Edad estimada (Meses)</label>
+                  <input
+                    type="number"
+                    value={editAnimalForm.ageMonths}
+                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, ageMonths: e.target.value })}
+                    placeholder="Ej: 24"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Tipo de Animal</label>
+                <select
+                  value={editAnimalForm.animalTypeId}
+                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, animalTypeId: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+                >
+                  <option value="">Sin tipo específico</option>
+                  {animalTypes
+                    .filter((t) => t.isActive !== false || t.id === editAnimal.animalTypeId)
+                    .map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.species})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Potrero / Zona</label>
+                <select
+                  value={editAnimalForm.zoneId}
+                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, zoneId: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+                >
+                  <option value="">Sin asignar / Campo abierto</option>
+                  {farmZones.map((z) => (
+                    <option key={z.id} value={z.id}>
+                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/50 rounded-xl p-3 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                <span>
+                  Al modificar el peso del animal, el cambio quedará automáticamente registrado como pesaje en su historial clínico.
+                </span>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditAnimal(null);
+                  }}
+                  variant="outline"
+                  size="md"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updatingAnimal} variant="primary" size="md">
+                  {updatingAnimal ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>
               </div>
             </form>

@@ -5,6 +5,7 @@ import type {
   AnimalsQueryParams,
   ArchiveAnimalPayload,
   CreateAnimalPayload,
+  UpdateAnimalPayload,
   BulkAssignZonePayload,
   BulkTransferFarmPayload,
   UpdateAnimalZonePayload,
@@ -30,6 +31,13 @@ export const animalsApi = {
   create: (data: CreateAnimalPayload): Promise<Animal> =>
     apiFetch<Animal>('/api/animals', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/animals/[id] — updates general animal details */
+  update: (id: string, data: UpdateAnimalPayload): Promise<Animal> =>
+    apiFetch<Animal>(`/api/animals/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 

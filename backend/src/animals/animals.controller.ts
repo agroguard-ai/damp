@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, Patch, UseGuards } from '@nestjs/common';
 import { AnimalsService } from './animals.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
+import { UpdateAnimalDto } from './dto/update-animal.dto';
 import { ArchiveAnimalDto } from './dto/archive-animal.dto';
 import { UpdateAnimalZoneDto } from './dto/update-animal-zone.dto';
 import { LinkAnimalCollarDto } from './dto/link-animal-collar.dto';
@@ -51,7 +52,8 @@ export class AnimalsController {
     @Query('animalType') animalType?: string,
     @Query('healthStatus') healthStatus?: string,
     @Query('status') status?: string,
-    @Query('hasActiveAlert') hasActiveAlert?: string
+    @Query('hasActiveAlert') hasActiveAlert?: string,
+    @Query('hasCollar') hasCollar?: string
   ) {
     return this.animalsService.findAll(
       {
@@ -61,6 +63,7 @@ export class AnimalsController {
         healthStatus,
         status,
         hasActiveAlert,
+        hasCollar,
       },
       userId
     );
@@ -71,6 +74,18 @@ export class AnimalsController {
   @ResolveFarmIdFrom('animal')
   findOne(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.animalsService.findOne(id, userId);
+  }
+
+  @Patch(':id')
+  @UseGuards(GlobalRolesGuard, FarmRoleGuard)
+  @ResolveFarmIdFrom('animal')
+  @RequireFarmRole('ADMIN', 'OPERATOR')
+  update(
+    @Param('id') id: string,
+    @Body() updateAnimalDto: UpdateAnimalDto,
+    @CurrentUser('sub') userId: string
+  ) {
+    return this.animalsService.update(id, updateAnimalDto, userId);
   }
 
   @Patch(':id/archive')
