@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { GatewaysService } from '@/gateways/gateways.service';
 import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
@@ -20,6 +20,8 @@ const EVENT_LABELS_ES: Record<string, string> = {
 
 @Injectable()
 export class IotService {
+  private readonly logger = new Logger(IotService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly gatewaysService: GatewaysService,
@@ -234,16 +236,37 @@ export class IotService {
     }
 
     for (const [eventName, prediction] of Object.entries(result.events)) {
-      if (!prediction.detected) {
-        continue;
-      }
       const label = EVENT_LABELS_ES[eventName] ?? eventName;
       const confidencePct = Math.round(prediction.probability * 100);
-      await this.raiseHealthAlert(
-        animalId,
-        `[IA:${eventName.toUpperCase()}]`,
-        `Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`
-      );
+
+      let alertId: string | null = null;
+      if (prediction.detected) {
+        const alert = await this.raiseHealthAlert(
+          animalId,
+          `[IA:${eventName.toUpperCase()}]`,
+          `Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`
+        );
+        alertId = alert?.id ?? null;
+      }
+
+      // CU014: Cuando la certeza es alta, dispara alerta y guarda la predicción vinculada.
+      // Camino alternativo 1: Cuando la certeza es baja, guarda la predicción sin alertar para revisión posterior.
+      try {
+        await this.prisma.healthPrediction.create({
+          data: {
+            animalId,
+            predictedEvent: eventName,
+            probability: prediction.probability,
+            threshold: prediction.threshold,
+            detected: prediction.detected,
+            horizonHours: 6,
+            windowReadingsCount: readings.length,
+            alertId,
+          },
+        });
+      } catch (err: any) {
+        this.logger.warn(`Error al guardar predicción de salud para animal ${animalId}: ${err?.message || err}`);
+      }
     }
   }
 
@@ -259,10 +282,10 @@ export class IotService {
     });
 
     if (existing) {
-      return;
+      return existing;
     }
 
-    await this.prisma.alert.create({
+    return this.prisma.alert.create({
       data: { animalId, type: 'HEALTH', message: `${dedupeKey} ${message}` },
     });
   }

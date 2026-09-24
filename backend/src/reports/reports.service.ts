@@ -240,55 +240,132 @@ export class ReportsService {
   // ---------------------------------------------------------------------
   // 5. Historial de alertas (PDF o Excel)
   // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // 5. Historial de alertas (PDF o Excel) - Enriquecido con Inteligencia Artificial (CU014)
+  // ---------------------------------------------------------------------
   async farmAlertsReport(farmId: string, userId: string, format: 'pdf' | 'xlsx', range: DateRange): Promise<Buffer> {
     await this.getOwnedFarm(farmId, userId);
     const alerts = await this.prisma.alert.findMany({
       where: { createdAt: this.dateFilter(range), animal: { farmId } },
-      include: { animal: true },
+      include: {
+        animal: true,
+        healthPredictions: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
 
+    const isMlAlert = (msg: string) => msg.includes('[IA:');
+    const isThresholdAlert = (msg: string) => msg.includes('[UMBRAL:');
+
+    const totalAlerts = alerts.length;
+    const mlAlerts = alerts.filter((a) => isMlAlert(a.message));
+    const falsePositives = alerts.filter((a) => a.isFalsePositive);
+    const mlFalsePositives = mlAlerts.filter((a) => a.isFalsePositive);
+    const mlTruePositives = Math.max(0, mlAlerts.length - mlFalsePositives.length);
+    const fieldPrecisionPct =
+      mlAlerts.length > 0 ? ((mlTruePositives / mlAlerts.length) * 100).toFixed(1) : '100.0';
+
     if (format === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet('Alertas');
+      const sheet = workbook.addWorksheet('Historial Alertas e IA');
       sheet.columns = [
         { header: 'Fecha', key: 'date', width: 20 },
-        { header: 'Animal', key: 'animal', width: 18 },
+        { header: 'Animal (Caravana)', key: 'animal', width: 18 },
         { header: 'Tipo', key: 'type', width: 12 },
-        { header: 'Mensaje', key: 'message', width: 50 },
-        { header: 'Estado', key: 'status', width: 14 },
+        { header: 'Origen Detección', key: 'origin', width: 24 },
+        { header: 'Certeza / Probabilidad', key: 'confidence', width: 22 },
+        { header: 'Mensaje Detallado', key: 'message', width: 55 },
+        { header: 'Estado', key: 'status', width: 16 },
+        { header: '¿Falso Positivo?', key: 'isFalsePositive', width: 16 },
+        { header: 'Feedback del Operario (Reentrenamiento)', key: 'feedbackNote', width: 40 },
       ];
+
       alerts.forEach((a) => {
+        let origin = a.type === 'ESCAPE' ? 'Cerco Eléctrico Virtual' : 'Heurística por Umbral';
+        let confidenceStr = '--';
+
+        if (isMlAlert(a.message)) {
+          origin = 'Modelo IA (Detección Predictiva)';
+          const match = a.message.match(/confianza\s*(\d+)%/i);
+          if (match) {
+            confidenceStr = `${match[1]}%`;
+          } else if (a.healthPredictions[0]) {
+            confidenceStr = `${Math.round(a.healthPredictions[0].probability * 100)}%`;
+          }
+        } else if (isThresholdAlert(a.message)) {
+          origin = 'Sensor Físico / Umbral';
+        }
+
+        let statusStr = 'Sin resolver (Activa)';
+        if (a.isFalsePositive) {
+          statusStr = 'Falso Positivo';
+        } else if (a.isResolved) {
+          statusStr = 'Resuelta (Confirmada)';
+        }
+
         sheet.addRow({
           date: a.createdAt.toLocaleString(),
-          animal: a.animal.tag ?? a.animal.id.slice(0, 8),
+          animal: a.animal.tag ?? `ID: ${a.animal.id.slice(0, 8)}`,
           type: a.type,
+          origin,
+          confidence: confidenceStr,
           message: a.message,
-          status: a.isResolved ? 'Resuelta' : 'Sin resolver',
+          status: statusStr,
+          isFalsePositive: a.isFalsePositive ? 'SÍ' : 'NO',
+          feedbackNote: a.feedbackNote || (a.isFalsePositive ? 'Marcado como falso positivo' : ''),
         });
       });
+
       sheet.getRow(1).font = { bold: true };
       return this.finalizeExcel(workbook);
     }
 
     const doc = new PDFDocument({ margin: 50 });
-    doc.fontSize(18).text('Historial de Alertas');
+    doc.fontSize(18).text('Reporte de Alertas y Detección Predictiva (IA)');
     doc.fontSize(10).fillColor('#666').text(`Generado: ${new Date().toLocaleString()}`);
-    doc.moveDown(1);
+    doc.moveDown(0.8);
+
+    // Resumen Ejecutivo de Desempeño Predictivo
+    doc.rect(50, doc.y, 500, 52).fillAndStroke('#f8fafc', '#cbd5e1');
+    doc.fillColor('#0f172a').fontSize(10);
+    doc.text(
+      `Total Alertas: ${totalAlerts}   |   Generadas por Modelo IA: ${mlAlerts.length}   |   Falsos Positivos Reportados: ${falsePositives.length}`,
+      60,
+      doc.y - 42
+    );
+    doc.text(
+      `Precisión del Modelo en Campo: ${fieldPrecisionPct}% de aciertos confirmados por el productor / operario.`,
+      60,
+      doc.y + 4
+    );
+    doc.moveDown(2);
     doc.fillColor('#000');
 
     if (alerts.length === 0) {
       doc.fontSize(12).text('No hay alertas en el período seleccionado.');
     } else {
       alerts.forEach((a) => {
-        doc
-          .fontSize(11)
-          .text(`${new Date(a.createdAt).toLocaleString()} — [${a.type}] ${a.animal.tag ?? a.animal.id.slice(0, 8)}`);
-        doc.fontSize(10).fillColor('#333').text(a.message);
-        doc
-          .fontSize(9)
-          .fillColor(a.isResolved ? '#16a34a' : '#dc2626')
-          .text(a.isResolved ? 'Resuelta' : 'Sin resolver');
+        const isMl = isMlAlert(a.message);
+        const tag = a.animal.tag ?? `Animal ${a.animal.id.slice(0, 8)}`;
+        const originTag = isMl ? '🤖 IA PREDICTIVA' : `⚡ ${a.type}`;
+
+        doc.fontSize(11).fillColor('#0f172a').text(
+          `${new Date(a.createdAt).toLocaleString()} — [${originTag}] ${tag}`
+        );
+
+        doc.fontSize(10).fillColor('#334155').text(a.message);
+
+        if (a.isFalsePositive) {
+          doc
+            .fontSize(9)
+            .fillColor('#ea580c')
+            .text(`⚠️ FALSO POSITIVO — Feedback: ${a.feedbackNote || 'Sin notas'}`);
+        } else {
+          doc
+            .fontSize(9)
+            .fillColor(a.isResolved ? '#16a34a' : '#dc2626')
+            .text(a.isResolved ? '✓ Resuelta (Confirmada)' : '● Sin resolver (Activa)');
+        }
         doc.fillColor('#000').moveDown(0.6);
       });
     }

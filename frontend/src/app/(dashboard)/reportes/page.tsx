@@ -138,7 +138,7 @@ export default function ReportesPage() {
 
             <ReportCard
               title="Historial de Alertas"
-              description="Todas las alertas del establecimiento, en PDF o Excel."
+              description="Historial completo con origen (Modelo IA, Umbral o Escape), nivel de certeza %, estado de falsos positivos y observaciones del operario en PDF o Excel."
             >
               <div className="flex items-center gap-3">
                 <select

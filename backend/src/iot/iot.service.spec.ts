@@ -10,6 +10,7 @@ function makePrismaMock() {
     animal: { findUnique: jest.fn() },
     animalGeofence: { findFirst: jest.fn() },
     alert: { findFirst: jest.fn(), create: jest.fn() },
+    healthPrediction: { create: jest.fn(), findMany: jest.fn() },
   };
 }
 
@@ -177,6 +178,7 @@ describe('IotService', () => {
         },
       });
 
+      prisma.alert.create.mockResolvedValue({ id: 'alert-123' });
       await service.handleTelemetry({ collar_id: 1, lat: 0, lng: 0, temp: 38 } as any);
 
       expect(prisma.alert.create).toHaveBeenCalledTimes(1);
@@ -184,6 +186,25 @@ describe('IotService', () => {
       expect(data.type).toBe('HEALTH');
       expect(data.message).toContain('[IA:FIEBRE]');
       expect(data.message).toContain('91%');
+
+      // CU014: Ambas predicciones (alta certeza y baja certeza) se persisten
+      expect(prisma.healthPrediction.create).toHaveBeenCalledTimes(2);
+      expect(prisma.healthPrediction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          animalId: 'animal-1',
+          predictedEvent: 'fiebre',
+          detected: true,
+          alertId: 'alert-123',
+        }),
+      });
+      expect(prisma.healthPrediction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          animalId: 'animal-1',
+          predictedEvent: 'celo',
+          detected: false,
+          alertId: null,
+        }),
+      });
     });
 
     it('does not create a duplicate alert when an unresolved one with the same dedupeKey already exists', async () => {

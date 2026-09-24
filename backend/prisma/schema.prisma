@@ -125,6 +125,7 @@ model Animal {
   animalGeofences AnimalGeofence[]
   animalCollars   AnimalCollar[]
   alerts          Alert[]
+  healthPredictions HealthPrediction[]
 
   @@map("animals")
 }
@@ -273,16 +274,41 @@ enum AlertType {
 }
 
 model Alert {
-  id         String    @id @default(uuid())
-  type       AlertType
-  message    String
-  animalId   String    @map("animal_id")
-  isResolved Boolean   @default(false) @map("is_resolved")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  id              String            @id @default(uuid())
+  type            AlertType
+  message         String
+  animalId        String            @map("animal_id")
+  isResolved      Boolean           @default(false) @map("is_resolved")
+  isFalsePositive Boolean           @default(false) @map("is_false_positive")
+  feedbackNote    String?           @map("feedback_note")
+  feedbackAt      DateTime?         @map("feedback_at")
+  feedbackUserId  String?           @map("feedback_user_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
 
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animal          Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  healthPredictions HealthPrediction[]
 
   @@map("alerts")
+}
+
+model HealthPrediction {
+  id                  String    @id @default(uuid())
+  animalId            String    @map("animal_id")
+  predictedEvent      String    @map("predicted_event") // 'fiebre' | 'celo' | 'inactividad' | 'anomalia'
+  probability         Float
+  threshold           Float
+  detected            Boolean   @default(false)
+  horizonHours        Int       @default(6) @map("horizon_hours")
+  windowReadingsCount Int       @default(48) @map("window_readings_count")
+  alertId             String?   @map("alert_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  alert  Alert?  @relation(fields: [alertId], references: [id], onDelete: SetNull)
+
+  @@map("health_predictions")
+  @@index([animalId, createdAt])
+  @@index([predictedEvent, detected])
 }
 
 model AlertSettings {
