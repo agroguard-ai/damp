@@ -45,7 +45,14 @@ export class FarmsService {
     // Regular users see farms where they are owner or active member
     return this.prisma.farm.findMany({
       where: {
-        OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+        AND: [
+          {
+            OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+          },
+          {
+            OR: [{ user: null }, { user: { isActive: true } }],
+          },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -62,6 +69,7 @@ export class FarmsService {
       where: { id },
       include: {
         alertSettings: true,
+        user: { select: { id: true, isActive: true } },
       },
     });
 
@@ -74,6 +82,11 @@ export class FarmsService {
     // Superadmin bypass
     if (user?.globalRole === GlobalRole.SUPER_ADMIN) {
       return farm;
+    }
+
+    // Suspension check: if the farm has an owner and that owner is inactive, block access
+    if (farm.user && !farm.user.isActive) {
+      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
     }
 
     // Owner check

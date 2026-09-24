@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, Min, IsInt } from 'class-validator';
 import { GlobalRole } from '@generated/prisma';
 
 export class CreateUserDto {
@@ -17,4 +17,8 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(GlobalRole, { message: 'Rol global no válido' })
   globalRole?: GlobalRole;
+
+  @IsOptional()
+  @Min(0, { message: 'El cupo de collares no puede ser negativo' })
+  maxCollars?: number;
 }

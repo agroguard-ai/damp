@@ -18,6 +18,8 @@ describe('AuthService', () => {
     name: 'Test User',
     globalRole: 'USER',
     mustChangePassword: true,
+    isActive: true,
+    maxCollars: 10,
   };
 
   beforeAll(async () => {
@@ -68,6 +70,8 @@ describe('AuthService', () => {
 
       expect(result.accessToken).toBe('mock-access-token');
       expect(result.user.mustChangePassword).toBe(true);
+      expect(result.user.isActive).toBe(true);
+      expect(result.user.maxCollars).toBe(10);
       expect(jwtService.signAsync).toHaveBeenCalledWith(
         expect.objectContaining({
           sub: 'user-1',
@@ -75,6 +79,20 @@ describe('AuthService', () => {
         }),
         expect.anything()
       );
+    });
+
+    it('should throw UnauthorizedException on inactive/suspended user', async () => {
+      prismaService.user.findUnique.mockResolvedValue({
+        ...mockUser,
+        isActive: false,
+      });
+
+      await expect(
+        service.login({
+          email: 'test@example.com',
+          password: 'TempPassword123!',
+        })
+      ).rejects.toThrow('Su cuenta se encuentra suspendida o inhabilitada');
     });
 
     it('should throw UnauthorizedException on wrong password', async () => {

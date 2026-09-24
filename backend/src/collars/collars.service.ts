@@ -30,6 +30,10 @@ export class CollarsService {
   }
 
   async create(dto: CreateCollarDto) {
+    if (dto.farmId) {
+      await this.assertCollarQuota(dto.farmId);
+    }
+
     try {
       return await this.prisma.collar.create({
         data: {
@@ -145,6 +149,11 @@ export class CollarsService {
 
   async update(id: number, dto: UpdateCollarDto) {
     await this.getOrThrow(id);
+
+    if (dto.farmId) {
+      await this.assertCollarQuota(dto.farmId, id);
+    }
+
     try {
       return await this.prisma.collar.update({
         where: { id },
@@ -208,6 +217,44 @@ export class CollarsService {
       throw new BadRequestException(`El collar ${collar.identifier} ya está asignado a otro animal.`);
     }
     return collar;
+  }
+
+  private async assertCollarQuota(farmId: string, excludeCollarId?: number) {
+    const farm = await this.prisma.farm.findUnique({
+      where: { id: farmId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            maxCollars: true,
+          },
+        },
+      },
+    });
+
+    if (!farm) {
+      throw new NotFoundException(`Farm with id "${farmId}" not found`);
+    }
+
+    if (!farm.user) {
+      return;
+    }
+
+    const owner = farm.user;
+    const currentAssigned = await this.prisma.collar.count({
+      where: {
+        farm: { userId: owner.id },
+        ...(excludeCollarId ? { id: { not: excludeCollarId } } : {}),
+      },
+    });
+
+    if (currentAssigned + 1 > owner.maxCollars) {
+      throw new BadRequestException(
+        `El cliente "${owner.name || owner.email}" ha alcanzado su límite contratado de collares (${owner.maxCollars}). Actualmente tiene ${currentAssigned} collares asignados. Incremente su cupo contratado para asignar más.`
+      );
+    }
   }
 
   private async getOrThrow(id: number) {

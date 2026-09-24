@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN "is_active" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "users" ADD COLUMN "max_collars" INTEGER NOT NULL DEFAULT 0;

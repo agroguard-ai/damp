@@ -51,6 +51,10 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('User record not found in system database');
     }
 
+    if (!dbUser.isActive) {
+      throw new UnauthorizedException('Su cuenta se encuentra suspendida o inhabilitada. Comuníquese con el administrador.');
+    }
+
     request.dbUser = dbUser;
 
     // Emulation support: If authenticated as SUPER_ADMIN and X-Emulate-User-Id is provided

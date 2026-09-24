@@ -220,5 +220,26 @@ describe('FarmRoleGuard', () => {
 
       await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException);
     });
+
+    it('tira 403 ForbiddenException si el dueño de la granja está suspendido (cascada)', async () => {
+      mockReflector(undefined, undefined);
+      prisma.farmUser.findUnique.mockResolvedValue({
+        id: 'fu1',
+        isActive: true,
+        role: { name: 'OPERATOR' },
+        farm: {
+          user: { id: 'owner-1', isActive: false },
+        },
+      });
+      const { context } = makeContext({
+        clerkSub: 'clerk_1',
+        dbUser: { id: 'u1', globalRole: GlobalRole.USER },
+        params: { farmId: 'farm-1' },
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        'El servicio para este establecimiento se encuentra suspendido'
+      );
+    });
   });
 });

@@ -59,10 +59,18 @@ describe('JwtAuthGuard', () => {
     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
 
+  it('lanza UnauthorizedException si el usuario está inactivo o suspendido', async () => {
+    const { context } = makeContext({ authorization: 'Bearer valid-token' });
+    jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', email: 'test@example.com' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'test@example.com', isActive: false });
+
+    await expect(guard.canActivate(context)).rejects.toThrow('Su cuenta se encuentra suspendida o inhabilitada');
+  });
+
   it('permite el acceso y adjunta user y dbUser a la request', async () => {
     const { context, request } = makeContext({ authorization: 'Bearer valid-token' });
     const payload = { sub: 'u1', email: 'test@example.com', globalRole: 'USER' };
-    const dbUser = { id: 'u1', email: 'test@example.com', globalRole: 'USER' };
+    const dbUser = { id: 'u1', email: 'test@example.com', globalRole: 'USER', isActive: true };
 
     jwtService.verifyAsync.mockResolvedValue(payload);
     prisma.user.findUnique.mockResolvedValue(dbUser);
@@ -80,12 +88,13 @@ describe('JwtAuthGuard', () => {
       'x-emulate-user-id': 'u2-customer',
     });
     const superAdminPayload = { sub: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
-    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
+    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN', isActive: true };
     const emulatedCustomerDbUser = {
       id: 'u2-customer',
       email: 'customer@campo.com',
       name: 'Cliente Campo',
       globalRole: 'USER',
+      isActive: true,
     };
 
     jwtService.verifyAsync.mockResolvedValue(superAdminPayload);
@@ -109,7 +118,7 @@ describe('JwtAuthGuard', () => {
       'x-emulate-user-id': 'non-existent-user',
     });
     const superAdminPayload = { sub: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
-    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
+    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN', isActive: true };
 
     jwtService.verifyAsync.mockResolvedValue(superAdminPayload);
     prisma.user.findUnique
@@ -125,8 +134,8 @@ describe('JwtAuthGuard', () => {
       'x-emulate-user-id': 'u2-another-admin',
     });
     const superAdminPayload = { sub: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
-    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' };
-    const anotherAdminDbUser = { id: 'u2-another-admin', email: 'admin2@damp.com', globalRole: 'SUPER_ADMIN' };
+    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN', isActive: true };
+    const anotherAdminDbUser = { id: 'u2-another-admin', email: 'admin2@damp.com', globalRole: 'SUPER_ADMIN', isActive: true };
 
     jwtService.verifyAsync.mockResolvedValue(superAdminPayload);
     prisma.user.findUnique
@@ -142,7 +151,7 @@ describe('JwtAuthGuard', () => {
       'x-emulate-user-id': 'u2-target',
     });
     const regularPayload = { sub: 'u1-regular', email: 'regular@damp.com', globalRole: 'USER' };
-    const regularDbUser = { id: 'u1-regular', email: 'regular@damp.com', globalRole: 'USER' };
+    const regularDbUser = { id: 'u1-regular', email: 'regular@damp.com', globalRole: 'USER', isActive: true };
 
     jwtService.verifyAsync.mockResolvedValue(regularPayload);
     prisma.user.findUnique.mockResolvedValue(regularDbUser);

@@ -129,6 +129,11 @@ export class FarmRoleGuard implements CanActivate {
       },
       include: {
         role: true,
+        farm: {
+          include: {
+            user: { select: { id: true, isActive: true } },
+          },
+        },
       },
     });
 
@@ -136,6 +141,12 @@ export class FarmRoleGuard implements CanActivate {
     // el historial, pero no debe seguir dando acceso.
     if (!farmUser || !farmUser.isActive) {
       throw new ForbiddenException('User is not a registered member of this farm');
+    }
+
+    // Cascada de suspensión: si el dueño de la granja está suspendido,
+    // se inhabilita el acceso para todos los miembros de esa granja
+    if (farmUser.farm?.user && !farmUser.farm.user.isActive) {
+      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
     }
 
     request.farmUser = farmUser;

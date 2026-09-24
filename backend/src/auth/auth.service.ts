@@ -40,6 +40,10 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas. Verifique su email y contraseña.');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('Su cuenta se encuentra suspendida o inhabilitada. Comuníquese con soporte.');
+    }
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -64,6 +68,8 @@ export class AuthService {
         name: user.name,
         globalRole: user.globalRole,
         mustChangePassword: user.mustChangePassword,
+        isActive: user.isActive,
+        maxCollars: user.maxCollars,
       },
     };
   }
@@ -133,6 +139,8 @@ export class AuthService {
         name: true,
         globalRole: true,
         mustChangePassword: true,
+        isActive: true,
+        maxCollars: true,
         createdAt: true,
         farmUsers: {
           where: { isActive: true },

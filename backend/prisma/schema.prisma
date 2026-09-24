@@ -29,6 +29,8 @@ model User {
   name         String?
   globalRole         GlobalRole @default(USER) @map("global_role")
   mustChangePassword Boolean    @default(true) @map("must_change_password")
+  isActive           Boolean    @default(true) @map("is_active")
+  maxCollars         Int        @default(0) @map("max_collars")
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
