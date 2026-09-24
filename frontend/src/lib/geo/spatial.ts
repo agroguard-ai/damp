@@ -92,19 +92,14 @@ export function projectPointOnSegment(
 }
 
 /**
- * Snaps a point to the nearest edge or vertex of a polygon if within snapThresholdMeters.
+ * Clamps a point to the nearest edge or vertex of a polygon without distance threshold.
  */
-export function snapPointToPolygonEdge(
+export function clampPointToPolygonBoundary(
   point: LatLngTuple,
-  polygon: LatLngTuple[],
-  snapThresholdMeters: number = 20
-): {
-  point: LatLngTuple;
-  isSnapped: boolean;
-  distanceMeters: number;
-} {
+  polygon: LatLngTuple[]
+): { point: LatLngTuple; distanceMeters: number } {
   if (!polygon || polygon.length < 2) {
-    return { point, isSnapped: false, distanceMeters: Infinity };
+    return { point, distanceMeters: 0 };
   }
 
   let minDistance = Infinity;
@@ -122,12 +117,28 @@ export function snapPointToPolygonEdge(
     }
   }
 
-  const isSnapped = minDistance <= snapThresholdMeters;
+  return { point: bestPoint, distanceMeters: minDistance };
+}
+
+/**
+ * Snaps a point to the nearest edge or vertex of a polygon if within snapThresholdMeters.
+ */
+export function snapPointToPolygonEdge(
+  point: LatLngTuple,
+  polygon: LatLngTuple[],
+  snapThresholdMeters: number = 20
+): {
+  point: LatLngTuple;
+  isSnapped: boolean;
+  distanceMeters: number;
+} {
+  const clampResult = clampPointToPolygonBoundary(point, polygon);
+  const isSnapped = clampResult.distanceMeters <= snapThresholdMeters;
 
   return {
-    point: isSnapped ? bestPoint : point,
+    point: isSnapped ? clampResult.point : point,
     isSnapped,
-    distanceMeters: minDistance,
+    distanceMeters: clampResult.distanceMeters,
   };
 }
 
@@ -147,14 +158,16 @@ export interface BoundaryPointValidationResult {
 export type ZonePointValidationResult = BoundaryPointValidationResult;
 
 /**
- * Generic point-in-boundary validator with edge snapping.
- * Strictly rejects points outside the boundary (outside snap threshold) instead of silently clamping them.
+ * Generic point-in-boundary validator with edge clamping/snapping.
+ * When clampInfinite is true (default), points clicked or dragged outside the boundary
+ * are projected/clamped onto the nearest boundary edge instead of being rejected.
  */
 export function validatePointInBoundary(
   clickedPoint: LatLngTuple,
   boundaryPolygon: LatLngTuple[],
   boundaryLabel: string = 'del establecimiento',
-  snapThresholdMeters: number = 20
+  snapThresholdMeters: number = 20,
+  clampInfinite: boolean = true
 ): BoundaryPointValidationResult {
   if (!boundaryPolygon || boundaryPolygon.length < 3) {
     return { point: clickedPoint, status: 'valid_inside', isValid: true };
@@ -166,18 +179,31 @@ export function validatePointInBoundary(
     return { point: clickedPoint, status: 'valid_inside', isValid: true };
   }
 
-  // 2. Check if close to polygon edge within snapping threshold
-  const snapResult = snapPointToPolygonEdge(clickedPoint, boundaryPolygon, snapThresholdMeters);
-  if (snapResult.isSnapped) {
+  // 2. Point is outside boundary:
+  const clampResult = clampPointToPolygonBoundary(clickedPoint, boundaryPolygon);
+
+  if (clampInfinite) {
+    const isSnip = clampResult.distanceMeters <= snapThresholdMeters;
     return {
-      point: snapResult.point,
+      point: clampResult.point,
+      status: isSnip ? 'snapped_to_border' : 'clamped_to_border',
+      message: isSnip
+        ? `Vértice adherido al perímetro ${boundaryLabel}.`
+        : `Vértice ajustado al límite ${boundaryLabel}.`,
+      isValid: true,
+    };
+  }
+
+  // 3. Fallback rejection if clampInfinite is false and outside threshold
+  if (clampResult.distanceMeters <= snapThresholdMeters) {
+    return {
+      point: clampResult.point,
       status: 'snapped_to_border',
       message: `Vértice adherido al perímetro ${boundaryLabel}.`,
       isValid: true,
     };
   }
 
-  // 3. Point is strictly outside boundary: REJECT
   return {
     point: clickedPoint,
     status: 'rejected_outside',
@@ -203,9 +229,12 @@ export function isPolygonInsideBoundary(
 
   let outsideCount = 0;
   for (const pt of childPolygon) {
-    const validation = validatePointInBoundary(pt, parentPolygon, '', snapThresholdMeters);
-    if (!validation.isValid) {
-      outsideCount++;
+    const inside = isPointInPolygon(pt, parentPolygon);
+    if (!inside) {
+      const clampResult = clampPointToPolygonBoundary(pt, parentPolygon);
+      if (clampResult.distanceMeters > snapThresholdMeters) {
+        outsideCount++;
+      }
     }
   }
 

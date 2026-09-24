@@ -12,7 +12,6 @@ import { animalsApi } from '@/lib/api/animals';
 import { geofencesApi } from '@/lib/api/geofences';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
-import { HierarchyGuideBar } from '@/components/farms/HierarchyGuideBar';
 import { Select } from '@/components/ui/Select';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
@@ -33,9 +32,13 @@ import {
   Layers,
   Power,
   Plus,
+  RotateCw,
 } from 'lucide-react';
 
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
+const ZoneRotationView = dynamic(() => import('@/components/zones/ZoneRotationView'), {
+  ssr: false,
+});
 
 export default function CercosHubPage() {
   return (
@@ -53,6 +56,11 @@ function CercosHubContent() {
 
   const farmIdFromUrl = searchParams?.get('farmId') ?? '';
   const zoneIdFromUrl = searchParams?.get('zoneId') ?? '';
+  const tabFromUrl = searchParams?.get('tab') ?? '';
+
+  const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
+    tabFromUrl === 'rotation' ? 'rotation' : 'fences'
+  );
 
   // 1. Fetch all Farms
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
@@ -268,16 +276,6 @@ function CercosHubContent() {
         </div>
       </div>
 
-      {/* Visual Hierarchy Guide Bar */}
-      <HierarchyGuideBar
-        currentLevel={3}
-        farmName={activeFarm?.name || undefined}
-        farmId={activeFarmId}
-        zoneName={activeZone?.name || undefined}
-        zoneId={activeZoneId}
-        fencesCount={geofences.length}
-      />
-
       {/* Cascading Selectors: 1. Campo -> 2. Zona */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-xs">
         <div>
@@ -337,6 +335,36 @@ function CercosHubContent() {
         </div>
       </div>
 
+      {/* View Tabs: Cercos Eléctricos vs Rotación de Pastoreo (CU012) */}
+      {zones.length > 0 && activeZone && (
+        <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab('fences')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'fences'
+                ? 'bg-white dark:bg-zinc-900 text-cyan-700 dark:text-cyan-400 shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Cercos Eléctricos ({geofences.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('rotation')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === 'rotation'
+                ? 'bg-white dark:bg-zinc-900 text-orange-650 dark:text-orange-400 shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Rotación de Perímetros (Pastoreo Rotativo)</span>
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2.5 shadow-xs">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -366,6 +394,13 @@ function CercosHubContent() {
             <span>Crear Zona en este Campo</span>
           </Link>
         </div>
+      ) : activeTab === 'rotation' && activeZone ? (
+        <ZoneRotationView
+          zone={activeZone}
+          geofences={geofences}
+          animals={animals}
+          onRefreshGeofences={refetchGeofences}
+        />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Left / Center: Interactive Map */}

@@ -1,5 +1,16 @@
 import { apiFetch } from './client';
-import type { Collar, CollarStatus, CreateCollarPayload, UpdateCollarPayload } from '@/types';
+import type {
+  Collar,
+  CollarStatus,
+  CreateCollarPayload,
+  UpdateCollarPayload,
+  CollarClaim,
+  CreateCollarClaimPayload,
+  UpdateCollarClaimPayload,
+  CollarRequest,
+  CreateCollarRequestPayload,
+  UpdateCollarRequestPayload,
+} from '@/types';
 
 export const collarsApi = {
   /** GET /api/collars — returns all collars with their current assignment/status */
@@ -33,5 +44,39 @@ export const collarsApi = {
   delete: (id: number): Promise<void> =>
     apiFetch<void>(`/api/collars/${id}`, {
       method: 'DELETE',
+    }),
+
+  /** GET /api/collars/claims — returns claims */
+  getClaims: (): Promise<CollarClaim[]> => apiFetch<CollarClaim[]>('/api/collars/claims'),
+
+  /** POST /api/collars/[id]/claims — creates a new claim on a collar */
+  createClaim: (collarId: number, data: CreateCollarClaimPayload): Promise<CollarClaim> =>
+    apiFetch<CollarClaim>(`/api/collars/${collarId}/claims`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/collars/claims/[claimId] — updates a claim status / resolution */
+  updateClaim: (claimId: string, data: UpdateCollarClaimPayload): Promise<CollarClaim> =>
+    apiFetch<CollarClaim>(`/api/collars/claims/${claimId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  /** GET /api/collars/requests — returns collar quota requests */
+  getRequests: (): Promise<CollarRequest[]> => apiFetch<CollarRequest[]>('/api/collars/requests'),
+
+  /** POST /api/collars/requests — creates a request for more collars */
+  createRequest: (data: CreateCollarRequestPayload): Promise<CollarRequest> =>
+    apiFetch<CollarRequest>('/api/collars/requests', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/collars/requests/[requestId] — resolves a collar request */
+  updateRequest: (requestId: string, data: UpdateCollarRequestPayload): Promise<CollarRequest> =>
+    apiFetch<CollarRequest>(`/api/collars/requests/${requestId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 };

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { GatewaysService } from '@/gateways/gateways.service';
 import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
@@ -6,6 +6,7 @@ import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { haversineMeters } from './utils/haversine.utils';
 import { MlHealthService, ML_WINDOW_SIZE } from './ml-health.service';
+import { ZoneRotationsService } from '@/zones/zone-rotations.service';
 
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
 const INACTIVITY_RADIUS_M = 15;
@@ -19,11 +20,14 @@ const EVENT_LABELS_ES: Record<string, string> = {
 
 @Injectable()
 export class IotService {
+  private readonly logger = new Logger(IotService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly gatewaysService: GatewaysService,
     private readonly alertSettingsService: AlertSettingsService,
-    private readonly mlHealthService: MlHealthService
+    private readonly mlHealthService: MlHealthService,
+    @Optional() private readonly zoneRotationsService?: ZoneRotationsService
   ) {}
 
   /**
@@ -63,7 +67,7 @@ export class IotService {
 
     const animalCollar = await this.prisma.animalCollar.findFirst({
       where: { collarId: payload.collar_id, endAt: null },
-      select: { animalId: true, animal: { select: { farmId: true } } },
+      select: { animalId: true, animal: { select: { farmId: true, zoneId: true } } },
     });
 
     if (!animalCollar) {
@@ -73,22 +77,48 @@ export class IotService {
     await this.checkHealthThresholds(animalCollar.animalId, animalCollar.animal.farmId, payload);
     await this.checkPredictiveHealth(animalCollar.animalId, payload.collar_id);
 
-    const animalGeofence = await this.prisma.animalGeofence.findFirst({
-      where: { animalId: animalCollar.animalId, endAt: null, geofence: { active: true } },
-      include: { geofence: true },
-    });
+    // Obtener las coordenadas del cerco activo.
+    // Si la zona tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
+    // las coordenadas rotadas / incrementales hora a hora para enviar en el downlink al gateway.
+    let activeFence: { polygon: [number, number][]; geofenceName: string } | null = null;
+    if (this.zoneRotationsService) {
+      activeFence = await this.zoneRotationsService.resolveActiveCoordinatesForAnimal(
+        animalCollar.animalId,
+        animalCollar.animal.zoneId
+      );
+    } else {
+      const animalGeofence = await this.prisma.animalGeofence.findFirst({
+        where: { animalId: animalCollar.animalId, endAt: null, geofence: { active: true } },
+        include: { geofence: true },
+      });
+      if (animalGeofence?.geofence.polygonCoordinates) {
+        let poly: [number, number][] = [];
+        try {
+          poly =
+            typeof animalGeofence.geofence.polygonCoordinates === 'string'
+              ? JSON.parse(animalGeofence.geofence.polygonCoordinates)
+              : (animalGeofence.geofence.polygonCoordinates as [number, number][]);
+        } catch {
+          poly = [];
+        }
+        if (Array.isArray(poly) && poly.length >= 3) {
+          activeFence = { polygon: poly, geofenceName: animalGeofence.geofence.name };
+        }
+      }
+    }
 
-    if (!animalGeofence?.geofence.polygonCoordinates) {
+    if (!activeFence || activeFence.polygon.length === 0) {
       return { downlink: 'NONE' };
     }
 
-    const polygon = animalGeofence.geofence.polygonCoordinates as unknown as [number, number][];
+    const polygon = activeFence.polygon;
 
     const isInside = isPointInPolygon([payload.lat, payload.lng], polygon);
     if (!isInside) {
-      await this.raiseEscapeAlert(animalCollar.animalId, animalGeofence.geofence.name);
+      await this.raiseEscapeAlert(animalCollar.animalId, activeFence.geofenceName);
     }
 
+    // Downlink con las coordenadas actualizadas para que el gateway se las transmita al collar por LoRa
     const downlink = polygon.map((p) => `${p[0]},${p[1]}`).join(';');
 
     return { downlink };
@@ -206,16 +236,37 @@ export class IotService {
     }
 
     for (const [eventName, prediction] of Object.entries(result.events)) {
-      if (!prediction.detected) {
-        continue;
-      }
       const label = EVENT_LABELS_ES[eventName] ?? eventName;
       const confidencePct = Math.round(prediction.probability * 100);
-      await this.raiseHealthAlert(
-        animalId,
-        `[IA:${eventName.toUpperCase()}]`,
-        `Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`
-      );
+
+      let alertId: string | null = null;
+      if (prediction.detected) {
+        const alert = await this.raiseHealthAlert(
+          animalId,
+          `[IA:${eventName.toUpperCase()}]`,
+          `Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`
+        );
+        alertId = alert?.id ?? null;
+      }
+
+      // CU014: Cuando la certeza es alta, dispara alerta y guarda la predicción vinculada.
+      // Camino alternativo 1: Cuando la certeza es baja, guarda la predicción sin alertar para revisión posterior.
+      try {
+        await this.prisma.healthPrediction.create({
+          data: {
+            animalId,
+            predictedEvent: eventName,
+            probability: prediction.probability,
+            threshold: prediction.threshold,
+            detected: prediction.detected,
+            horizonHours: 6,
+            windowReadingsCount: readings.length,
+            alertId,
+          },
+        });
+      } catch (err: any) {
+        this.logger.warn(`Error al guardar predicción de salud para animal ${animalId}: ${err?.message || err}`);
+      }
     }
   }
 
@@ -231,10 +282,10 @@ export class IotService {
     });
 
     if (existing) {
-      return;
+      return existing;
     }
 
-    await this.prisma.alert.create({
+    return this.prisma.alert.create({
       data: { animalId, type: 'HEALTH', message: `${dedupeKey} ${message}` },
     });
   }

@@ -20,6 +20,13 @@ if (typeof window !== 'undefined') {
   });
 }
 
+const WORLD_MASK_COORDS: [number, number][] = [
+  [-85, -180],
+  [-85, 180],
+  [85, 180],
+  [85, -180],
+];
+
 export interface ZoneItem {
   id: string;
   name: string;
@@ -148,7 +155,8 @@ function MapClickHandler({
 
       const clicked: [number, number] = [e.latlng.lat, e.latlng.lng];
       if (boundaryPolygon && boundaryPolygon.length >= 3) {
-        const result = validatePointInBoundary(clicked, boundaryPolygon, boundaryLabel, 20);
+        // Clamping is enabled: always clamp to boundary if outside
+        const result = validatePointInBoundary(clicked, boundaryPolygon, boundaryLabel, 20, true);
         if (!result.isValid) {
           if (onPointRejected) {
             onPointRejected(
@@ -323,31 +331,9 @@ export default function ZoneMap({
     if (!onChangePoints) return;
 
     if (activeBoundaryPolygon && activeBoundaryPolygon.length >= 3) {
-      const result = validatePointInBoundary(pos, activeBoundaryPolygon, resolvedBoundaryLabel, 20);
-      if (!result.isValid) {
-        if (onPointRejected) {
-          onPointRejected(
-            pos,
-            result.message ||
-              `El vértice no puede quedar fuera de los límites ${resolvedBoundaryLabel}. Se restauró su posición previa.`
-          );
-        }
-        // Auto-revert: restore marker and polygon back to pre-drag state
-        const originalPoint = dragStartPointsRef.current?.[idx] || newPoints[idx];
-        marker.setLatLng(originalPoint);
-        const revertedPoints = dragStartPointsRef.current
-          ? [...dragStartPointsRef.current]
-          : [...newPoints];
-        liveCoordsRef.current = [...revertedPoints];
-        if (polygonRef.current) {
-          polygonRef.current.setLatLngs(revertedPoints);
-        }
-        dragStartPointsRef.current = null;
-        onChangePoints([...revertedPoints]);
-        return;
-      }
+      // Clamping is enabled: always clamp to boundary if outside
+      const result = validatePointInBoundary(pos, activeBoundaryPolygon, resolvedBoundaryLabel, 20, true);
 
-      // Valid point (or snapped)
       if (dragStartPointsRef.current) {
         pushHistory(dragStartPointsRef.current);
         dragStartPointsRef.current = null;
@@ -355,11 +341,15 @@ export default function ZoneMap({
         pushHistory(newPoints);
       }
 
-      if (result.status === 'snapped_to_border') {
+      if (result.status === 'snapped_to_border' || result.status === 'clamped_to_border') {
         marker.setLatLng(result.point);
       }
       const updated = [...newPoints];
       updated[idx] = result.point;
+      liveCoordsRef.current = updated;
+      if (polygonRef.current) {
+        polygonRef.current.setLatLngs(updated);
+      }
       onChangePoints(updated);
     } else {
       if (dragStartPointsRef.current) {
@@ -370,6 +360,10 @@ export default function ZoneMap({
       }
       const updated = [...newPoints];
       updated[idx] = pos;
+      liveCoordsRef.current = updated;
+      if (polygonRef.current) {
+        polygonRef.current.setLatLngs(updated);
+      }
       onChangePoints(updated);
     }
   };
@@ -474,30 +468,42 @@ export default function ZoneMap({
           center={center}
         />
 
-        {/* 1. Render Farm Boundary (Nivel 1: Amber dashed perimeter - background reference only) */}
-        {farmPolygon.length > 0 && (
+        {/* Exterior Red Mask: Shading the forbidden area outside the active boundary */}
+        {activeBoundaryPolygon.length >= 3 && (
           <Polygon
-            positions={farmPolygon}
+            positions={[WORLD_MASK_COORDS, activeBoundaryPolygon]}
             pathOptions={{
-              color: '#f59e0b',
-              fillColor: '#fef3c7',
-              fillOpacity: 0.05,
+              color: '#ef4444',
+              fillColor: '#ef4444',
+              fillOpacity: 0.22,
               weight: 2,
-              dashArray: '6, 6',
+              dashArray: '5, 5',
               interactive: false,
             }}
           />
         )}
 
-        {/* 2. Render Zone Boundary if in Cerco Mode (Nivel 2 container: Emerald solid perimeter) */}
+        {/* 1. Render Farm Boundary (Nivel 1: Clear perimeter outline) */}
+        {farmPolygon.length > 0 && (
+          <Polygon
+            positions={farmPolygon}
+            pathOptions={{
+              color: '#16a34a',
+              fillOpacity: 0,
+              weight: 2.5,
+              interactive: false,
+            }}
+          />
+        )}
+
+        {/* 2. Render Zone Boundary if in Cerco Mode (Nivel 2 container) */}
         {zonePolygon.length > 0 && (
           <Polygon
             positions={zonePolygon}
             pathOptions={{
-              color: '#16a34a',
-              fillColor: '#22c55e',
-              fillOpacity: 0.18,
-              weight: 3,
+              color: '#0284c7',
+              fillOpacity: 0,
+              weight: 2.5,
               interactive: false,
             }}
           />

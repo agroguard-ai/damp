@@ -1,3 +1,5 @@
+import type { Zone } from './zone';
+
 export interface Geofence {
   id: string;
   zoneId: string;
@@ -9,6 +11,7 @@ export interface Geofence {
   createdAt?: string;
   updatedAt?: string;
   animalGeofences?: AnimalGeofence[];
+  zone?: Zone | null;
 }
 
 export interface AnimalGeofence {

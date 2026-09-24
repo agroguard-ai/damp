@@ -29,11 +29,15 @@ model User {
   name         String?
   globalRole         GlobalRole @default(USER) @map("global_role")
   mustChangePassword Boolean    @default(true) @map("must_change_password")
+  isActive           Boolean    @default(true) @map("is_active")
+  maxCollars         Int        @default(0) @map("max_collars")
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
   farmUsers FarmUser[]
   farms     Farm[]
+  collarClaims   CollarClaim[]
+  collarRequests CollarRequest[]
 
   @@map("users")
 }
@@ -48,6 +52,8 @@ model Farm {
   polygonCoordinates Json?    @map("polygon_coordinates")
   renspa             String?
   userId             String?  @map("user_id")
+  isActive           Boolean  @default(true) @map("is_active")
+  archivedAt         DateTime? @map("archived_at")
   createdAt          DateTime @default(now()) @map("created_at")
 
   user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -56,6 +62,8 @@ model Farm {
   zones         Zone[]
   gateways      Gateway[]
   collars       Collar[]
+  collarClaims   CollarClaim[]
+  collarRequests CollarRequest[]
   alertSettings AlertSettings?
 
   @@map("farms")
@@ -88,8 +96,9 @@ model Geofence {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  zone            Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zone            Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
   animalGeofences AnimalGeofence[]
+  rotationSteps   ZoneRotationStep[]
 
   @@map("geofences")
 }
@@ -116,6 +125,7 @@ model Animal {
   animalGeofences AnimalGeofence[]
   animalCollars   AnimalCollar[]
   alerts          Alert[]
+  healthPredictions HealthPrediction[]
 
   @@map("animals")
 }
@@ -137,6 +147,7 @@ model Collar {
   farm              Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
   animalCollars     AnimalCollar[]
   telemetryReadings TelemetryReading[]
+  collarClaims      CollarClaim[]
 
   @@map("collars")
 }
@@ -203,10 +214,11 @@ model Zone {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  farm      Farm       @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  animals   Animal[]
-  geofences Geofence[]
-  gateways  Gateway[]
+  farm          Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  animals       Animal[]
+  geofences     Geofence[]
+  gateways      Gateway[]
+  rotationPlans ZoneRotationPlan[]
 
   @@map("zones")
 }
@@ -233,6 +245,7 @@ model AnimalType {
   name        String   @unique
   species     String
   description String?
+  isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -261,16 +274,41 @@ enum AlertType {
 }
 
 model Alert {
-  id         String    @id @default(uuid())
-  type       AlertType
-  message    String
-  animalId   String    @map("animal_id")
-  isResolved Boolean   @default(false) @map("is_resolved")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  id              String            @id @default(uuid())
+  type            AlertType
+  message         String
+  animalId        String            @map("animal_id")
+  isResolved      Boolean           @default(false) @map("is_resolved")
+  isFalsePositive Boolean           @default(false) @map("is_false_positive")
+  feedbackNote    String?           @map("feedback_note")
+  feedbackAt      DateTime?         @map("feedback_at")
+  feedbackUserId  String?           @map("feedback_user_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
 
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animal          Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  healthPredictions HealthPrediction[]
 
   @@map("alerts")
+}
+
+model HealthPrediction {
+  id                  String    @id @default(uuid())
+  animalId            String    @map("animal_id")
+  predictedEvent      String    @map("predicted_event") // 'fiebre' | 'celo' | 'inactividad' | 'anomalia'
+  probability         Float
+  threshold           Float
+  detected            Boolean   @default(false)
+  horizonHours        Int       @default(6) @map("horizon_hours")
+  windowReadingsCount Int       @default(48) @map("window_readings_count")
+  alertId             String?   @map("alert_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  alert  Alert?  @relation(fields: [alertId], references: [id], onDelete: SetNull)
+
+  @@map("health_predictions")
+  @@index([animalId, createdAt])
+  @@index([predictedEvent, detected])
 }
 
 model AlertSettings {
@@ -286,4 +324,105 @@ model AlertSettings {
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
   @@map("alert_settings")
+}
+
+enum CollarClaimStatus {
+  PENDING
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum CollarRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model CollarClaim {
+  id              String            @id @default(uuid())
+  collarId        Int               @map("collar_id")
+  farmId          String?           @map("farm_id")
+  userId          String            @map("user_id")
+  reason          String
+  description     String?
+  status          CollarClaimStatus @default(PENDING)
+  resolutionNotes String?           @map("resolution_notes")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  resolvedAt      DateTime?         @map("resolved_at")
+
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+  farm   Farm?  @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("collar_claims")
+}
+
+model CollarRequest {
+  id             String              @id @default(uuid())
+  farmId         String              @map("farm_id")
+  userId         String              @map("user_id")
+  requestedCount Int                 @map("requested_count")
+  notes          String?
+  status         CollarRequestStatus @default(PENDING)
+  responseNotes  String?             @map("response_notes")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  resolvedAt     DateTime?           @map("resolved_at")
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("collar_requests")
+}
+
+enum ZoneRotationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum RotationStepStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+model ZoneRotationPlan {
+  id               String             @id @default(uuid())
+  zoneId           String             @map("zone_id")
+  name             String             @default("Rotación de Pastoreo")
+  status           ZoneRotationStatus @default(ACTIVE)
+  frequencyHours   Int                @default(24) @map("frequency_hours")
+  currentStepIndex Int                @default(0) @map("current_step_index")
+  totalSteps       Int                @default(0) @map("total_steps")
+  autoRotate       Boolean            @default(true) @map("auto_rotate")
+  startedAt        DateTime           @default(now()) @map("started_at")
+  lastRotatedAt    DateTime           @default(now()) @map("last_rotated_at")
+  nextRotationAt   DateTime           @map("next_rotation_at")
+  completedAt      DateTime?          @map("completed_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  zone  Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  steps ZoneRotationStep[]
+
+  @@map("zone_rotation_plans")
+}
+
+model ZoneRotationStep {
+  id             String             @id @default(uuid())
+  rotationPlanId String             @map("rotation_plan_id")
+  geofenceId     String             @map("geofence_id")
+  orderIndex     Int                @map("order_index")
+  status         RotationStepStatus @default(PENDING)
+  activatedAt    DateTime?          @map("activated_at")
+  completedAt    DateTime?          @map("completed_at")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  rotationPlan ZoneRotationPlan @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
+  geofence     Geofence         @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
+
+  @@unique([rotationPlanId, orderIndex])
+  @@map("zone_rotation_steps")
 }

@@ -9,3 +9,4 @@ export * from './geofence';
 export * from './medical-event';
 export * from './gateway';
 export * from './alert-settings';
+export * from './zone-rotation';

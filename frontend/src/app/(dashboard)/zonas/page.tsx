@@ -13,7 +13,6 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
-import { HierarchyGuideBar } from '@/components/farms/HierarchyGuideBar';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
@@ -21,6 +20,7 @@ import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
 import { Tractor, Layers, Zap, Trash2, ArrowRight, ArrowLeft, ShieldCheck, AlertCircle, Edit3, Save, X } from 'lucide-react';
 import type { Zone } from '@/types';
+import { animalsApi } from '@/lib/api/animals';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
@@ -51,6 +51,16 @@ function ZonasPageContent() {
   const [newZonePasture, setNewZonePasture] = useState('');
   const [newPoints, setNewPoints] = useState<[number, number][]>([]);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
+  const [animalsModalZone, setAnimalsModalZone] = useState<Zone | null>(null);
+
+  const fetchZoneAnimals = useCallback(
+    () =>
+      animalsModalZone && activeFarmId
+        ? animalsApi.getAll({ farmId: activeFarmId, zoneId: animalsModalZone.id, status: 'ACTIVE' })
+        : Promise.resolve([]),
+    [animalsModalZone, activeFarmId]
+  );
+  const { data: zoneAnimals = [], loading: fetchingZoneAnimals } = useApi(fetchZoneAnimals, [animalsModalZone, activeFarmId]);
 
   const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
 
@@ -64,6 +74,14 @@ function ZonasPageContent() {
       return [];
     }
   }, [activeFarm]);
+
+  const currentUserId = emulatedUser?.id || user?.id;
+  const canManageActiveFarm = useMemo(() => {
+    if (!activeFarm || !currentUserId) return false;
+    if (activeFarm.userId === currentUserId) return true;
+    const membership = activeFarm.farmUsers?.find((fu) => fu.userId === currentUserId);
+    return membership?.role?.name === 'ADMIN';
+  }, [activeFarm, currentUserId]);
 
   const fetchZones = useCallback(
     () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
@@ -132,7 +150,7 @@ function ZonasPageContent() {
     if (farmPolygon.length >= 3) {
       const containment = isPolygonInsideBoundary(newPoints as LatLngTuple[], farmPolygon as LatLngTuple[]);
       if (!containment.isInside) {
-        const msg = `La zona contiene ${containment.outsideCount} punto(s) fuera de los límites del establecimiento. Cada punto debe estar dentro del perímetro amarillo.`;
+        const msg = `La zona contiene ${containment.outsideCount} punto(s) fuera de los límites del establecimiento. Cada punto debe estar dentro del perímetro verde.`;
         setError(msg);
         toast.error(msg);
         return;
@@ -173,20 +191,37 @@ function ZonasPageContent() {
     }
   };
 
-  const handleDeleteZone = async (zoneId: string) => {
+  const handleDeleteZone = async (zone: Zone) => {
+    const animalsCount = zone._count?.animals ?? 0;
+    const fencesCount = zone.geofences?.length ?? zone._count?.geofences ?? 0;
+
+    let desc = `¿Estás seguro de que deseas eliminar la zona "${zone.name}"? Esta acción no se puede deshacer.`;
+    if (animalsCount > 0 || fencesCount > 0) {
+      desc += `\n\nImpacto en recursos:`;
+      if (animalsCount > 0) {
+        desc += `\n• ${animalsCount} animal(es) asignados quedarán desvinculados de este potrero (sin perderse ni archivarse).`;
+      }
+      if (fencesCount > 0) {
+        desc += `\n• Se eliminarán ${fencesCount} cerco(s) virtual(es) de la zona.`;
+      }
+    }
+
     const ok = await confirm({
-      title: 'Eliminar zona',
-      description: 'Esta acción no se puede deshacer. Se eliminarán los cercos eléctricos asignados a esta zona.',
-      confirmLabel: 'Eliminar',
+      title: `Eliminar zona "${zone.name}"`,
+      description: desc,
+      confirmLabel: 'Sí, eliminar zona',
       danger: true,
     });
     if (!ok) return;
     try {
-      await deleteZone(zoneId);
+      await deleteZone(zone.id);
       toast.success('Zona eliminada con éxito');
+      if (editingZone?.id === zone.id) {
+        handleCancelEdit();
+      }
       refetchZones();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error desconocido');
+      toast.error(err instanceof Error ? err.message : 'Error desconocido al eliminar la zona');
     }
   };
 
@@ -253,14 +288,6 @@ function ZonasPageContent() {
         </div>
       </div>
 
-      {/* Visual Step-by-Step Hierarchy Guide Bar */}
-      <HierarchyGuideBar
-        currentLevel={2}
-        farmName={activeFarm?.name || undefined}
-        farmId={activeFarmId}
-        zonesCount={zones.length}
-      />
-
       {displayError && (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2.5 shadow-xs">
           <AlertCircle className="w-5 h-5 shrink-0" />
@@ -323,7 +350,7 @@ function ZonasPageContent() {
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
                     {farmPolygon.length > 0
-                      ? 'Límites del campo en amarillo. Los clics fuera del perímetro serán rechazados automáticamente.'
+                      ? 'Zona exterior bloqueada en rojo. Al hacer clic o arrastrar fuera, los vértices se adhieren automáticamente al límite del campo.'
                       : 'El campo no tiene perímetro delimitado; delimitá la zona haciendo clics sucesivos.'}
                   </p>
                 </div>
@@ -492,32 +519,53 @@ function ZonasPageContent() {
                               </Link>
                             </td>
 
-                            <td className="py-4 px-4 text-xs text-zinc-500 dark:text-zinc-400">
-                              {zone._count?.animals ?? '-'} cabezas
+                            <td className="py-4 px-4">
+                              <button
+                                type="button"
+                                onClick={() => setAnimalsModalZone(zone)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border border-green-200/80 dark:border-green-800/40 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors cursor-pointer"
+                                title="Ver hacienda asignada a esta zona"
+                              >
+                                <span>{zone._count?.animals ?? 0} cabezas</span>
+                                <ArrowRight className="w-3 h-3 opacity-60" />
+                              </button>
                             </td>
 
                             <td className="py-4 pl-4 text-right whitespace-nowrap space-x-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleSelectZone(zone)}
-                                className={`px-2 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer ${
-                                  editingZone?.id === zone.id
-                                    ? 'bg-amber-500 text-white shadow-xs'
-                                    : 'text-zinc-600 dark:text-zinc-300 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 border border-zinc-200 dark:border-zinc-800'
-                                }`}
-                                title="Seleccionar y editar zona"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                                <span>Editar</span>
-                              </button>
+                              {canManageActiveFarm ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSelectZone(zone)}
+                                    className={`px-2 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer ${
+                                      editingZone?.id === zone.id
+                                        ? 'bg-amber-500 text-white shadow-xs'
+                                        : 'text-zinc-600 dark:text-zinc-300 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 border border-zinc-200 dark:border-zinc-800'
+                                    }`}
+                                    title="Seleccionar y editar zona"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>Editar</span>
+                                  </button>
 
-                              <button
-                                onClick={() => handleDeleteZone(zone.id)}
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
-                                title="Eliminar zona"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                                  <button
+                                    onClick={() => handleDeleteZone(zone)}
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                                    title="Eliminar zona"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectZone(zone)}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                  title="Ver límites en el mapa"
+                                >
+                                  Ver en mapa
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
@@ -529,9 +577,36 @@ function ZonasPageContent() {
             </div>
           </div>
 
-          {/* Right panel: Create new Zone form */}
+          {/* Right panel: Create new Zone form OR Employee Read-only info */}
           <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-6 sticky top-6">
+            {!canManageActiveFarm ? (
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-4 sticky top-6">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  <ShieldCheck className="w-4 h-4 text-zinc-400" />
+                  <span>Modo Lectura (Empleado)</span>
+                </div>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
+                  Potreros y Subdivisiones
+                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Tenés permisos de consulta para este establecimiento. Podés navegar por las zonas en el mapa y consultar sus cercos eléctricos. Para dar de alta o modificar potreros, comunicate con el administrador del campo.
+                </p>
+                {editingZone && (
+                  <div className="p-3.5 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 block text-sm">
+                      {editingZone.name}
+                    </span>
+                    <span className="text-zinc-500 block">
+                      Pastura: {editingZone.pastureType || 'No especificada'}
+                    </span>
+                    <span className="text-green-600 dark:text-green-400 font-mono font-semibold block">
+                      Superficie: {drawnAreaHa} Ha
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-6 sticky top-6">
               <div>
                 <div className="flex items-center justify-between">
                   <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
@@ -760,6 +835,90 @@ function ZonasPageContent() {
                   )}
                 </div>
               </form>
+            </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {animalsModalZone && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                  Hacienda en {animalsModalZone.name}
+                </h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  {animalsModalZone.pastureType ? `Pastura: ${animalsModalZone.pastureType} • ` : ''}
+                  Total: {zoneAnimals.length} cabezas activas
+                </p>
+              </div>
+              <button
+                onClick={() => setAnimalsModalZone(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+              {fetchingZoneAnimals ? (
+                <SkeletonRowList count={3} />
+              ) : zoneAnimals.length === 0 ? (
+                <p className="text-zinc-400 text-sm text-center py-6">
+                  No hay animales asignados actualmente en esta zona.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {zoneAnimals.map((animal) => {
+                    const collar = animal.animalCollars[0]?.collar;
+                    const fence = animal.animalGeofences[0]?.geofence;
+                    return (
+                      <div
+                        key={animal.id}
+                        className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 text-xs"
+                      >
+                        <div>
+                          <span className="font-bold text-zinc-900 dark:text-white">
+                            {animal.tag || `ID: ${animal.id.slice(0, 6)}`}
+                          </span>
+                          <div className="text-zinc-400 text-[11px]">
+                            {animal.breed} &bull; {animal.weightKg} kg
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {collar ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
+                              Collar #{collar.id}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-zinc-400">Sin collar</span>
+                          )}
+                          {fence && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800/40">
+                              ⚡ {fence.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 flex justify-between items-center">
+              <span className="text-xs text-zinc-400">
+                ¿Deseás mover o reasignar animales?
+              </span>
+              <Link
+                href={`/animals?farmId=${activeFarmId}&zoneId=${animalsModalZone.id}`}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <span>Gestión de Hacienda</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ if errorlevel 1 (
 )
 echo.
 echo [2/3] Backend (NestJS, puerto 3001)...
-start "DAMP Backend (3001)" /D "%ROOT%backend" cmd /k pnpm run start:dev
+start "DAMP Backend (3001)" /D "%ROOT%backend" cmd /k pnpm dev
 echo.
 echo [3/3] Frontend (Next.js, puerto 3000)...
 start "DAMP Frontend (3000)" /D "%ROOT%frontend" cmd /k pnpm run dev

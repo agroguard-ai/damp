@@ -42,16 +42,31 @@ export class FarmsService {
       return [];
     }
 
-    // Regular users see farms where they are owner or active member
+    // Regular users see farms where they are owner or active member, and farm is active
     return this.prisma.farm.findMany({
       where: {
-        OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+        isActive: true,
+        AND: [
+          {
+            OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+          },
+          {
+            OR: [{ user: null }, { user: { isActive: true } }],
+          },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       include: {
         farmUsers: {
           where: { userId, isActive: true },
           include: { role: true },
+        },
+        _count: {
+          select: {
+            animals: { where: { isArchived: false } },
+            zones: true,
+            farmUsers: { where: { isActive: true } },
+          },
         },
       },
     });
@@ -62,10 +77,11 @@ export class FarmsService {
       where: { id },
       include: {
         alertSettings: true,
+        user: { select: { id: true, isActive: true } },
       },
     });
 
-    if (!farm) {
+    if (!farm || !farm.isActive) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -74,6 +90,11 @@ export class FarmsService {
     // Superadmin bypass
     if (user?.globalRole === GlobalRole.SUPER_ADMIN) {
       return farm;
+    }
+
+    // Suspension check: if the farm has an owner and that owner is inactive, block access
+    if (farm.user && !farm.user.isActive) {
+      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
     }
 
     // Owner check
@@ -174,16 +195,70 @@ export class FarmsService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const farm = await this.prisma.farm.findUnique({ where: { id } });
 
-    if (!farm) {
+    if (!farm || !farm.isActive) {
       throw new NotFoundException('Farm not found');
     }
 
     if (user?.globalRole !== GlobalRole.SUPER_ADMIN && farm.userId !== userId) {
-      throw new ForbiddenException('Solo el propietario o un Superadmin puede eliminar la granja');
+      const member = await this.prisma.farmUser.findFirst({
+        where: { farmId: id, userId, isActive: true, role: { name: 'ADMIN' } },
+      });
+      if (!member) {
+        throw new ForbiddenException('Solo el propietario o un administrador de la granja puede dar de baja el establecimiento');
+      }
     }
 
-    return this.prisma.farm.delete({
-      where: { id },
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Obtener animales de la granja para cerrar asignaciones de collares y geocercas
+      const farmAnimals = await tx.animal.findMany({
+        where: { farmId: id },
+        select: { id: true },
+      });
+      const animalIds = farmAnimals.map((a) => a.id);
+
+      if (animalIds.length > 0) {
+        await tx.animalCollar.updateMany({
+          where: { animalId: { in: animalIds }, endAt: null },
+          data: { endAt: new Date() },
+        });
+        await tx.animalGeofence.updateMany({
+          where: { animalId: { in: animalIds }, endAt: null },
+          data: { endAt: new Date() },
+        });
+        await tx.animal.updateMany({
+          where: { farmId: id },
+          data: { isArchived: true, zoneId: null },
+        });
+      }
+
+      // 2. Liberar collares asignados al campo para que vuelvan a la flota disponible
+      await tx.collar.updateMany({
+        where: { farmId: id },
+        data: { farmId: null },
+      });
+
+      // 3. Eliminar geocercas y zonas de la granja
+      await tx.geofence.deleteMany({
+        where: { zone: { farmId: id } },
+      });
+      await tx.zone.deleteMany({
+        where: { farmId: id },
+      });
+
+      // 4. Inactivar miembros de la granja
+      await tx.farmUser.updateMany({
+        where: { farmId: id },
+        data: { isActive: false, removedAt: new Date() },
+      });
+
+      // 5. Baja lógica del establecimiento
+      return tx.farm.update({
+        where: { id },
+        data: {
+          isActive: false,
+          archivedAt: new Date(),
+        },
+      });
     });
   }
 }

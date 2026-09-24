@@ -6,6 +6,8 @@ import { GlobalRole } from '@generated/prisma';
 import { AdminUsersService } from './admin-users.service';
 import { UpdateGlobalRoleDto } from './dto/update-global-role.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserStatusDto } from './dto/update-user-status.dto';
+import { UpdateMaxCollarsDto } from './dto/update-max-collars.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, GlobalRolesGuard)
@@ -26,6 +28,16 @@ export class AdminUsersController {
   @Patch('users/:userId/role')
   updateGlobalRole(@Param('userId') userId: string, @Body() updateGlobalRoleDto: UpdateGlobalRoleDto) {
     return this.adminUsersService.updateGlobalRole(userId, updateGlobalRoleDto);
+  }
+
+  @Patch('users/:userId/status')
+  updateStatus(@Param('userId') userId: string, @Body() updateUserStatusDto: UpdateUserStatusDto) {
+    return this.adminUsersService.updateStatus(userId, updateUserStatusDto.isActive);
+  }
+
+  @Patch('users/:userId/max-collars')
+  updateMaxCollars(@Param('userId') userId: string, @Body() updateMaxCollarsDto: UpdateMaxCollarsDto) {
+    return this.adminUsersService.updateMaxCollars(userId, updateMaxCollarsDto.maxCollars);
   }
 
   @Get('farms')

@@ -30,3 +30,60 @@ export interface UpdateCollarPayload {
   identifier?: string;
   farmId?: string | null;
 }
+
+export type CollarClaimStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'REJECTED';
+
+export interface CollarClaim {
+  id: string;
+  collarId: number;
+  farmId?: string | null;
+  userId: string;
+  reason: string;
+  description?: string | null;
+  status: CollarClaimStatus;
+  resolutionNotes?: string | null;
+  createdAt: string;
+  resolvedAt?: string | null;
+  collar?: { id: number; identifier: string; status: CollarStatus };
+  farm?: { id: string; name: string | null } | null;
+  user?: { id: string; name: string | null; email: string };
+}
+
+export interface CreateCollarClaimPayload {
+  reason: string;
+  description?: string;
+  markAsDamaged?: boolean;
+}
+
+export interface UpdateCollarClaimPayload {
+  status: CollarClaimStatus;
+  resolutionNotes?: string;
+}
+
+export type CollarRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface CollarRequest {
+  id: string;
+  farmId: string;
+  userId: string;
+  requestedCount: number;
+  notes?: string | null;
+  status: CollarRequestStatus;
+  responseNotes?: string | null;
+  createdAt: string;
+  resolvedAt?: string | null;
+  farm?: { id: string; name: string | null } | null;
+  user?: { id: string; name: string | null; email: string };
+}
+
+export interface CreateCollarRequestPayload {
+  farmId: string;
+  requestedCount: number;
+  notes?: string;
+}
+
+export interface UpdateCollarRequestPayload {
+  status: CollarRequestStatus;
+  responseNotes?: string;
+  incrementMaxCollars?: boolean;
+}
