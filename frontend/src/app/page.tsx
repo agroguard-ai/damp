@@ -22,10 +22,10 @@ import {
 } from 'lucide-react';
 
 const stats = [
-  { value: '<5s', label: 'Latencia de alertas' },
   { value: '24/7', label: 'Monitoreo en vivo' },
-  { value: '99.9%', label: 'Disponibilidad' },
-  { value: '100%', label: 'Aislamiento multi-campo' },
+  { value: 'IA', label: 'Para detección temprana' },
+  { value: 'GPS + temperatura', label: 'Sensores en cada collar' },
+  { value: 'LoRa', label: 'Funciona sin cobertura celular' },
 ];
 
 const features = [
@@ -122,6 +122,9 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <div className="bg-primary-950 px-6 py-2 text-center text-sm font-medium text-white">
+        Prototipo en desarrollo · Buscamos campos para prueba piloto
+      </div>
       <Nav isSignedIn={isSignedIn} />
       <Hero />
       <StatsStrip />
@@ -279,7 +282,7 @@ function HeroMockup() {
           <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
           <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
           <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
-          <span className="ml-3 text-xs font-medium text-subtle">Campo Norte — Mapa en vivo</span>
+          <span className="ml-3 text-xs font-medium text-subtle">Campo Norte — Mapa de ejemplo (datos simulados)</span>
         </div>
 
         <div className="relative h-72 sm:h-80 bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-primary-950 dark:to-neutral-900">
@@ -424,7 +427,7 @@ function ArchitectureSection() {
               Ingeniería & Hardware IoT
             </span>
             <h2 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">
-              Arquitectura técnica integral y verificada
+              Arquitectura técnica integral
             </h2>
             <p className="mt-4 text-muted text-lg leading-relaxed">
               DAMP Agro combina hardware embebido LoRa 915 MHz, backend geoespacial NestJS con PostGIS, autenticación nativa JWT y microservicio predictivo de Inteligencia Artificial con BiLSTM.
@@ -483,7 +486,7 @@ function ArchitectureSection() {
               </div>
               <h3 className="text-lg font-bold">Inferencia Predictiva (BiLSTM)</h3>
               <p className="mt-2 text-sm text-muted leading-relaxed">
-                Microservicio en Python FastAPI con redes neuronales recurrentes para detección temprana de anomalías clínicas y patrones de rumia o estrés térmico.
+                Microservicio en Python FastAPI con redes neuronales recurrentes para detección temprana de anomalías clínicas y estrés térmico.
               </p>
             </div>
             <div className="mt-4 pt-4 border-t border-border/60 flex items-center gap-2 text-xs text-subtle font-medium">
@@ -540,11 +543,6 @@ function Plans() {
                 : 'border-border bg-surface'
             }`}
           >
-            {plan.featured && (
-              <span className="inline-block mb-3 px-2.5 py-1 rounded-full bg-primary-600 text-xs font-semibold text-white">
-                Más elegido
-              </span>
-            )}
             <h3 className={`text-xl font-bold ${plan.featured ? 'text-white' : 'text-foreground'}`}>{plan.name}</h3>
             <p className={`mt-2 text-sm ${plan.featured ? 'text-primary-100' : 'text-muted'}`}>{plan.description}</p>
 
@@ -567,7 +565,7 @@ function Plans() {
                   : 'bg-primary text-on-primary hover:bg-primary-hover'
               }`}
             >
-              Hablar con ventas
+              Sumarme al piloto
             </a>
           </div>
         ))}
