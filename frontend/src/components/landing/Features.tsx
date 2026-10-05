@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  Satellite,
-  ShieldAlert,
-  HeartPulse,
-  Radio,
-  Users,
-  BarChart3,
-} from 'lucide-react';
+import { Satellite, ShieldAlert, HeartPulse, Radio, Users, BarChart3 } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const features = [
@@ -55,9 +48,7 @@ export function Features() {
   return (
     <section id="producto" className="mx-auto max-w-7xl px-6 py-24 scroll-mt-20">
       <div className="max-w-2xl">
-        <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider">
-          Plataforma DAMP Agro
-        </span>
+        <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider">Plataforma DAMP Agro</span>
         <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">
           Control total de tu hacienda desde una sola pantalla
         </h2>

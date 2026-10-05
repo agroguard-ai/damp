@@ -9,6 +9,7 @@ export interface AuthUser {
   name: string | null;
   globalRole: 'SUPER_ADMIN' | 'USER';
   mustChangePassword?: boolean;
+  isActive?: boolean;
   farmUsers?: Array<{
     id: string;
     farmId: string;
@@ -28,7 +29,7 @@ interface AuthContextType {
   emulatedUser: AuthUser | null;
   loading: boolean;
   login: (email: string, pass: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (newPassword: string) => Promise<void>;
   setEmulation: (userId: string | null, redirectTo?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -47,8 +48,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
+        if (data.user && data.user.isActive === false) {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+          } catch {
+            // ignore
+          }
+          setUser(null);
+          setEmulatedUser(null);
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          return;
+        }
         setUser(data.user || null);
         setEmulatedUser(data.emulatedUser || null);
+      } else if (res.status === 401 || res.status === 403) {
+        setUser((prevUser) => {
+          if (prevUser && typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          return null;
+        });
+        setEmulatedUser(null);
       } else {
         setUser(null);
         setEmulatedUser(null);
@@ -64,6 +86,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void refreshUser();
+
+    const interval = setInterval(() => {
+      void refreshUser();
+    }, 10000);
+
+    const onFocus = () => {
+      void refreshUser();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', onFocus);
+      }
+    };
   }, [refreshUser]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -88,11 +129,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.refresh();
   };
 
-  const changePassword = async (currentPassword: string, newPassword: string) => {
+  const changePassword = async (newPassword: string) => {
     const res = await fetch('/api/auth/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify({ newPassword }),
     });
 
     const data = await res.json();

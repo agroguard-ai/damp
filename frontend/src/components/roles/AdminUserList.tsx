@@ -135,9 +135,7 @@ export function AdminUserList() {
         throw new Error(errData.message || 'Error al cambiar estado del usuario');
       }
 
-      setUsers((prev) =>
-        prev.map((item) => (item.id === u.id ? { ...item, isActive: !u.isActive } : item))
-      );
+      setUsers((prev) => prev.map((item) => (item.id === u.id ? { ...item, isActive: !u.isActive } : item)));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al actualizar estado';
       alert(message);
@@ -211,6 +209,7 @@ export function AdminUserList() {
       setFormPassword('');
       setFormRole('USER');
       setFormMaxCollars(10);
+      setIsModalOpen(false);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear usuario';
       alert(message);
@@ -275,7 +274,7 @@ export function AdminUserList() {
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
             >
               <UserPlus className="w-4 h-4" />
-              Nuevo Usuario / Cliente
+              Nuevo Usuario
             </button>
           </div>
         </div>
@@ -338,9 +337,7 @@ export function AdminUserList() {
                         : 'hover:bg-zinc-50/70 dark:hover:bg-zinc-800/40'
                     }`}
                   >
-                    <td className="px-6 py-4 font-semibold text-zinc-900 dark:text-white">
-                      {u.name || 'Sin nombre'}
-                    </td>
+                    <td className="px-6 py-4 font-semibold text-zinc-900 dark:text-white">{u.name || 'Sin nombre'}</td>
                     <td className="px-6 py-4 font-medium text-zinc-800 dark:text-zinc-200">
                       {u.email}
                       <div className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">{u.id}</div>
@@ -379,9 +376,7 @@ export function AdminUserList() {
                               {assigned}
                             </span>
                             <span className="text-zinc-400">/</span>
-                            <span className="font-semibold text-zinc-600 dark:text-zinc-300">
-                              {u.maxCollars}
-                            </span>
+                            <span className="font-semibold text-zinc-600 dark:text-zinc-300">{u.maxCollars}</span>
                           </div>
                           <button
                             onClick={() => {
@@ -499,7 +494,9 @@ export function AdminUserList() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-zinc-900 dark:text-white">Cupo de Collares</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{editingCollarUser.name || editingCollarUser.email}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {editingCollarUser.name || editingCollarUser.email}
+                  </p>
                 </div>
               </div>
               <button
@@ -563,10 +560,7 @@ export function AdminUserList() {
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">Crear Usuario / Cliente</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Alta de cuenta por equipo de ventas / administración
-                  </p>
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-white">Crear Usuario</h3>
                 </div>
               </div>
               <button
@@ -652,7 +646,7 @@ export function AdminUserList() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

@@ -51,7 +51,8 @@ const STATUS_CLASSES: Record<CollarStatus, string> = {
 const CLAIM_STATUS_BADGES: Record<CollarClaimStatus, { label: string; class: string }> = {
   PENDING: {
     label: 'Pendiente',
-    class: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40',
+    class:
+      'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/40',
   },
   IN_REVIEW: {
     label: 'En Revisión',
@@ -59,7 +60,8 @@ const CLAIM_STATUS_BADGES: Record<CollarClaimStatus, { label: string; class: str
   },
   RESOLVED: {
     label: 'Resuelto',
-    class: 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/40',
+    class:
+      'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/40',
   },
   REJECTED: {
     label: 'Desestimado',
@@ -408,7 +410,9 @@ export default function CollaresPage() {
                 <div className="text-center py-12 text-zinc-400 dark:text-zinc-500 space-y-2">
                   <RadioOff className="w-10 h-10 mx-auto text-zinc-300 dark:text-zinc-600" />
                   <p className="text-sm font-semibold">No se encontraron collares con los filtros seleccionados.</p>
-                  <p className="text-xs text-zinc-400">Intente modificar el término de búsqueda o el filtro de estado.</p>
+                  <p className="text-xs text-zinc-400">
+                    Intente modificar el término de búsqueda o el filtro de estado.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -519,7 +523,11 @@ export default function CollaresPage() {
                             className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                             title="Ver historial de asignación"
                           >
-                            {expandedId === c.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {expandedId === c.id ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -666,7 +674,9 @@ export default function CollaresPage() {
               ) : requests.length === 0 ? (
                 <div className="text-center py-12 text-zinc-400 space-y-1">
                   <Building2 className="w-10 h-10 mx-auto text-zinc-300" />
-                  <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">No hay solicitudes registradas.</p>
+                  <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                    No hay solicitudes registradas.
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -686,15 +696,15 @@ export default function CollaresPage() {
                                 req.status === 'APPROVED'
                                   ? 'bg-green-50 text-green-700 border-green-200'
                                   : req.status === 'REJECTED'
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    ? 'bg-red-50 text-red-700 border-red-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
                               }`}
                             >
                               {req.status === 'APPROVED'
                                 ? 'Aprobada'
                                 : req.status === 'REJECTED'
-                                ? 'Rechazada'
-                                : 'Pendiente de Aprobación'}
+                                  ? 'Rechazada'
+                                  : 'Pendiente de Aprobación'}
                             </span>
                           </div>
                           <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
@@ -851,9 +861,7 @@ export default function CollaresPage() {
                       <ShieldAlert className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
                       Dañados o para recambio
                     </div>
-                    <span className="font-bold text-base text-red-700 dark:text-red-300 font-mono">
-                      {damagedCount}
-                    </span>
+                    <span className="font-bold text-base text-red-700 dark:text-red-300 font-mono">{damagedCount}</span>
                   </div>
                 )}
               </div>

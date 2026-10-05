@@ -224,14 +224,17 @@ export interface MapProviderConfig {
 export const MAP_PROVIDERS: Record<MapLayerType, MapProviderConfig> = {
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    roadsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
-    labelsUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+    roadsUrl:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+    labelsUrl:
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri &mdash; Fuentes: Esri, Maxar, Earthstar Geographics',
     maxZoom: 19,
   },
   streets: {
     url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
     maxZoom: 19,
   },
   topo: {
@@ -475,10 +478,7 @@ export default function PolygonDrawerMap({
       </div>
 
       {/* Map Container Canvas */}
-      <div
-        ref={containerRef}
-        className="w-full h-105 rounded-xl overflow-hidden relative z-10 group"
-      >
+      <div ref={containerRef} className="w-full h-105 rounded-xl overflow-hidden relative z-10 group">
         {/* Floating Round Action Controls inside the map */}
         <MapActionControls
           targetRef={containerRef}

@@ -10,18 +10,7 @@ import type { AnimalType } from '@/types';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
-import {
-  Tag,
-  Search,
-  Plus,
-  Edit2,
-  Trash2,
-  RotateCcw,
-  CheckCircle2,
-  X,
-  Layers,
-  AlertTriangle,
-} from 'lucide-react';
+import { Tag, Search, Plus, Edit2, Trash2, RotateCcw, CheckCircle2, X, Layers, AlertTriangle } from 'lucide-react';
 
 export default function AnimalTypesPage() {
   const { user, emulatedUser, loading: authLoading } = useAuth();
@@ -44,8 +33,18 @@ export default function AnimalTypesPage() {
 
   const { data: types = [], loading, error: loadError, refetch } = useApi(fetchTypes);
 
-  const { mutate: createType, loading: creating, error: createError, reset: resetCreate } = useMutation(animalTypesApi.create);
-  const { mutate: updateType, loading: updating, error: updateError, reset: resetUpdate } = useMutation(animalTypesApi.update);
+  const {
+    mutate: createType,
+    loading: creating,
+    error: createError,
+    reset: resetCreate,
+  } = useMutation(animalTypesApi.create);
+  const {
+    mutate: updateType,
+    loading: updating,
+    error: updateError,
+    reset: resetUpdate,
+  } = useMutation(animalTypesApi.update);
   const { mutate: deleteType, loading: deleting } = useMutation(animalTypesApi.delete);
   const { mutate: reactivateType, loading: reactivating } = useMutation(animalTypesApi.reactivate);
 
@@ -340,8 +339,8 @@ export default function AnimalTypesPage() {
                             isEditing
                               ? 'bg-amber-50/70 dark:bg-amber-950/20 border-l-4 border-l-amber-500'
                               : !type.isActive
-                              ? 'bg-zinc-50/40 dark:bg-zinc-950/40 opacity-75 hover:opacity-100'
-                              : 'hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30'
+                                ? 'bg-zinc-50/40 dark:bg-zinc-950/40 opacity-75 hover:opacity-100'
+                                : 'hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30'
                           }`}
                         >
                           {/* Name */}
@@ -368,7 +367,10 @@ export default function AnimalTypesPage() {
                           </td>
 
                           {/* Description */}
-                          <td className="py-3.5 px-3 text-zinc-500 dark:text-zinc-400 max-w-[220px] truncate" title={type.description || ''}>
+                          <td
+                            className="py-3.5 px-3 text-zinc-500 dark:text-zinc-400 max-w-[220px] truncate"
+                            title={type.description || ''}
+                          >
                             {type.description || <span className="italic text-zinc-400">Sin descripción</span>}
                           </td>
 
@@ -487,9 +489,7 @@ export default function AnimalTypesPage() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  Especie Ganadera
-                </label>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Especie Ganadera</label>
                 <select
                   value={species}
                   onChange={(e) => setSpecies(e.target.value)}
@@ -520,7 +520,8 @@ export default function AnimalTypesPage() {
                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>
-                    Las modificaciones de nombre y especie se reflejarán de inmediato en todos los animales que ya utilicen este tipo.
+                    Las modificaciones de nombre y especie se reflejarán de inmediato en todos los animales que ya
+                    utilicen este tipo.
                   </span>
                 </div>
               )}
