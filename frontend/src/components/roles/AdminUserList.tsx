@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
+import { useToast } from '@/context/ToastContext';
 import {
+  Users,
   UserPlus,
   Key,
   Copy,
@@ -37,6 +39,7 @@ interface UserRecord {
 export function AdminUserList() {
   const { setEmulation } = useAuth();
   const confirm = useConfirm();
+  const { toast } = useToast();
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,9 +98,10 @@ export function AdminUserList() {
       }
 
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, globalRole: newRole } : u)));
+      toast.success('Rol del usuario actualizado');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al actualizar';
-      alert(message);
+      toast.error(message);
     } finally {
       setUpdatingId(null);
     }
@@ -136,9 +140,10 @@ export function AdminUserList() {
       }
 
       setUsers((prev) => prev.map((item) => (item.id === u.id ? { ...item, isActive: !u.isActive } : item)));
+      toast.success(u.isActive ? 'Usuario suspendido' : 'Usuario reactivado');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al actualizar estado';
-      alert(message);
+      toast.error(message);
     } finally {
       setUpdatingId(null);
     }
@@ -167,9 +172,10 @@ export function AdminUserList() {
         )
       );
       setEditingCollarUser(null);
+      toast.success('Cupo de collares actualizado');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al actualizar cupo';
-      alert(message);
+      toast.error(message);
     } finally {
       setUpdatingCollarLimit(false);
     }
@@ -210,9 +216,10 @@ export function AdminUserList() {
       setFormRole('USER');
       setFormMaxCollars(10);
       setIsModalOpen(false);
+      toast.success('Usuario creado exitosamente');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al crear usuario';
-      alert(message);
+      toast.error(message);
     } finally {
       setCreating(false);
     }
@@ -230,7 +237,7 @@ export function AdminUserList() {
     try {
       await setEmulation(userId, '/dashboard');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error al iniciar emulación');
+      toast.error(err instanceof Error ? err.message : 'Error al iniciar emulación');
     }
   };
 
@@ -253,32 +260,32 @@ export function AdminUserList() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        {/* Table Top Header */}
-        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Usuarios Plataforma (Global)</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Gestión de clientes, productores y suspensión de servicios por administración o mora
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
-              Total: {users.length}
-            </span>
-            <button
-              onClick={() => {
-                setCreatedCredentials(null);
-                setIsModalOpen(true);
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              Nuevo Usuario
-            </button>
-          </div>
+      {/* Top Header Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+            <Users className="w-7 h-7 text-green-600 dark:text-green-500" />
+            Usuarios de la Plataforma
+          </h1>
         </div>
+        <div className="flex items-center gap-3">
+          <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
+            Total: {users.length}
+          </span>
+          <button
+            onClick={() => {
+              setCreatedCredentials(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            Nuevo Usuario
+          </button>
+        </div>
+      </div>
 
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         {/* Credentials Banner when a user was just created */}
         {createdCredentials && (
           <div className="m-6 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -313,7 +320,7 @@ export function AdminUserList() {
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-400 uppercase font-semibold text-xs border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="px-6 py-3.5">Nombre / Usuario</th>
-                <th className="px-6 py-3.5">Email / ID</th>
+                <th className="px-6 py-3.5">Email</th>
                 <th className="px-6 py-3.5">Estado</th>
                 <th className="px-6 py-3.5">Collares Contratados</th>
                 <th className="px-6 py-3.5">Granjas</th>
@@ -338,10 +345,7 @@ export function AdminUserList() {
                     }`}
                   >
                     <td className="px-6 py-4 font-semibold text-zinc-900 dark:text-white">{u.name || 'Sin nombre'}</td>
-                    <td className="px-6 py-4 font-medium text-zinc-800 dark:text-zinc-200">
-                      {u.email}
-                      <div className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">{u.id}</div>
-                    </td>
+                    <td className="px-6 py-4 font-medium text-zinc-800 dark:text-zinc-200">{u.email}</td>
 
                     {/* Estado Badge */}
                     <td className="px-6 py-4">
@@ -412,7 +416,7 @@ export function AdminUserList() {
                       {u.mustChangePassword ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                           <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          Provisional (Pendiente)
+                          Provisional
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
