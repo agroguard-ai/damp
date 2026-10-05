@@ -70,6 +70,7 @@ describe('FarmUsersService', () => {
     it('reactiva (isActive: true, removedAt: null) al reasignar un usuario previamente removido', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
+      prisma.farmUser.findFirst.mockResolvedValue(null);
       prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'OPERATOR' });
       prisma.farmUser.upsert.mockResolvedValue({ id: 'fu1', isActive: true });
 
@@ -81,10 +82,27 @@ describe('FarmUsersService', () => {
         })
       );
     });
+
+    it('rechaza asignar un usuario que ya pertenece a otra granja', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-2' });
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
+      prisma.farmUser.findFirst.mockResolvedValue({
+        id: 'fu1',
+        farmId: 'farm-1',
+        userId: 'user-1',
+        isActive: true,
+        farm: { name: 'Granja Los Pinos' },
+      });
+
+      await expect(service.assignSubUser('farm-2', { userId: 'user-1', roleName: 'OPERATOR' })).rejects.toThrow(
+        'El usuario "a@b.com" ya se encuentra asignado al establecimiento "Granja Los Pinos". Un usuario solo puede pertenecer a una granja a la vez.'
+      );
+    });
+
     it('rechaza asignar ADMIN si ya existe otro administrador activo en la granja', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-2', email: 'user2@b.com' });
-      prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu-admin-1', userId: 'user-1', roleId: 'role-admin' });
+      prisma.farmUser.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'fu-admin-1', userId: 'user-1', roleId: 'role-admin' });
 
       await expect(service.assignSubUser('farm-1', { userId: 'user-2', roleName: 'ADMIN' } as any)).rejects.toThrow(
         'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'

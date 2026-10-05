@@ -58,6 +58,33 @@ export class FarmUsersService {
       throw new NotFoundException(`Target user not found in system database`);
     }
 
+    // Regla de negocio: Un usuario solo puede pertenecer a 1 granja a la vez
+    const existingMembership = await this.prisma.farmUser.findFirst({
+      where: {
+        userId: user.id,
+        isActive: true,
+      },
+      include: {
+        farm: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (existingMembership) {
+      if (existingMembership.farmId === farmId) {
+        throw new BadRequestException('El usuario ya se encuentra asignado a esta granja.');
+      } else {
+        const farmName = existingMembership.farm?.name || 'otra granja';
+        throw new BadRequestException(
+          `El usuario "${user.email}" ya se encuentra asignado al establecimiento "${farmName}". Un usuario solo puede pertenecer a una granja a la vez.`
+        );
+      }
+    }
+
     const roleNameUpper = dto.roleName.toUpperCase();
 
     // Regla de negocio: cada granja posee un único rol administrador
