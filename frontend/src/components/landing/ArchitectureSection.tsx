@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import { Cpu, ArrowRight, Maximize2, ExternalLink } from 'lucide-react';
+import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 export function ArchitectureSection() {
+  const previewRef = useScrollReveal<HTMLDivElement>();
+
   return (
     <section
       id="arquitectura"
@@ -18,21 +23,21 @@ export function ArchitectureSection() {
           <div className="max-w-2xl">
             <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider flex items-center gap-1.5">
               <Cpu className="w-4 h-4" />
-              Ingeniería & Hardware IoT
+              Ingeniería Hardware & Software
             </span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">
-              Arquitectura técnica integral y verificada
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">
+              Diseñado para resistir la intemperie y la falta de señal
             </h2>
             <p className="mt-4 text-muted text-lg leading-relaxed">
-              DAMP Agro cuenta con collares LoRa ESP32-S3 en el campo, gateways Heltec V3, backend NestJS con PostGIS,
-              autenticación nativa JWT y microservicio predictivo BiLSTM con DVC.
+              La tecnología de DAMP Agro está pensada para la realidad rural. Los collares LoRa (ESP32-S3) transmiten
+              hacia el gateway del campo (Heltec V3), requiriendo conexión a internet únicamente en el casco.
             </p>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <Link
               href="/arquitectura"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-green-600 text-white hover:bg-green-700 active:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500 dark:active:bg-green-700 transition-colors shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-md hover:shadow-lg"
             >
               Explorar arquitectura interactiva
               <ArrowRight className="w-4 h-4" />
@@ -51,7 +56,10 @@ export function ArchitectureSection() {
         </div>
 
         {/* Interactive preview box */}
-        <div className="relative rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden">
+        <div
+          ref={previewRef}
+          className="relative rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden"
+        >
           <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-surface-raised/90 backdrop-blur-md text-xs text-muted">
             <div className="flex items-center gap-2.5">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
