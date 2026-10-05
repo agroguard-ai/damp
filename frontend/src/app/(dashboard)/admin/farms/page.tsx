@@ -72,23 +72,20 @@ export default function AdminFarmsPage() {
 
   if (error) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 w-full">
         <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 md:p-8 w-full space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Building2 className="w-7 h-7 text-purple-600" />
-            Panel Superadmin: Todas las Granjas
+            Todas las Granjas
           </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Vista global y supervisión de todos los establecimientos registrados en la plataforma
-          </p>
         </div>
         <div className="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-200">
           Total Granjas: {farms.length}

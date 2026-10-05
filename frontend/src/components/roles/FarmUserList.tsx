@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from '@/context/ConfirmDialogContext';
+import { useToast } from '@/context/ToastContext';
 
 interface FarmUserRecord {
   id: string;
@@ -22,6 +23,7 @@ interface FarmUserRecord {
 
 export function FarmUserList({ farmId }: { farmId: string }) {
   const confirm = useConfirm();
+  const { toast } = useToast();
   const [members, setMembers] = useState<FarmUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,10 +78,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       }
 
       setEmailInput('');
+      toast.success('Usuario asignado exitosamente');
       void fetchMembers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al asignar usuario';
-      alert(message);
+      toast.error(message);
     } finally {
       setAssigning(false);
     }
@@ -97,10 +100,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
         throw new Error('Error al modificar el rol del sub-usuario');
       }
 
+      toast.success('Rol del usuario actualizado');
       void fetchMembers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al modificar rol';
-      alert(message);
+      toast.error(message);
     }
   };
 
@@ -122,10 +126,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
         throw new Error('Error al remover sub-usuario');
       }
 
+      toast.success('Acceso del usuario removido');
       void fetchMembers();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al remover';
-      alert(message);
+      toast.error(message);
     }
   };
 
