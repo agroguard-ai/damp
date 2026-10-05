@@ -456,13 +456,7 @@ function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
   );
 }
 
-function TrajectoryLayer({
-  points,
-  animalName,
-}: {
-  points: TrajectoryPoint[];
-  animalName?: string | null;
-}) {
+function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; animalName?: string | null }) {
   if (!points || points.length === 0) return null;
 
   const positions: [number, number][] = points.map((p) => [p.latitude, p.longitude]);
@@ -485,10 +479,7 @@ function TrajectoryLayer({
       />
 
       {/* Start Point */}
-      <Marker
-        position={[startPoint.latitude, startPoint.longitude]}
-        icon={createTrajectoryEndpointIcon('start')}
-      >
+      <Marker position={[startPoint.latitude, startPoint.longitude]} icon={createTrajectoryEndpointIcon('start')}>
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
             <span className="inline-block bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
@@ -526,10 +517,7 @@ function TrajectoryLayer({
 
       {/* End Point */}
       {points.length > 1 && (
-        <Marker
-          position={[endPoint.latitude, endPoint.longitude]}
-          icon={createTrajectoryEndpointIcon('end')}
-        >
+        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end')}>
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
               <span className="inline-block bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
@@ -651,10 +639,7 @@ export default function LiveTrackingMap({
 
         {/* Marcadores de animales (ocultos o mostrados según contexto) */}
         {(!trajectory || trajectory.length === 0) && (
-          <ClusteredAnimalMarkers
-            animals={animals}
-            onSelectAnimalForTrajectory={onSelectAnimalForTrajectory}
-          />
+          <ClusteredAnimalMarkers animals={animals} onSelectAnimalForTrajectory={onSelectAnimalForTrajectory} />
         )}
 
         <MapAutoBounds

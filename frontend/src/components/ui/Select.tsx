@@ -168,9 +168,7 @@ export function Select({
           )}
           {selectedOption ? (
             <div className="flex items-center gap-2 truncate">
-              <span className="font-semibold text-zinc-900 dark:text-white truncate">
-                {selectedOption.label}
-              </span>
+              <span className="font-semibold text-zinc-900 dark:text-white truncate">{selectedOption.label}</span>
               {selectedOption.badge && (
                 <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold shrink-0 bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800/40">
                   {selectedOption.badge}
@@ -241,9 +239,7 @@ export function Select({
                       {opt.icon && (
                         <opt.icon
                           className={`w-4 h-4 shrink-0 ${
-                            isSelected
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-zinc-400 dark:text-zinc-500'
+                            isSelected ? 'text-green-600 dark:text-green-400' : 'text-zinc-400 dark:text-zinc-500'
                           }`}
                         />
                       )}
@@ -264,9 +260,7 @@ export function Select({
                       </div>
                     </div>
 
-                    {isSelected && (
-                      <Check className="w-4 h-4 shrink-0 text-green-600 dark:text-green-400 ml-2" />
-                    )}
+                    {isSelected && <Check className="w-4 h-4 shrink-0 text-green-600 dark:text-green-400 ml-2" />}
                   </button>
                 );
               })

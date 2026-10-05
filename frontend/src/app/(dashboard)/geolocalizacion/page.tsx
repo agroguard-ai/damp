@@ -568,9 +568,8 @@ export default function GeolocalizacionPage() {
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
                   <span>
-                    Mostrando recorrido de <b>{trajectoryAnimalInfo?.tag || 'Animal'}</b> (
-                    {trajectoryAnimalInfo?.breed}): <b>{trajectoryPoints.length}</b> posiciones registradas entre{' '}
-                    {trajectoryFrom} y {trajectoryTo}.
+                    Mostrando recorrido de <b>{trajectoryAnimalInfo?.tag || 'Animal'}</b> ({trajectoryAnimalInfo?.breed}
+                    ): <b>{trajectoryPoints.length}</b> posiciones registradas entre {trajectoryFrom} y {trajectoryTo}.
                   </span>
                 </div>
                 <button
@@ -591,8 +590,8 @@ export default function GeolocalizacionPage() {
               <div className="bg-orange-50 dark:bg-orange-950/25 border border-orange-200 dark:border-orange-800/40 rounded-xl p-3 flex items-center justify-between text-orange-900 dark:text-orange-200 text-xs">
                 <span>
                   Mapa de calor acumulado: <b>{heatmapTotalPoints}</b> registros analizados de los últimos{' '}
-                  <b>{heatmapDays} días</b>. Las zonas rojas indican alta permanencia / pisoteo, mientras que las
-                  zonas sin color representan áreas subutilizadas o zonas de pastoreo muerto.
+                  <b>{heatmapDays} días</b>. Las zonas rojas indican alta permanencia / pisoteo, mientras que las zonas
+                  sin color representan áreas subutilizadas o zonas de pastoreo muerto.
                 </span>
                 {loadingHeatmap && (
                   <div className="w-4 h-4 border-2 border-orange-500/20 border-t-orange-600 rounded-full animate-spin shrink-0"></div>

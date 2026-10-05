@@ -142,11 +142,7 @@ export function snapPointToPolygonEdge(
   };
 }
 
-export type BoundaryValidationStatus =
-  | 'valid_inside'
-  | 'snapped_to_border'
-  | 'rejected_outside'
-  | 'clamped_to_border';
+export type BoundaryValidationStatus = 'valid_inside' | 'snapped_to_border' | 'rejected_outside' | 'clamped_to_border';
 
 export interface BoundaryPointValidationResult {
   point: LatLngTuple;

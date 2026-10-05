@@ -35,12 +35,7 @@ interface ZoneRotationViewProps {
   onRefreshGeofences?: () => void;
 }
 
-export default function ZoneRotationView({
-  zone,
-  geofences,
-  animals,
-  onRefreshGeofences,
-}: ZoneRotationViewProps) {
+export default function ZoneRotationView({ zone, geofences, animals, onRefreshGeofences }: ZoneRotationViewProps) {
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -419,9 +414,7 @@ export default function ZoneRotationView({
                       <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
                       <span>Dónde está ahora</span>
                     </span>
-                    <span className="bg-orange-200 dark:bg-orange-900 px-1.5 py-0.2 rounded font-mono">
-                      VIGENTE
-                    </span>
+                    <span className="bg-orange-200 dark:bg-orange-900 px-1.5 py-0.2 rounded font-mono">VIGENTE</span>
                   </div>
                   <h5 className="font-bold text-base text-zinc-900 dark:text-white">
                     {rotationData?.currentGeofence?.name || 'Cerco Activo'}
@@ -475,7 +468,8 @@ export default function ZoneRotationView({
                       </div>
                     </div>
                     <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                      📡 Transición gradual activa: los collares reciben las coordenadas intermedias actualizadas en cada reporte telemétrico (~cada 5 min).
+                      📡 Transición gradual activa: los collares reciben las coordenadas intermedias actualizadas en
+                      cada reporte telemétrico (~cada 5 min).
                     </p>
                   </div>
                 )}
@@ -560,9 +554,7 @@ export default function ZoneRotationView({
             {/* Modal / Diálogo para Posponer */}
             {showPostponeModal && (
               <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 space-y-3">
-                <h5 className="font-bold text-xs text-zinc-900 dark:text-white">
-                  Posponer Rotación de Pastoreo
-                </h5>
+                <h5 className="font-bold text-xs text-zinc-900 dark:text-white">Posponer Rotación de Pastoreo</h5>
                 <p className="text-[11px] text-zinc-500">
                   Seleccioná cuántas horas deseás extender el pastoreo en el cerco actual sin alterar el resto del
                   calendario:
@@ -756,8 +748,12 @@ export default function ZoneRotationView({
                 onChange={(e) => setAutoRotate(e.target.checked)}
                 className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
               />
-              <label htmlFor="autoRotate" className="text-xs text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer">
-                Activar rotación automática periódica según el calendario (el sistema cambia el cerco y asigna los animales automáticamente)
+              <label
+                htmlFor="autoRotate"
+                className="text-xs text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer"
+              >
+                Activar rotación automática periódica según el calendario (el sistema cambia el cerco y asigna los
+                animales automáticamente)
               </label>
             </div>
 

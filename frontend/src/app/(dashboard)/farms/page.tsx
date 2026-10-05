@@ -38,13 +38,7 @@ const RENSPA_FORMAT = /^\d{2}\.\d{3}\.\d\.\d{5}\/\d{2}$/;
 
 function formatRenspa(input: string): string {
   const digits = input.replace(/\D/g, '').slice(0, 13);
-  const parts = [
-    digits.slice(0, 2),
-    digits.slice(2, 5),
-    digits.slice(5, 6),
-    digits.slice(6, 11),
-    digits.slice(11, 13),
-  ];
+  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 6), digits.slice(6, 11), digits.slice(11, 13)];
   let result = parts[0];
   if (parts[1]) result += `.${parts[1]}`;
   if (parts[2]) result += `.${parts[2]}`;
@@ -57,7 +51,12 @@ export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
 
-  const { data: farms = [], loading: fetchingFarms, error: farmsError, refetch: refetchFarms } = useApi(farmsApi.getAll);
+  const {
+    data: farms = [],
+    loading: fetchingFarms,
+    error: farmsError,
+    refetch: refetchFarms,
+  } = useApi(farmsApi.getAll);
   const { mutate: updateFarm, loading: updatingFarm } = useMutation(farmsApi.update);
   const { mutate: deleteFarm, loading: deletingFarm } = useMutation(farmsApi.delete);
 
@@ -263,18 +262,13 @@ export default function FarmsPage() {
             Campos y Establecimientos
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Gestión centralizada de establecimientos agropecuarios, delimitación perimetral y administración de recursos.
+            Gestión centralizada de establecimientos agropecuarios, delimitación perimetral y administración de
+            recursos.
           </p>
         </div>
 
         {canCreateFarm && (
-          <Button
-            href="/farms/new"
-            variant="success"
-            size="md"
-            icon={Plus}
-            label="Registrar Nuevo Campo"
-          />
+          <Button href="/farms/new" variant="success" size="md" icon={Plus} label="Registrar Nuevo Campo" />
         )}
       </div>
 
@@ -337,9 +331,9 @@ export default function FarmsPage() {
                 {filteredFarms.map((farm) => {
                   const hasCoordinates = Boolean(
                     farm.polygonCoordinates &&
-                      (typeof farm.polygonCoordinates === 'string'
-                        ? farm.polygonCoordinates.length > 2
-                        : (farm.polygonCoordinates as unknown[]).length > 0)
+                    (typeof farm.polygonCoordinates === 'string'
+                      ? farm.polygonCoordinates.length > 2
+                      : (farm.polygonCoordinates as unknown[]).length > 0)
                   );
 
                   let pointsCount = 0;
@@ -361,10 +355,7 @@ export default function FarmsPage() {
                   const usersCount = farm._count?.farmUsers ?? 0;
 
                   return (
-                    <tr
-                      key={farm.id}
-                      className="hover:bg-zinc-50/70 dark:hover:bg-zinc-850/40 transition-colors"
-                    >
+                    <tr key={farm.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-850/40 transition-colors">
                       {/* Establecimiento */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
@@ -372,9 +363,7 @@ export default function FarmsPage() {
                             <Tractor className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-zinc-900 dark:text-white text-sm">
-                              {farm.name}
-                            </div>
+                            <div className="font-bold text-zinc-900 dark:text-white text-sm">{farm.name}</div>
                             <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
                               {farm.address ? farm.address : 'Sin dirección especificada'} &bull; Alta:{' '}
                               {new Date(farm.createdAt).toLocaleDateString()}
@@ -390,9 +379,7 @@ export default function FarmsPage() {
                             {farm.renspa}
                           </span>
                         ) : (
-                          <span className="text-zinc-400 dark:text-zinc-500 italic text-[11px]">
-                            Sin registrar
-                          </span>
+                          <span className="text-zinc-400 dark:text-zinc-500 italic text-[11px]">Sin registrar</span>
                         )}
                       </td>
 
@@ -411,9 +398,7 @@ export default function FarmsPage() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
                           <Ruler className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span>
-                            {farm.totalAreaHa ? `${farm.totalAreaHa} Ha` : 'Sin definir'}
-                          </span>
+                          <span>{farm.totalAreaHa ? `${farm.totalAreaHa} Ha` : 'Sin definir'}</span>
                         </div>
                       </td>
 
@@ -430,9 +415,7 @@ export default function FarmsPage() {
                           title="Abrir mapa de delimitación perimetral"
                         >
                           <MapIcon className="w-3.5 h-3.5 shrink-0" />
-                          <span>
-                            {hasCoordinates ? `Delimitado (${pointsCount} pts)` : 'Sin trazar'}
-                          </span>
+                          <span>{hasCoordinates ? `Delimitado (${pointsCount} pts)` : 'Sin trazar'}</span>
                         </button>
                       </td>
 
@@ -561,9 +544,7 @@ export default function FarmsPage() {
                 <div className="hidden sm:flex items-center gap-3 text-xs bg-white dark:bg-zinc-950 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
                   <div>
                     <span className="text-zinc-400">Vértices:</span>{' '}
-                    <strong className="text-zinc-800 dark:text-zinc-200 font-mono">
-                      {editPolygonPoints.length}
-                    </strong>
+                    <strong className="text-zinc-800 dark:text-zinc-200 font-mono">{editPolygonPoints.length}</strong>
                   </div>
                   <div className="w-px h-3.5 bg-zinc-200 dark:bg-zinc-800" />
                   <div>
@@ -759,7 +740,8 @@ export default function FarmsPage() {
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400">
-                  La superficie se actualiza calculando el área proyectada en el mapa desde el botón &quot;Perímetro&quot;.
+                  La superficie se actualiza calculando el área proyectada en el mapa desde el botón
+                  &quot;Perímetro&quot;.
                 </p>
               </div>
 
@@ -804,9 +786,7 @@ export default function FarmsPage() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-white">
-                  Dar de baja establecimiento
-                </h3>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">Dar de baja establecimiento</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Campo: <strong className="text-zinc-800 dark:text-zinc-200">{deletingTargetFarm.name}</strong>
                 </p>
@@ -821,9 +801,7 @@ export default function FarmsPage() {
               </div>
 
               <div className="text-xs space-y-1.5 leading-relaxed">
-                <p>
-                  Este establecimiento cuenta actualmente con:
-                </p>
+                <p>Este establecimiento cuenta actualmente con:</p>
                 <div className="grid grid-cols-2 gap-2 my-2">
                   <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900 text-center">
                     <span className="text-[11px] text-zinc-500 block">Animales activos</span>
@@ -839,14 +817,21 @@ export default function FarmsPage() {
                   </div>
                 </div>
 
-                <p className="text-[11px] text-zinc-700 dark:text-zinc-300">
-                  Al confirmar la baja:
-                </p>
+                <p className="text-[11px] text-zinc-700 dark:text-zinc-300">Al confirmar la baja:</p>
                 <ul className="list-disc list-inside text-[11px] space-y-1 text-zinc-700 dark:text-zinc-300">
-                  <li>Se eliminarán todas las <strong>zonas y cercos virtuales</strong> del campo.</li>
-                  <li>Los collares asignados al campo serán <strong>liberados</strong> para su reutilización.</li>
-                  <li>Los animales <strong>NO se perderán</strong>: se conservará su historial médico y métricas, pero quedarán archivados y desvinculados de este campo.</li>
-                  <li>El establecimiento quedará en estado <strong>archivado</strong>.</li>
+                  <li>
+                    Se eliminarán todas las <strong>zonas y cercos virtuales</strong> del campo.
+                  </li>
+                  <li>
+                    Los collares asignados al campo serán <strong>liberados</strong> para su reutilización.
+                  </li>
+                  <li>
+                    Los animales <strong>NO se perderán</strong>: se conservará su historial médico y métricas, pero
+                    quedarán archivados y desvinculados de este campo.
+                  </li>
+                  <li>
+                    El establecimiento quedará en estado <strong>archivado</strong>.
+                  </li>
                 </ul>
               </div>
             </div>

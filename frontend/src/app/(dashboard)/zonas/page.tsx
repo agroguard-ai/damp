@@ -18,7 +18,19 @@ import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
-import { Tractor, Layers, Zap, Trash2, ArrowRight, ArrowLeft, ShieldCheck, AlertCircle, Edit3, Save, X } from 'lucide-react';
+import {
+  Tractor,
+  Layers,
+  Zap,
+  Trash2,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  AlertCircle,
+  Edit3,
+  Save,
+  X,
+} from 'lucide-react';
 import type { Zone } from '@/types';
 import { animalsApi } from '@/lib/api/animals';
 
@@ -60,7 +72,10 @@ function ZonasPageContent() {
         : Promise.resolve([]),
     [animalsModalZone, activeFarmId]
   );
-  const { data: zoneAnimals = [], loading: fetchingZoneAnimals } = useApi(fetchZoneAnimals, [animalsModalZone, activeFarmId]);
+  const { data: zoneAnimals = [], loading: fetchingZoneAnimals } = useApi(fetchZoneAnimals, [
+    animalsModalZone,
+    activeFarmId,
+  ]);
 
   const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
 
@@ -283,7 +298,8 @@ function ZonasPageContent() {
             Gestión de Zonas y Potreros
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-0.5">
-            Nivel 2: Subdivide tu campo en potreros delimitando su perímetro sobre el mapa. Cada zona albergará sus propios cercos eléctricos.
+            Nivel 2: Subdivide tu campo en potreros delimitando su perímetro sobre el mapa. Cada zona albergará sus
+            propios cercos eléctricos.
           </p>
         </div>
       </div>
@@ -317,9 +333,9 @@ function ZonasPageContent() {
                 options={farms.map((farm) => {
                   const hasPoly = Boolean(
                     farm.polygonCoordinates &&
-                      (typeof farm.polygonCoordinates === 'string'
-                        ? farm.polygonCoordinates.length > 2
-                        : (farm.polygonCoordinates as unknown[]).length > 0)
+                    (typeof farm.polygonCoordinates === 'string'
+                      ? farm.polygonCoordinates.length > 2
+                      : (farm.polygonCoordinates as unknown[]).length > 0)
                   );
                   return {
                     value: farm.id,
@@ -342,11 +358,7 @@ function ZonasPageContent() {
                 <div>
                   <h3 className="font-bold text-base text-zinc-900 dark:text-white flex items-center gap-2">
                     <span>Mapa del Establecimiento</span>
-                    {activeFarm && (
-                      <span className="text-xs font-normal text-zinc-500">
-                        — {activeFarm.name}
-                      </span>
-                    )}
+                    {activeFarm && <span className="text-xs font-normal text-zinc-500">— {activeFarm.name}</span>}
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
                     {farmPolygon.length > 0
@@ -360,8 +372,8 @@ function ZonasPageContent() {
                       editingZone
                         ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60'
                         : newPoints.length > 0
-                        ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                          ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40'
+                          : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
                     }`}
                   >
                     {editingZone ? (
@@ -403,9 +415,7 @@ function ZonasPageContent() {
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs p-6 space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Zonas Registradas
-                  </h3>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Zonas Registradas</h3>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     Subdivisiones creadas en {activeFarm?.name || 'este campo'} y sus cercos eléctricos internos.
                   </p>
@@ -455,9 +465,7 @@ function ZonasPageContent() {
                         }
                         const zoneArea = calculatePolygonAreaHa(coords);
                         const activeFencesCount =
-                          zone.geofences?.filter((g) => g.active).length ??
-                          zone._count?.geofences ??
-                          0;
+                          zone.geofences?.filter((g) => g.active).length ?? zone._count?.geofences ?? 0;
 
                         return (
                           <tr
@@ -475,9 +483,11 @@ function ZonasPageContent() {
                                 className="flex items-center gap-2 text-left group cursor-pointer"
                                 title="Clic para seleccionar y editar esta zona"
                               >
-                                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                  editingZone?.id === zone.id ? 'bg-amber-500 animate-pulse' : 'bg-green-500'
-                                }`}></span>
+                                <span
+                                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                                    editingZone?.id === zone.id ? 'bg-amber-500 animate-pulse' : 'bg-green-500'
+                                  }`}
+                                ></span>
                                 <span className="font-semibold text-zinc-900 dark:text-white group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">
                                   {zone.name}
                                 </span>
@@ -496,15 +506,10 @@ function ZonasPageContent() {
                             <td className="py-4 px-4 text-xs">
                               {zoneArea > 0 ? (
                                 <span className="font-medium text-zinc-900 dark:text-white">
-                                  {zoneArea} Ha{' '}
-                                  <span className="text-[11px] text-zinc-400">
-                                    ({coords.length} pts)
-                                  </span>
+                                  {zoneArea} Ha <span className="text-[11px] text-zinc-400">({coords.length} pts)</span>
                                 </span>
                               ) : (
-                                <span className="text-zinc-400 italic text-[11px]">
-                                  Sin polígono
-                                </span>
+                                <span className="text-zinc-400 italic text-[11px]">Sin polígono</span>
                               )}
                             </td>
 
@@ -585,20 +590,16 @@ function ZonasPageContent() {
                   <ShieldCheck className="w-4 h-4 text-zinc-400" />
                   <span>Modo Lectura (Empleado)</span>
                 </div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                  Potreros y Subdivisiones
-                </h3>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Potreros y Subdivisiones</h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">
-                  Tenés permisos de consulta para este establecimiento. Podés navegar por las zonas en el mapa y consultar sus cercos eléctricos. Para dar de alta o modificar potreros, comunicate con el administrador del campo.
+                  Tenés permisos de consulta para este establecimiento. Podés navegar por las zonas en el mapa y
+                  consultar sus cercos eléctricos. Para dar de alta o modificar potreros, comunicate con el
+                  administrador del campo.
                 </p>
                 {editingZone && (
                   <div className="p-3.5 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">
-                    <span className="font-bold text-zinc-800 dark:text-zinc-200 block text-sm">
-                      {editingZone.name}
-                    </span>
-                    <span className="text-zinc-500 block">
-                      Pastura: {editingZone.pastureType || 'No especificada'}
-                    </span>
+                    <span className="font-bold text-zinc-800 dark:text-zinc-200 block text-sm">{editingZone.name}</span>
+                    <span className="text-zinc-500 block">Pastura: {editingZone.pastureType || 'No especificada'}</span>
                     <span className="text-green-600 dark:text-green-400 font-mono font-semibold block">
                       Superficie: {drawnAreaHa} Ha
                     </span>
@@ -607,235 +608,233 @@ function ZonasPageContent() {
               </div>
             ) : (
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-6 sticky top-6">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
-                    editingZone ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-500'
-                  }`}>
-                    {editingZone ? (
-                      <>
-                        <Edit3 className="w-4 h-4" />
-                        <span>Modo Edición de Zona</span>
-                      </>
-                    ) : (
-                      <>
-                        <Layers className="w-4 h-4" />
-                        <span>Nivel 2: Nueva Zona</span>
-                      </>
-                    )}
-                  </div>
-
-                  {editingZone && (
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
-                      title="Cancelar edición y volver a crear nueva zona"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Cancelar</span>
-                    </button>
-                  )}
-                </div>
-
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white mt-1">
-                  {editingZone ? `Editar: ${editingZone.name}` : 'Registrar Zona'}
-                </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                  {editingZone ? (
-                    'Modificá el nombre, pastura o arrastrá los vértices directamente sobre el mapa para ajustar su perímetro.'
-                  ) : (
-                    <>
-                      Delimitá las esquinas sobre el mapa. La zona debe estar contenida dentro del establecimiento{' '}
-                      <strong className="text-zinc-800 dark:text-zinc-200">
-                        {activeFarm?.name || ''}
-                      </strong>.
-                    </>
-                  )}
-                </p>
-              </div>
-
-              <form onSubmit={handleCreateOrUpdateZone} className="space-y-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-                    Nombre de la Zona
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={newZoneName}
-                    onChange={(e) => setNewZoneName(e.target.value)}
-                    placeholder="Ej: Zona Norte, Lote 1, Parcela Este"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-                    Tipo de Pastura / Cobertura
-                  </label>
-                  <input
-                    type="text"
-                    value={newZonePasture}
-                    onChange={(e) => setNewZonePasture(e.target.value)}
-                    placeholder="Ej: Alfalfa, Trébol, Pasto natural"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
-                  />
-                </div>
-
-                {/* Point Drawing Log & Validation status */}
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-green-600" />
-                      Vértices Colocados ({newPoints.length})
-                    </span>
-                    {newPoints.length > 0 && (
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (typeof window !== 'undefined') {
-                              window.dispatchEvent(
-                                new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
-                              );
-                            }
-                          }}
-                          className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold cursor-pointer text-xs flex items-center gap-1"
-                          title="Deshacer última acción (Ctrl + Z)"
-                        >
-                          <span>Deshacer</span>
-                          <kbd className="px-1 py-0.2 bg-zinc-200 dark:bg-zinc-800 text-[10px] rounded text-zinc-500">
-                            Ctrl+Z
-                          </kbd>
-                        </button>
-                        <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                        <button
-                          type="button"
-                          onClick={handleClearPoints}
-                          className="text-red-500 hover:text-red-600 font-semibold cursor-pointer text-xs"
-                        >
-                          Reiniciar
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {newPoints.length === 0 ? (
-                    <div className="text-[11px] text-zinc-400 italic bg-white/60 dark:bg-zinc-900/60 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                      Hacé clics sobre el mapa dentro del área amarilla para marcar el perímetro de la zona.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs px-1 text-zinc-500">
-                        <span>Área estimada:</span>
-                        <span className="font-bold text-zinc-900 dark:text-white font-mono">
-                          {drawnAreaHa} Ha
-                        </span>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto space-y-1 pr-1 font-mono text-[10px] text-zinc-500">
-                        {newPoints.map((pt, idx) => {
-                          const isSelected = selectedVertexIndex === idx;
-                          return (
-                            <div
-                              key={idx}
-                              onClick={() => setSelectedVertexIndex(isSelected ? null : idx)}
-                              className={`flex justify-between items-center border rounded-lg px-2 py-1.5 cursor-pointer transition-all ${
-                                isSelected
-                                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 shadow-xs'
-                                  : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-850/60 border-b-zinc-100 dark:border-b-zinc-850'
-                              }`}
-                            >
-                              <span className="text-zinc-600 dark:text-zinc-400 font-sans flex items-center gap-1.5">
-                                <span
-                                  className={`w-4.5 h-4.5 rounded-full text-[9px] font-bold inline-flex items-center justify-center transition-colors ${
-                                    isSelected
-                                      ? 'bg-amber-500 text-white'
-                                      : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                                  }`}
-                                >
-                                  {idx + 1}
-                                </span>
-                                <span className={isSelected ? 'font-bold text-amber-900 dark:text-amber-200' : ''}>
-                                  Vértice #{idx + 1}
-                                </span>
-                                {isSelected && (
-                                  <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
-                                    Activo
-                                  </span>
-                                )}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <span>
-                                  {pt[0].toFixed(5)}, {pt[1].toFixed(5)}
-                                </span>
-                                <button
-                                  type="button"
-                                  title="Eliminar vértice"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setNewPoints((prev) => prev.filter((_, i) => i !== idx));
-                                    if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
-                                    else if (selectedVertexIndex !== null && selectedVertexIndex > idx)
-                                      setSelectedVertexIndex(selectedVertexIndex - 1);
-                                  }}
-                                  className="text-zinc-400 hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-2 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {editingZone && (
-                      <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        className="w-1/3 px-3 py-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-center"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={submitting || updating || newPoints.length < 3}
-                      className={`font-semibold py-3 px-4 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm ${
-                        editingZone
-                          ? 'w-2/3 bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500/50'
-                          : 'w-full bg-green-600 hover:bg-green-700 text-white focus:ring-green-500/50'
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div
+                      className={`flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
+                        editingZone ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-500'
                       }`}
                     >
-                      {submitting || updating ? (
-                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                      ) : editingZone ? (
+                      {editingZone ? (
                         <>
-                          <Save className="w-4 h-4" />
-                          <span>Guardar Cambios</span>
+                          <Edit3 className="w-4 h-4" />
+                          <span>Modo Edición de Zona</span>
                         </>
                       ) : (
                         <>
                           <Layers className="w-4 h-4" />
-                          <span>Registrar Zona en Campo</span>
+                          <span>Nivel 2: Nueva Zona</span>
                         </>
                       )}
-                    </button>
+                    </div>
+
+                    {editingZone && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer transition-colors"
+                        title="Cancelar edición y volver a crear nueva zona"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>Cancelar</span>
+                      </button>
+                    )}
                   </div>
 
-                  {newPoints.length < 3 && (
-                    <p className="text-[11px] text-zinc-400 text-center mt-2">
-                      Se requieren al menos 3 puntos en el mapa para formar un polígono.
-                    </p>
-                  )}
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white mt-1">
+                    {editingZone ? `Editar: ${editingZone.name}` : 'Registrar Zona'}
+                  </h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    {editingZone ? (
+                      'Modificá el nombre, pastura o arrastrá los vértices directamente sobre el mapa para ajustar su perímetro.'
+                    ) : (
+                      <>
+                        Delimitá las esquinas sobre el mapa. La zona debe estar contenida dentro del establecimiento{' '}
+                        <strong className="text-zinc-800 dark:text-zinc-200">{activeFarm?.name || ''}</strong>.
+                      </>
+                    )}
+                  </p>
                 </div>
-              </form>
-            </div>
+
+                <form onSubmit={handleCreateOrUpdateZone} className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                      Nombre de la Zona
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={newZoneName}
+                      onChange={(e) => setNewZoneName(e.target.value)}
+                      placeholder="Ej: Zona Norte, Lote 1, Parcela Este"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+                      Tipo de Pastura / Cobertura
+                    </label>
+                    <input
+                      type="text"
+                      value={newZonePasture}
+                      onChange={(e) => setNewZonePasture(e.target.value)}
+                      placeholder="Ej: Alfalfa, Trébol, Pasto natural"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
+                    />
+                  </div>
+
+                  {/* Point Drawing Log & Validation status */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-3">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-green-600" />
+                        Vértices Colocados ({newPoints.length})
+                      </span>
+                      {newPoints.length > 0 && (
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                window.dispatchEvent(
+                                  new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true })
+                                );
+                              }
+                            }}
+                            className="text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold cursor-pointer text-xs flex items-center gap-1"
+                            title="Deshacer última acción (Ctrl + Z)"
+                          >
+                            <span>Deshacer</span>
+                            <kbd className="px-1 py-0.2 bg-zinc-200 dark:bg-zinc-800 text-[10px] rounded text-zinc-500">
+                              Ctrl+Z
+                            </kbd>
+                          </button>
+                          <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                          <button
+                            type="button"
+                            onClick={handleClearPoints}
+                            className="text-red-500 hover:text-red-600 font-semibold cursor-pointer text-xs"
+                          >
+                            Reiniciar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {newPoints.length === 0 ? (
+                      <div className="text-[11px] text-zinc-400 italic bg-white/60 dark:bg-zinc-900/60 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                        Hacé clics sobre el mapa dentro del área amarilla para marcar el perímetro de la zona.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs px-1 text-zinc-500">
+                          <span>Área estimada:</span>
+                          <span className="font-bold text-zinc-900 dark:text-white font-mono">{drawnAreaHa} Ha</span>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto space-y-1 pr-1 font-mono text-[10px] text-zinc-500">
+                          {newPoints.map((pt, idx) => {
+                            const isSelected = selectedVertexIndex === idx;
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => setSelectedVertexIndex(isSelected ? null : idx)}
+                                className={`flex justify-between items-center border rounded-lg px-2 py-1.5 cursor-pointer transition-all ${
+                                  isSelected
+                                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 shadow-xs'
+                                    : 'border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-850/60 border-b-zinc-100 dark:border-b-zinc-850'
+                                }`}
+                              >
+                                <span className="text-zinc-600 dark:text-zinc-400 font-sans flex items-center gap-1.5">
+                                  <span
+                                    className={`w-4.5 h-4.5 rounded-full text-[9px] font-bold inline-flex items-center justify-center transition-colors ${
+                                      isSelected
+                                        ? 'bg-amber-500 text-white'
+                                        : 'bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+                                    }`}
+                                  >
+                                    {idx + 1}
+                                  </span>
+                                  <span className={isSelected ? 'font-bold text-amber-900 dark:text-amber-200' : ''}>
+                                    Vértice #{idx + 1}
+                                  </span>
+                                  {isSelected && (
+                                    <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                                      Activo
+                                    </span>
+                                  )}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {pt[0].toFixed(5)}, {pt[1].toFixed(5)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    title="Eliminar vértice"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNewPoints((prev) => prev.filter((_, i) => i !== idx));
+                                      if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
+                                      else if (selectedVertexIndex !== null && selectedVertexIndex > idx)
+                                        setSelectedVertexIndex(selectedVertexIndex - 1);
+                                    }}
+                                    className="text-zinc-400 hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {editingZone && (
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="w-1/3 px-3 py-3 rounded-xl text-xs font-semibold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer text-center"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={submitting || updating || newPoints.length < 3}
+                        className={`font-semibold py-3 px-4 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm ${
+                          editingZone
+                            ? 'w-2/3 bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500/50'
+                            : 'w-full bg-green-600 hover:bg-green-700 text-white focus:ring-green-500/50'
+                        }`}
+                      >
+                        {submitting || updating ? (
+                          <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                        ) : editingZone ? (
+                          <>
+                            <Save className="w-4 h-4" />
+                            <span>Guardar Cambios</span>
+                          </>
+                        ) : (
+                          <>
+                            <Layers className="w-4 h-4" />
+                            <span>Registrar Zona en Campo</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {newPoints.length < 3 && (
+                      <p className="text-[11px] text-zinc-400 text-center mt-2">
+                        Se requieren al menos 3 puntos en el mapa para formar un polígono.
+                      </p>
+                    )}
+                  </div>
+                </form>
+              </div>
             )}
           </div>
         </div>
@@ -909,9 +908,7 @@ function ZonasPageContent() {
             </div>
 
             <div className="p-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 flex justify-between items-center">
-              <span className="text-xs text-zinc-400">
-                ¿Deseás mover o reasignar animales?
-              </span>
+              <span className="text-xs text-zinc-400">¿Deseás mover o reasignar animales?</span>
               <Link
                 href={`/animals?farmId=${activeFarmId}&zoneId=${animalsModalZone.id}`}
                 className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-all flex items-center gap-1.5 shadow-sm"

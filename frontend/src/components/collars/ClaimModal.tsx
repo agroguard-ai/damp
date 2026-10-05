@@ -81,9 +81,7 @@ export function ClaimModal({ isOpen, collar, onClose, onSubmit }: ClaimModalProp
               <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
                 Dispositivo
               </span>
-              <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">
-                {collar.identifier}
-              </span>
+              <span className="font-mono font-bold text-sm text-zinc-900 dark:text-white">{collar.identifier}</span>
             </div>
             <div className="text-right">
               <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider block">
@@ -115,9 +113,7 @@ export function ClaimModal({ isOpen, collar, onClose, onSubmit }: ClaimModalProp
 
           {reason === 'Otro motivo técnico' && (
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                Especifique el motivo *
-              </label>
+              <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Especifique el motivo *</label>
               <input
                 required
                 type="text"
@@ -160,7 +156,9 @@ export function ClaimModal({ isOpen, collar, onClose, onSubmit }: ClaimModalProp
                   {collar.assignedAnimal ? (
                     <>
                       <AlertTriangle className="w-3.5 h-3.5 inline mr-1 text-amber-600" />
-                      Se liberará automáticamente al animal <strong>{collar.assignedAnimal.tag || 'asignado'}</strong>{' '}
+                      Se liberará automáticamente al animal <strong>
+                        {collar.assignedAnimal.tag || 'asignado'}
+                      </strong>{' '}
                       para que puedas colocarle otro collar sano sin bloquearlo.
                     </>
                   ) : (

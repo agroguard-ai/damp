@@ -163,7 +163,9 @@ export default function NewFarmPage() {
   }
 
   return (
-    <div className={`py-10 px-4 md:px-8 mx-auto space-y-8 transition-all duration-200 ${step === 2 ? 'max-w-6xl' : 'max-w-3xl'}`}>
+    <div
+      className={`py-10 px-4 md:px-8 mx-auto space-y-8 transition-all duration-200 ${step === 2 ? 'max-w-6xl' : 'max-w-3xl'}`}
+    >
       {/* Navigation & Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Registrar Nuevo Campo</h1>
@@ -444,18 +446,19 @@ export default function NewFarmPage() {
                     </div>
                   </div>
                   <span className="font-mono font-bold text-lg text-green-700 dark:text-green-300">
-                    {formData.totalAreaHa && Number(formData.totalAreaHa) > 0 ? `${formData.totalAreaHa} Ha` : '0.00 Ha'}
+                    {formData.totalAreaHa && Number(formData.totalAreaHa) > 0
+                      ? `${formData.totalAreaHa} Ha`
+                      : '0.00 Ha'}
                   </span>
                 </div>
 
                 {/* Vertices List or Empty State */}
                 {polygonPoints.length === 0 ? (
                   <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 text-center space-y-1">
-                    <p className="font-medium text-zinc-600 dark:text-zinc-300">
-                      Ningún vértice marcado todavía
-                    </p>
+                    <p className="font-medium text-zinc-600 dark:text-zinc-300">Ningún vértice marcado todavía</p>
                     <p className="text-[11px] text-zinc-400">
-                      Hacé clics sobre el mapa para marcar las esquinas del campo. Podés arrastrar cualquier punto para corregirlo.
+                      Hacé clics sobre el mapa para marcar las esquinas del campo. Podés arrastrar cualquier punto para
+                      corregirlo.
                     </p>
                   </div>
                 ) : (
@@ -490,7 +493,13 @@ export default function NewFarmPage() {
                               >
                                 {idx + 1}
                               </span>
-                              <span className={isSelected ? 'font-bold text-amber-950 dark:text-amber-200' : 'font-medium text-zinc-800 dark:text-zinc-200'}>
+                              <span
+                                className={
+                                  isSelected
+                                    ? 'font-bold text-amber-950 dark:text-amber-200'
+                                    : 'font-medium text-zinc-800 dark:text-zinc-200'
+                                }
+                              >
                                 Vértice #{idx + 1}
                               </span>
                               {isSelected && (
@@ -527,9 +536,7 @@ export default function NewFarmPage() {
 
                     {selectedVertexIndex !== null && (
                       <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
-                        <span>
-                          📍 Vértice #{selectedVertexIndex + 1} activo para inserción contigua.
-                        </span>
+                        <span>📍 Vértice #{selectedVertexIndex + 1} activo para inserción contigua.</span>
                         <button
                           type="button"
                           onClick={() => setSelectedVertexIndex(null)}
@@ -544,17 +551,13 @@ export default function NewFarmPage() {
 
                 {/* Field Details summary */}
                 <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
-                  <div className="font-semibold text-zinc-700 dark:text-zinc-300">
-                    {formData.name || 'Campo nuevo'}
-                  </div>
+                  <div className="font-semibold text-zinc-700 dark:text-zinc-300">{formData.name || 'Campo nuevo'}</div>
                   <div>
                     {formData.department ? `${formData.department}, ` : ''}
                     {formData.province || 'Argentina'}
                   </div>
                   {formData.renspa && (
-                    <div className="font-mono text-[11px] text-zinc-400">
-                      RENSPA: {formData.renspa}
-                    </div>
+                    <div className="font-mono text-[11px] text-zinc-400">RENSPA: {formData.renspa}</div>
                   )}
                 </div>
               </div>

@@ -148,9 +148,7 @@ function AnimalsContent() {
   };
 
   const toggleSelectOne = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
   };
 
   // Modals state
@@ -523,8 +521,7 @@ function AnimalsContent() {
       default:
         return {
           label: 'Evento General',
-          badge:
-            'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800',
+          badge: 'bg-zinc-50 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800',
           detail: value !== null ? `Valor: ${value}` : null,
         };
     }
@@ -619,7 +616,9 @@ function AnimalsContent() {
             {/* Granular Filters Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Potrero / Zona</label>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Potrero / Zona
+                </label>
                 <select
                   value={filters.zoneId}
                   onChange={(e) => setFilters({ ...filters, zoneId: e.target.value })}
@@ -635,7 +634,9 @@ function AnimalsContent() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Estado Hacienda</label>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+                  Estado Hacienda
+                </label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -839,7 +840,9 @@ function AnimalsContent() {
 
                           {/* Health Badge */}
                           <td className="py-3 px-3 whitespace-nowrap">
-                            <span className={`px-2 py-0.5 text-[11px] font-semibold border rounded-full ${health.class}`}>
+                            <span
+                              className={`px-2 py-0.5 text-[11px] font-semibold border rounded-full ${health.class}`}
+                            >
                               {health.label}
                             </span>
                           </td>
@@ -1019,12 +1022,8 @@ function AnimalsContent() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  Mover Hacienda a Potrero / Zona
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Reasignar {selectedIds.length} cabezas seleccionadas
-                </p>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Mover Hacienda a Potrero / Zona</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">Reasignar {selectedIds.length} cabezas seleccionadas</p>
               </div>
               <button
                 onClick={() => setIsBulkZoneModalOpen(false)}
@@ -1051,17 +1050,13 @@ function AnimalsContent() {
                   ))}
                 </select>
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Nota: Si un animal estaba asignado a un cerco virtual que no corresponde a este potrero, el cerco se cerrará automáticamente.
+                  Nota: Si un animal estaba asignado a un cerco virtual que no corresponde a este potrero, el cerco se
+                  cerrará automáticamente.
                 </p>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => setIsBulkZoneModalOpen(false)}
-                  variant="outline"
-                  size="md"
-                >
+                <Button type="button" onClick={() => setIsBulkZoneModalOpen(false)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
@@ -1085,9 +1080,7 @@ function AnimalsContent() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  Transferir Hacienda a otro Campo
-                </h3>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Transferir Hacienda a otro Campo</h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
                   Mover {selectedIds.length} animales a otro establecimiento
                 </p>
@@ -1122,17 +1115,14 @@ function AnimalsContent() {
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Al transferir al nuevo campo, los animales quedarán en <strong>campo abierto</strong> (sin potrero asignado) y se cerrarán sus cercos virtuales anteriores. Los collares asignados continuarán con cada cabeza.
+                  Al transferir al nuevo campo, los animales quedarán en <strong>campo abierto</strong> (sin potrero
+                  asignado) y se cerrarán sus cercos virtuales anteriores. Los collares asignados continuarán con cada
+                  cabeza.
                 </span>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => setIsBulkTransferModalOpen(false)}
-                  variant="outline"
-                  size="md"
-                >
+                <Button type="button" onClick={() => setIsBulkTransferModalOpen(false)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
@@ -1184,12 +1174,7 @@ function AnimalsContent() {
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => setSingleZoneAnimal(null)}
-                  variant="outline"
-                  size="md"
-                >
+                <Button type="button" onClick={() => setSingleZoneAnimal(null)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
@@ -1214,7 +1199,9 @@ function AnimalsContent() {
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white">Vincular Collar IoT</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Animal: {singleCollarAnimal.tag || singleCollarAnimal.id}</p>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Animal: {singleCollarAnimal.tag || singleCollarAnimal.id}
+                </p>
               </div>
               <button
                 onClick={() => setSingleCollarAnimal(null)}
@@ -1246,17 +1233,13 @@ function AnimalsContent() {
                   ))}
                 </select>
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Nota: Desvincular el collar removerá automáticamente al animal de cualquier cerco eléctrico virtual activo.
+                  Nota: Desvincular el collar removerá automáticamente al animal de cualquier cerco eléctrico virtual
+                  activo.
                 </p>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => setSingleCollarAnimal(null)}
-                  variant="outline"
-                  size="md"
-                >
+                <Button type="button" onClick={() => setSingleCollarAnimal(null)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
@@ -1280,10 +1263,10 @@ function AnimalsContent() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-                  Cerco Eléctrico Virtual
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Animal: {singleGeofenceAnimal.tag || singleGeofenceAnimal.id}</p>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Cerco Eléctrico Virtual</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Animal: {singleGeofenceAnimal.tag || singleGeofenceAnimal.id}
+                </p>
               </div>
               <button
                 onClick={() => setSingleGeofenceAnimal(null)}
@@ -1300,7 +1283,8 @@ function AnimalsContent() {
                     <span>Requiere Collar Activo</span>
                   </div>
                   <p>
-                    Un animal no puede ser asignado a un cerco virtual si no posee un collar IoT vinculado para monitorear el perímetro y emitir las correcciones.
+                    Un animal no puede ser asignado a un cerco virtual si no posee un collar IoT vinculado para
+                    monitorear el perímetro y emitir las correcciones.
                   </p>
                   <p className="font-semibold">
                     Primero vinculá un collar al animal desde la columna &ldquo;Collar IoT&rdquo;.
@@ -1318,7 +1302,9 @@ function AnimalsContent() {
                   >
                     <option value="">Sin cerco virtual (liberar)</option>
                     {farmGeofences
-                      .filter((g) => g.active && (!singleGeofenceAnimal.zoneId || g.zoneId === singleGeofenceAnimal.zoneId))
+                      .filter(
+                        (g) => g.active && (!singleGeofenceAnimal.zoneId || g.zoneId === singleGeofenceAnimal.zoneId)
+                      )
                       .map((g) => (
                         <option key={g.id} value={g.id}>
                           ⚡ {g.name} ({farmZones.find((z) => z.id === g.zoneId)?.name || g.zone?.name || 'Zona'})
@@ -1327,19 +1313,15 @@ function AnimalsContent() {
                   </select>
                   {farmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos Eléctricos.
+                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos
+                      Eléctricos.
                     </span>
                   )}
                 </div>
               )}
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  onClick={() => setSingleGeofenceAnimal(null)}
-                  variant="outline"
-                  size="md"
-                >
+                <Button type="button" onClick={() => setSingleGeofenceAnimal(null)} variant="outline" size="md">
                   Cerrar
                 </Button>
                 {singleGeofenceAnimal.animalCollars[0]?.collar && (
@@ -1452,7 +1434,9 @@ function AnimalsContent() {
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Potrero / Zona (Opcional)</label>
+                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                  Potrero / Zona (Opcional)
+                </label>
                 <select
                   value={addAnimalForm.zoneId}
                   onChange={(e) => setAddAnimalForm({ ...addAnimalForm, zoneId: e.target.value })}
@@ -1512,7 +1496,10 @@ function AnimalsContent() {
               <div>
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Editar Animal</h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Caravana: <span className="font-semibold text-zinc-700 dark:text-zinc-300">{editAnimal.tag || `ID: ${editAnimal.id.slice(0, 8)}`}</span>
+                  Caravana:{' '}
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                    {editAnimal.tag || `ID: ${editAnimal.id.slice(0, 8)}`}
+                  </span>
                 </p>
               </div>
               <button
@@ -1574,7 +1561,9 @@ function AnimalsContent() {
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Edad estimada (Meses)</label>
+                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                    Edad estimada (Meses)
+                  </label>
                   <input
                     type="number"
                     value={editAnimalForm.ageMonths}
@@ -1622,7 +1611,8 @@ function AnimalsContent() {
               <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/50 rounded-xl p-3 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-start gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                 <span>
-                  Al modificar el peso del animal, el cambio quedará automáticamente registrado como pesaje en su historial clínico.
+                  Al modificar el peso del animal, el cambio quedará automáticamente registrado como pesaje en su
+                  historial clínico.
                 </span>
               </div>
 
@@ -1648,159 +1638,159 @@ function AnimalsContent() {
       )}
 
       {/* Modal: Historial Médico */}
-      {medicalHistoryAnimalId && (() => {
-        const selectedMedicalAnimal = animals.find((a) => a.id === medicalHistoryAnimalId);
-        return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-              <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Historial Médico y Pesajes</h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    {selectedMedicalAnimal ? (
-                      <>
-                        Caravana:{' '}
-                        <strong className="text-zinc-700 dark:text-zinc-200 font-semibold">
-                          {selectedMedicalAnimal.tag || `ID: ${selectedMedicalAnimal.id.slice(0, 8)}`}
-                        </strong>
-                        {' • '}
-                        {selectedMedicalAnimal.breed}
-                      </>
-                    ) : (
-                      'Registros sanitarios del animal'
-                    )}
-                  </p>
+      {medicalHistoryAnimalId &&
+        (() => {
+          const selectedMedicalAnimal = animals.find((a) => a.id === medicalHistoryAnimalId);
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Historial Médico y Pesajes</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      {selectedMedicalAnimal ? (
+                        <>
+                          Caravana:{' '}
+                          <strong className="text-zinc-700 dark:text-zinc-200 font-semibold">
+                            {selectedMedicalAnimal.tag || `ID: ${selectedMedicalAnimal.id.slice(0, 8)}`}
+                          </strong>
+                          {' • '}
+                          {selectedMedicalAnimal.breed}
+                        </>
+                      ) : (
+                        'Registros sanitarios del animal'
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`/api/reports/animals/${medicalHistoryAnimalId}/medical-history`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+                      title="Descargar Ficha Médica en PDF"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-red-500" />
+                      <span>PDF</span>
+                    </a>
+                    <button
+                      onClick={() => setMedicalHistoryAnimalId(null)}
+                      className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={`/api/reports/animals/${medicalHistoryAnimalId}/medical-history`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
-                    title="Descargar Ficha Médica en PDF"
-                  >
-                    <FileDown className="w-3.5 h-3.5 text-red-500" />
-                    <span>PDF</span>
-                  </a>
-                  <button
-                    onClick={() => setMedicalHistoryAnimalId(null)}
-                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer p-1"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
 
-              <div className="p-6 space-y-3 max-h-[50vh] overflow-y-auto">
-                {fetchingMedicalEvents ? (
-                  <div className="flex justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
-                  </div>
-                ) : medicalEvents.length === 0 ? (
-                  <div className="py-8 px-4 text-center space-y-1.5 bg-zinc-50/60 dark:bg-zinc-950/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                    <HeartPulse className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mx-auto" />
-                    <p className="text-zinc-700 dark:text-zinc-300 font-semibold text-xs">
-                      Sin intervenciones previas
-                    </p>
-                    <p className="text-zinc-400 text-[11px]">
-                      Este animal todavía no tiene registros médicos ni pesajes asentados. Podés cargar el primero debajo.
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {medicalEvents.map((ev) => {
-                      const badge = getMedicalTypeBadge(ev.type, ev.value);
-                      return (
-                        <li
-                          key={ev.id}
-                          className="border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-950/30 rounded-xl p-3 text-xs flex justify-between items-start gap-3"
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span
-                                className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide border ${badge.badge}`}
-                              >
-                                {badge.label}
-                              </span>
-                              {badge.detail && (
-                                <span className="font-bold text-zinc-800 dark:text-zinc-100 text-xs">
-                                  {badge.detail}
+                <div className="p-6 space-y-3 max-h-[50vh] overflow-y-auto">
+                  {fetchingMedicalEvents ? (
+                    <div className="flex justify-center py-8">
+                      <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
+                    </div>
+                  ) : medicalEvents.length === 0 ? (
+                    <div className="py-8 px-4 text-center space-y-1.5 bg-zinc-50/60 dark:bg-zinc-950/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                      <HeartPulse className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mx-auto" />
+                      <p className="text-zinc-700 dark:text-zinc-300 font-semibold text-xs">
+                        Sin intervenciones previas
+                      </p>
+                      <p className="text-zinc-400 text-[11px]">
+                        Este animal todavía no tiene registros médicos ni pesajes asentados. Podés cargar el primero
+                        debajo.
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {medicalEvents.map((ev) => {
+                        const badge = getMedicalTypeBadge(ev.type, ev.value);
+                        return (
+                          <li
+                            key={ev.id}
+                            className="border border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/40 dark:bg-zinc-950/30 rounded-xl p-3 text-xs flex justify-between items-start gap-3"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide border ${badge.badge}`}
+                                >
+                                  {badge.label}
                                 </span>
+                                {badge.detail && (
+                                  <span className="font-bold text-zinc-800 dark:text-zinc-100 text-xs">
+                                    {badge.detail}
+                                  </span>
+                                )}
+                              </div>
+                              {ev.description && (
+                                <p className="text-zinc-600 dark:text-zinc-300 text-xs mt-0.5">{ev.description}</p>
                               )}
                             </div>
-                            {ev.description && (
-                              <p className="text-zinc-600 dark:text-zinc-300 text-xs mt-0.5">
-                                {ev.description}
-                              </p>
-                            )}
-                          </div>
-                          <span className="text-zinc-400 text-[11px] whitespace-nowrap shrink-0">
-                            {new Date(ev.occurredAt).toLocaleDateString()}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-
-              <form
-                onSubmit={handleAddMedicalEvent}
-                className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
-              >
-                <div className="grid grid-cols-3 gap-2.5 pt-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
-                    <select
-                      value={medicalForm.type}
-                      onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
-                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
-                    >
-                      <option value="VACCINATION">Vacunación</option>
-                      <option value="WEIGHING">Pesaje</option>
-                      <option value="BIRTH">Parto</option>
-                      <option value="TREATMENT">Tratamiento</option>
-                      <option value="SURGERY">Cirugía</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                      {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
-                      value={medicalForm.value}
-                      onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
-                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
-                    <input
-                      type="date"
-                      value={medicalForm.occurredAt}
-                      onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
-                      className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
-                    />
-                  </div>
+                            <span className="text-zinc-400 text-[11px] whitespace-nowrap shrink-0">
+                              {new Date(ev.occurredAt).toLocaleDateString()}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
-                <input
-                  type="text"
-                  placeholder="Descripción o anotación clínica..."
-                  value={medicalForm.description}
-                  onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
-                />
-                <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
-                  {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
-                </Button>
-              </form>
+
+                <form
+                  onSubmit={handleAddMedicalEvent}
+                  className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
+                >
+                  <div className="grid grid-cols-3 gap-2.5 pt-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
+                      <select
+                        value={medicalForm.type}
+                        onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
+                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
+                      >
+                        <option value="VACCINATION">Vacunación</option>
+                        <option value="WEIGHING">Pesaje</option>
+                        <option value="BIRTH">Parto</option>
+                        <option value="TREATMENT">Tratamiento</option>
+                        <option value="SURGERY">Cirugía</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                        {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
+                        value={medicalForm.value}
+                        onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
+                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
+                      <input
+                        type="date"
+                        value={medicalForm.occurredAt}
+                        onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
+                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Descripción o anotación clínica..."
+                    value={medicalForm.description}
+                    onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
+                  />
+                  <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
+                    {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
+                  </Button>
+                </form>
+              </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </div>
   );
 }

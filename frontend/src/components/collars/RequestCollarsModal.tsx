@@ -67,7 +67,8 @@ export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: Reques
           )}
 
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Enviá un pedido formal a la administración central de AgroGuard para ampliar la dotación contratada de collares para tu hacienda.
+            Enviá un pedido formal a la administración central de AgroGuard para ampliar la dotación contratada de
+            collares para tu hacienda.
           </p>
 
           {/* Farm selector */}
