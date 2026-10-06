@@ -55,7 +55,7 @@ export class AdminUsersService {
     });
 
     if (existingUser) {
-      throw new ConflictException(`El correo electrónico "${normalizedEmail}" ya está registrado`);
+      throw new ConflictException('El correo electrónico ya está registrado');
     }
 
     const tempPassword = dto.initialPassword?.trim() || `Damp${Math.random().toString(36).substring(2, 8)}!`;

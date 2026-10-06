@@ -264,7 +264,7 @@ export function AdminUserList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-green-600 dark:text-green-500" />
+            <Users className="w-7 h-7 text-purple-600 dark:text-purple-400" />
             Usuarios de la Plataforma
           </h1>
         </div>

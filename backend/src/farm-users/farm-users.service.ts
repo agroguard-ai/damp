@@ -14,7 +14,7 @@ export class FarmUsersService {
     });
 
     if (!farm) {
-      throw new NotFoundException(`Farm with ID "${farmId}" not found`);
+      throw new NotFoundException(`Establecimiento no encontrado.`);
     }
 
     return this.prisma.farmUser.findMany({
@@ -36,7 +36,7 @@ export class FarmUsersService {
 
   async assignSubUser(farmId: string, dto: AssignFarmUserDto) {
     if (!dto.userId && !dto.email) {
-      throw new BadRequestException('Either userId or email must be provided to assign a farm sub-user');
+      throw new BadRequestException('Debe proporcionar el email o ID del usuario para asignarlo a la granja.');
     }
 
     const farm = await this.prisma.farm.findUnique({
@@ -44,7 +44,7 @@ export class FarmUsersService {
     });
 
     if (!farm) {
-      throw new NotFoundException(`Farm with ID "${farmId}" not found`);
+      throw new NotFoundException(`Establecimiento no encontrado.`);
     }
 
     let user: User | null = null;
@@ -55,7 +55,7 @@ export class FarmUsersService {
     }
 
     if (!user) {
-      throw new NotFoundException(`Target user not found in system database`);
+      throw new NotFoundException(`El usuario ingresado no existe en el sistema.`);
     }
 
     // Regla de negocio: Un usuario solo puede pertenecer a 1 granja a la vez
@@ -160,7 +160,7 @@ export class FarmUsersService {
     });
 
     if (!existing || !existing.isActive) {
-      throw new NotFoundException(`Sub-user membership not found for farm "${farmId}" and user "${userId}"`);
+      throw new NotFoundException(`Membresía del usuario no encontrada en la granja.`);
     }
 
     const roleNameUpper = dto.roleName.toUpperCase();
@@ -233,7 +233,7 @@ export class FarmUsersService {
     });
 
     if (!existing || !existing.isActive) {
-      throw new NotFoundException(`Sub-user membership not found for farm "${farmId}" and user "${userId}"`);
+      throw new NotFoundException(`Membresía del usuario no encontrada en la granja.`);
     }
 
     return this.prisma.farmUser.update({
