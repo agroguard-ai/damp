@@ -132,7 +132,8 @@ export class GatewaysService {
   }
 
   /** Actualiza el heartbeat del gateway a partir de un paquete de telemetría retransmitido (CU013). */
-  async recordHeartbeat(gatewayId: string, rssi?: number, snr?: number) {
+  async recordHeartbeat(gatewayId?: string, rssi?: number, snr?: number) {
+    if (!gatewayId) return;
     await this.prisma.gateway.updateMany({
       where: { id: gatewayId },
       data: {
