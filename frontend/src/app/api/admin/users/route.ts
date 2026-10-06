@@ -1,7 +1,8 @@
 import { proxyRequest } from '@/lib/proxy';
 
-export async function GET() {
-  return proxyRequest('/admin/users');
+export async function GET(req: Request) {
+  const { search } = new URL(req.url);
+  return proxyRequest(`/admin/users${search}`);
 }
 
 export async function POST(req: Request) {

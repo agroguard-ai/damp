@@ -21,6 +21,8 @@ import {
   Sliders,
 } from 'lucide-react';
 
+import { Pagination, PaginationMeta } from '@/components/ui/Pagination';
+
 interface UserRecord {
   id: string;
   name: string | null;
@@ -45,6 +47,11 @@ export function AdminUserList() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
   // Modal Crear Usuario State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -65,19 +72,25 @@ export function AdminUserList() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users');
+      const res = await fetch(`/api/admin/users?page=${page}&limit=${limit}`);
       if (!res.ok) {
         throw new Error('No se pudo cargar la lista de usuarios globales.');
       }
-      const data: UserRecord[] = await res.json();
-      setUsers(data);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setUsers(data);
+        setMeta(null);
+      } else {
+        setUsers(data.data || []);
+        setMeta(data.meta || null);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error de conexión';
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page, limit]);
 
   useEffect(() => {
     void fetchUsers();
@@ -270,7 +283,7 @@ export function AdminUserList() {
         </div>
         <div className="flex items-center gap-3">
           <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
-            Total: {users.length}
+            Total: {meta ? meta.totalItems : users.length}
           </span>
           <button
             onClick={() => {
@@ -485,6 +498,16 @@ export function AdminUserList() {
             </tbody>
           </table>
         </div>
+        {meta && (
+          <Pagination
+            meta={meta}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
+        )}
       </div>
 
       {/* Modal Editar Cupo de Collares */}
