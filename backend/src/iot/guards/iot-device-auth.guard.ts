@@ -18,16 +18,19 @@ export class IotDeviceAuthGuard implements CanActivate {
     const apiKey = request.headers['x-api-key'];
     const gatewayId = request.body?.gateway_id;
 
-    if (!gatewayId || typeof gatewayId !== 'string') {
-      throw new UnauthorizedException('Missing gateway_id — el gateway debe identificarse para mandar telemetría');
-    }
     if (!apiKey || typeof apiKey !== 'string') {
-      throw new UnauthorizedException('Missing X-API-Key header');
+      throw new UnauthorizedException('Missing X-API-Key header — el gateway debe autenticarse con su API Key');
     }
 
-    const valid = await this.gatewaysService.validateApiKey(gatewayId, apiKey);
-    if (!valid) {
-      throw new UnauthorizedException('Invalid gateway_id/X-API-Key combination');
+    const gateway = await this.gatewaysService.validateApiKey(apiKey, gatewayId);
+    if (!gateway) {
+      throw new UnauthorizedException('Invalid API Key or mismatched gateway');
+    }
+
+    // Inyectar el gateway resuelto en el request para que iot.service pueda usar su ID
+    request.gateway = gateway;
+    if (request.body && !request.body.gateway_id) {
+      request.body.gateway_id = gateway.id;
     }
 
     return true;

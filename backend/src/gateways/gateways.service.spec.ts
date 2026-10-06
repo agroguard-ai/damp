@@ -48,24 +48,37 @@ describe('GatewaysService', () => {
   });
 
   describe('validateApiKey', () => {
-    it('devuelve true cuando la clave coincide exactamente', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ apiKey: 'secret-key-123' });
-      await expect(service.validateApiKey('gw-1', 'secret-key-123')).resolves.toBe(true);
+    it('devuelve el gateway cuando la clave coincide exactamente con gatewayId', async () => {
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'secret-key-123' });
+      await expect(service.validateApiKey('secret-key-123', 'gw-1')).resolves.toEqual({
+        id: 'gw-1',
+        farmId: 'farm-1',
+        zoneId: 'zone-1',
+      });
     });
 
-    it('devuelve false cuando la clave no coincide', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ apiKey: 'secret-key-123' });
-      await expect(service.validateApiKey('gw-1', 'wrong-key')).resolves.toBe(false);
+    it('devuelve el gateway cuando solo se provee apiKey', async () => {
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
+      await expect(service.validateApiKey('secret-key-123')).resolves.toEqual({
+        id: 'gw-1',
+        farmId: 'farm-1',
+        zoneId: 'zone-1',
+      });
     });
 
-    it('devuelve false cuando el gateway no existe', async () => {
+    it('devuelve null cuando la clave no coincide', async () => {
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'secret-key-123' });
+      await expect(service.validateApiKey('wrong-key', 'gw-1')).resolves.toBeNull();
+    });
+
+    it('devuelve null cuando el gateway no existe', async () => {
       prisma.gateway.findUnique.mockResolvedValue(null);
-      await expect(service.validateApiKey('gw-inexistente', 'any-key')).resolves.toBe(false);
+      await expect(service.validateApiKey('any-key', 'gw-inexistente')).resolves.toBeNull();
     });
 
-    it('devuelve false sin tirar excepción cuando las claves tienen distinta longitud', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ apiKey: 'short' });
-      await expect(service.validateApiKey('gw-1', 'a-much-longer-provided-key')).resolves.toBe(false);
+    it('devuelve null sin tirar excepción cuando las claves tienen distinta longitud', async () => {
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'short' });
+      await expect(service.validateApiKey('a-much-longer-provided-key', 'gw-1')).resolves.toBeNull();
     });
   });
 });

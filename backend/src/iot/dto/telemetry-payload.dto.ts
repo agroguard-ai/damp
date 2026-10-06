@@ -22,13 +22,12 @@ export class TelemetryPayloadDto {
   temp: number;
 
   /**
-   * UUID del Gateway (tabla "gateways") que retransmitió el paquete. Requerido: también es la
-   * identidad que valida IotDeviceAuthGuard contra el header X-API-Key — sin un gateway_id válido
-   * no hay forma de autenticar el pedido. Actualiza el heartbeat del gateway (CU013).
+   * UUID del Gateway (tabla "gateways") que retransmitió el paquete.
+   * Opcional: si no se envía en el body, se deduce automáticamente a partir del header X-API-Key.
    */
   @IsString()
-  @IsNotEmpty()
-  gateway_id: string;
+  @IsOptional()
+  gateway_id?: string;
 
   /** Calidad de señal LoRa (RSSI) del paquete recibido por el gateway. Opcional — no hace falta para autenticar ni para el downlink, solo enriquece el heartbeat. */
   @IsNumber()

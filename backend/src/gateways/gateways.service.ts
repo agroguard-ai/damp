@@ -144,24 +144,35 @@ export class GatewaysService {
   }
 
   /**
-   * Valida el X-API-Key de un gateway físico contra el que se guardó al registrarlo
-   * (ver create()). Comparación en tiempo constante para no filtrar la clave por timing.
-   * Usado exclusivamente por IotDeviceAuthGuard — nunca se expone vía HTTP a un cliente.
+   * Valida el X-API-Key de un gateway físico y devuelve su registro completo.
+   * Si se provee gatewayId, verifica la coincidencia; si no se provee, busca el gateway por apiKey.
+   * Usado exclusivamente por IotDeviceAuthGuard.
    */
-  async validateApiKey(gatewayId: string, providedKey: string): Promise<boolean> {
-    const gateway = await this.prisma.gateway.findUnique({
-      where: { id: gatewayId },
-      select: { apiKey: true },
-    });
-    if (!gateway) {
-      return false;
+  async validateApiKey(providedKey: string, gatewayId?: string): Promise<{ id: string; farmId: string; zoneId: string } | null> {
+    if (!providedKey || typeof providedKey !== 'string') {
+      return null;
     }
 
-    const expected = Buffer.from(gateway.apiKey);
-    const provided = Buffer.from(providedKey);
-    if (expected.length !== provided.length) {
-      return false;
+    if (gatewayId) {
+      const gateway = await this.prisma.gateway.findUnique({
+        where: { id: gatewayId },
+        select: { id: true, farmId: true, zoneId: true, apiKey: true },
+      });
+      if (!gateway) return null;
+
+      const expected = Buffer.from(gateway.apiKey);
+      const provided = Buffer.from(providedKey);
+      if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+        return null;
+      }
+      return { id: gateway.id, farmId: gateway.farmId, zoneId: gateway.zoneId };
     }
-    return timingSafeEqual(expected, provided);
+
+    // Buscar directamente por apiKey única
+    const gateway = await this.prisma.gateway.findUnique({
+      where: { apiKey: providedKey },
+      select: { id: true, farmId: true, zoneId: true },
+    });
+    return gateway || null;
   }
 }

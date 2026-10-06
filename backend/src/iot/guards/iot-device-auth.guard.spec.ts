@@ -18,11 +18,21 @@ describe('IotDeviceAuthGuard', () => {
   });
 
   it('permite el acceso cuando gateway_id y X-API-Key son válidos', async () => {
-    gatewaysService.validateApiKey.mockResolvedValue(true);
+    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
     const context = makeContext({ 'x-api-key': 'valid-key' }, { gateway_id: 'gw-1', collar_id: 1 });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(gatewaysService.validateApiKey).toHaveBeenCalledWith('gw-1', 'valid-key');
+    expect(gatewaysService.validateApiKey).toHaveBeenCalledWith('valid-key', 'gw-1');
+  });
+
+  it('permite el acceso cuando solo se provee X-API-Key y deduce gateway_id', async () => {
+    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
+    const body: Record<string, unknown> = { collar_id: 1 };
+    const context = makeContext({ 'x-api-key': 'valid-key' }, body);
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(gatewaysService.validateApiKey).toHaveBeenCalledWith('valid-key', undefined);
+    expect(body.gateway_id).toBe('gw-1');
   });
 
   it('rechaza si falta el header X-API-Key', async () => {
@@ -31,14 +41,8 @@ describe('IotDeviceAuthGuard', () => {
     expect(gatewaysService.validateApiKey).not.toHaveBeenCalled();
   });
 
-  it('rechaza si falta gateway_id en el body', async () => {
-    const context = makeContext({ 'x-api-key': 'valid-key' }, {});
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
-    expect(gatewaysService.validateApiKey).not.toHaveBeenCalled();
-  });
-
-  it('rechaza si la combinación gateway_id/X-API-Key no matchea', async () => {
-    gatewaysService.validateApiKey.mockResolvedValue(false);
+  it('rechaza si el apiKey no existe o no matchea', async () => {
+    gatewaysService.validateApiKey.mockResolvedValue(null);
     const context = makeContext({ 'x-api-key': 'wrong-key' }, { gateway_id: 'gw-1' });
     await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
