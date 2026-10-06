@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { PaginationQueryDto } from '@/common/pagination/dto/pagination-query.dto';
 import { UpdateGlobalRoleDto } from './dto/update-global-role.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
@@ -8,43 +9,66 @@ import * as bcrypt from 'bcryptjs';
 export class AdminUsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll() {
-    const users = await this.prisma.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        globalRole: true,
-        mustChangePassword: true,
-        isActive: true,
-        maxCollars: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            farmUsers: true,
+  async findAll(query?: PaginationQueryDto) {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const [users, totalItems] = await Promise.all([
+      this.prisma.user.findMany({
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          globalRole: true,
+          mustChangePassword: true,
+          isActive: true,
+          maxCollars: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              farmUsers: true,
+            },
           },
-        },
-        farms: {
-          select: {
-            id: true,
-            _count: {
-              select: {
-                collars: true,
+          farms: {
+            select: {
+              id: true,
+              _count: {
+                select: {
+                  collars: true,
+                },
               },
             },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.user.count(),
+    ]);
 
-    return users.map(({ farms, ...u }) => ({
+    const data = users.map(({ farms, ...u }) => ({
       ...u,
       assignedCollarsCount: farms.reduce((acc, f) => acc + f._count.collars, 0),
     }));
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data,
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
   }
 
   async createUser(dto: CreateUserDto) {
@@ -55,7 +79,7 @@ export class AdminUsersService {
     });
 
     if (existingUser) {
-      throw new ConflictException(`El correo electrónico "${normalizedEmail}" ya está registrado`);
+      throw new ConflictException('El correo electrónico ya está registrado');
     }
 
     const tempPassword = dto.initialPassword?.trim() || `Damp${Math.random().toString(36).substring(2, 8)}!`;
@@ -156,30 +180,53 @@ export class AdminUsersService {
     });
   }
 
-  async findAllFarms() {
-    return this.prisma.farm.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true },
-        },
-        farmUsers: {
-          where: { isActive: true },
-          include: {
-            user: { select: { id: true, name: true, email: true } },
-            role: true,
+  async findAllFarms(query?: PaginationQueryDto) {
+    const page = Math.max(1, Number(query?.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 10));
+    const skip = (page - 1) * limit;
+
+    const [farms, totalItems] = await Promise.all([
+      this.prisma.farm.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: { id: true, name: true, email: true },
+          },
+          farmUsers: {
+            where: { isActive: true },
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+              role: true,
+            },
+          },
+          _count: {
+            select: {
+              animals: true,
+              zones: true,
+              gateways: true,
+              farmUsers: true,
+            },
           },
         },
-        _count: {
-          select: {
-            animals: true,
-            zones: true,
-            gateways: true,
-            farmUsers: true,
-          },
-        },
+      }),
+      this.prisma.farm.count(),
+    ]);
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return {
+      data: farms,
+      meta: {
+        totalItems,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
-    });
+    };
   }
 
   async updateGlobalRole(userId: string, dto: UpdateGlobalRoleDto) {
