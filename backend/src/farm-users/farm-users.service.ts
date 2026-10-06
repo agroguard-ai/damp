@@ -230,10 +230,28 @@ export class FarmUsersService {
           userId,
         },
       },
+      include: { role: true },
     });
 
     if (!existing || !existing.isActive) {
       throw new NotFoundException(`Membresía del usuario no encontrada en la granja.`);
+    }
+
+    if (existing.role.name === 'ADMIN') {
+      const otherActiveAdmin = await this.prisma.farmUser.findFirst({
+        where: {
+          farmId,
+          isActive: true,
+          role: { name: 'ADMIN' },
+          userId: { not: userId },
+        },
+      });
+
+      if (!otherActiveAdmin) {
+        throw new BadRequestException(
+          'No se puede dar de baja al único administrador de la granja. Asigná otro administrador antes de remover este acceso.'
+        );
+      }
     }
 
     return this.prisma.farmUser.update({

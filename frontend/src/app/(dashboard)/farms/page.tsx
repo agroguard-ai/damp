@@ -468,10 +468,11 @@ export default function FarmsPage() {
                           {/* Botón Usuarios / Equipo */}
                           <Link
                             href={`/farms/${farm.id}/users`}
-                            className="p-1.5 text-zinc-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
                             title="Gestionar personal y accesos a este campo"
                           >
                             <Users className="w-4 h-4" />
+                            <span className="hidden lg:inline">Personal</span>
                           </Link>
 
                           {/* Acciones exclusivas de Administrador / Productor */}
