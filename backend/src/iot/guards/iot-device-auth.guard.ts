@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { GatewaysService } from '@/gateways/gateways.service';
 
 /**
@@ -13,19 +13,29 @@ import { GatewaysService } from '@/gateways/gateways.service';
 export class IotDeviceAuthGuard implements CanActivate {
   constructor(private readonly gatewaysService: GatewaysService) {}
 
+  private readonly logger = new Logger(IotDeviceAuthGuard.name);
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers['x-api-key'];
+    const apiKey = request.headers['x-api-key'] || request.headers['X-API-KEY'] || request.headers['X-Api-Key'];
     const gatewayId = request.body?.gateway_id;
 
+    this.logger.log(`[IoT Telemetry Incoming] Headers: ${JSON.stringify(request.headers)}`);
+    this.logger.log(`[IoT Telemetry Incoming] Body: ${JSON.stringify(request.body)}`);
+    this.logger.log(`[IoT Telemetry Incoming] Extracted apiKey: "${apiKey}", gatewayId: "${gatewayId}"`);
+
     if (!apiKey || typeof apiKey !== 'string') {
+      this.logger.warn('[IoT Telemetry] Rechazado 401: Falta el header X-API-Key');
       throw new UnauthorizedException('Missing X-API-Key header — el gateway debe autenticarse con su API Key');
     }
 
-    const gateway = await this.gatewaysService.validateApiKey(apiKey, gatewayId);
+    const gateway = await this.gatewaysService.validateApiKey(apiKey.trim(), gatewayId);
     if (!gateway) {
+      this.logger.warn(`[IoT Telemetry] Rechazado 401: API Key inválida o no coincide con ninguna granja/gateway.`);
       throw new UnauthorizedException('Invalid API Key or mismatched gateway');
     }
+
+    this.logger.log(`[IoT Telemetry] Gateway autenticado con éxito: ID=${gateway.id}, FarmID=${gateway.farmId}`);
 
     // Inyectar el gateway resuelto en el request para que iot.service pueda usar su ID
     request.gateway = gateway;
