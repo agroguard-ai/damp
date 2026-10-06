@@ -115,11 +115,21 @@ export default function CollaresPage() {
     async function loadFarms() {
       try {
         if (isSuperAdmin) {
-          const res = await fetch('/api/admin/farms');
-          if (res.ok) setAllFarms(await res.json());
+          const res = await fetch('/api/admin/farms?limit=100');
+          if (res.ok) {
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+            setAllFarms(
+              list.map((f: { id: string; name?: string | null }) => ({
+                id: f.id,
+                name: f.name || 'Sin nombre',
+              }))
+            );
+          }
         } else {
           const data = await farmsApi.getAll();
-          setAllFarms(data.map((f) => ({ id: f.id, name: f.name || 'Sin nombre' })));
+          const list = Array.isArray(data) ? data : [];
+          setAllFarms(list.map((f) => ({ id: f.id, name: f.name || 'Sin nombre' })));
         }
       } catch {
         // ignore

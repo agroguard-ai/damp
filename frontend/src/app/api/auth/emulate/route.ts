@@ -39,11 +39,16 @@ export async function POST(req: NextRequest) {
     if (targetUserId && typeof targetUserId === 'string') {
       const backendUrl = process.env.API_BASE_URL;
       if (backendUrl) {
-        const checkRes = await fetch(`${backendUrl}/admin/users`, {
+        const checkRes = await fetch(`${backendUrl}/admin/users?limit=100`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (checkRes.ok) {
-          const users: Array<{ id: string; globalRole: string }> = await checkRes.json();
+          const raw = await checkRes.json();
+          const users: Array<{ id: string; globalRole: string }> = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.data)
+              ? raw.data
+              : [];
           const target = users.find((u) => u.id === targetUserId);
           if (target && target.globalRole === 'SUPER_ADMIN') {
             return NextResponse.json({ error: 'No se puede emular a un usuario con rol SUPER_ADMIN' }, { status: 400 });
