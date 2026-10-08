@@ -4,12 +4,15 @@ RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@11 --activate
 WORKDIR /app
 
+# Optimización para servidores de 1 vCPU y RAM acotada:
+ENV CI=true
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV UV_THREADPOOL_SIZE=1
+
 # ---- deps ----
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY prisma ./prisma
-RUN pnpm install --frozen-lockfile
-RUN pnpm exec prisma generate
+RUN pnpm install --frozen-lockfile --prefer-offline
 
 # ---- builder ----
 FROM base AS builder
@@ -23,6 +26,7 @@ RUN pnpm run build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=512"
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
