@@ -5,7 +5,12 @@ export interface Gateway {
   name: string;
   farmId?: string | null;
   zoneId?: string | null;
-  farm?: { id: string; name: string | null } | null;
+  farm?: {
+    id: string;
+    name: string | null;
+    userId?: string | null;
+    user?: { id: string; name: string | null; email: string } | null;
+  } | null;
   zone?: { id: string; name: string } | null;
   apiKey?: string;
   status: GatewayStatus;
@@ -17,12 +22,14 @@ export interface Gateway {
 
 export interface CreateGatewayPayload {
   name: string;
+  apiKey?: string;
   farmId?: string;
   zoneId?: string;
 }
 
 export interface UpdateGatewayPayload {
   name?: string;
+  apiKey?: string;
   farmId?: string | null;
   zoneId?: string | null;
 }

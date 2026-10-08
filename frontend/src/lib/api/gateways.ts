@@ -8,6 +8,9 @@ export const gatewaysApi = {
   /** GET /api/gateways?farmId=xxx — returns all gateways for a given farm */
   getByFarm: (farmId: string): Promise<Gateway[]> => apiFetch<Gateway[]>(`/api/gateways?farmId=${farmId}`),
 
+  /** GET /api/gateways/:id/api-key — retrieves gateway API key */
+  getApiKey: (id: string): Promise<{ apiKey: string }> => apiFetch<{ apiKey: string }>(`/api/gateways/${id}/api-key`),
+
   /** POST /api/gateways — registers a new gateway associated to a farm and zone */
   create: (data: CreateGatewayPayload): Promise<Gateway> =>
     apiFetch<Gateway>('/api/gateways', {

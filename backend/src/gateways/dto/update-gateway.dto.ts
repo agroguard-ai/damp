@@ -8,6 +8,10 @@ export class UpdateGatewayDto {
 
   @IsString()
   @IsOptional()
+  apiKey?: string;
+
+  @IsString()
+  @IsOptional()
   farmId?: string | null;
 
   @IsString()

@@ -159,7 +159,7 @@ model AnimalCollar {
   startAt  DateTime @map("start_at")
   endAt    DateTime? @map("end_at")
 
-  collar Collar @relation(fields: [collarId], references: [id])
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   animal Animal @relation(fields: [animalId], references: [id])
 
   @@map("animal_collars")
@@ -262,7 +262,7 @@ model TelemetryReading {
   temperature Float
   timestamp   DateTime @default(now())
 
-  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@map("telemetry_readings")
 }
@@ -351,7 +351,7 @@ model CollarClaim {
   createdAt       DateTime          @default(now()) @map("created_at")
   resolvedAt      DateTime?         @map("resolved_at")
 
-  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   farm   Farm?  @relation(fields: [farmId], references: [id], onDelete: SetNull)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

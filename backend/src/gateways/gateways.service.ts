@@ -59,10 +59,18 @@ export class GatewaysService {
       throw new BadRequestException('No se puede asignar una zona sin asignar primero un establecimiento.');
     }
 
-    // apiKey se genera server-side y se devuelve UNA sola vez, en la respuesta de este create()
-    // (ver el omit en findByFarm/update más abajo) — es lo que el gateway físico manda en el
-    // header X-API-Key para autenticarse en POST /api/iot/telemetry (ver iot/guards/iot-device-auth.guard.ts).
-    const apiKey = randomBytes(32).toString('hex');
+    let apiKey = dto.apiKey?.trim();
+    if (apiKey) {
+      const existing = await this.prisma.gateway.findUnique({
+        where: { apiKey },
+      });
+      if (existing) {
+        throw new BadRequestException('Ya existe un gateway registrado con esa API Key.');
+      }
+    } else {
+      apiKey = randomBytes(32).toString('hex');
+    }
+
     const gateway = await this.prisma.gateway.create({
       data: {
         name: dto.name,
@@ -71,7 +79,14 @@ export class GatewaysService {
         apiKey,
       },
       include: {
-        farm: { select: { id: true, name: true } },
+        farm: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
         zone: { select: { id: true, name: true } },
       },
     });
@@ -86,10 +101,16 @@ export class GatewaysService {
       const gateways = await this.prisma.gateway.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
-          farm: { select: { id: true, name: true } },
+          farm: {
+            select: {
+              id: true,
+              name: true,
+              userId: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
           zone: { select: { id: true, name: true } },
         },
-        omit: { apiKey: true },
       });
       return gateways.map((g) => this.withStatus(g));
     }
@@ -105,7 +126,14 @@ export class GatewaysService {
     const gateways = await this.prisma.gateway.findMany({
       where: { farmId: { in: farmIds } },
       include: {
-        farm: { select: { id: true, name: true } },
+        farm: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
         zone: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -135,7 +163,14 @@ export class GatewaysService {
     const gateways = await this.prisma.gateway.findMany({
       where: { farmId },
       include: {
-        farm: { select: { id: true, name: true } },
+        farm: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
         zone: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -147,7 +182,16 @@ export class GatewaysService {
   private async getOwned(id: string, userId: string) {
     const gateway = await this.prisma.gateway.findUnique({
       where: { id },
-      include: { farm: true },
+      include: {
+        farm: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
     });
     if (!gateway) {
       throw new NotFoundException(`Gateway with id ${id} not found`);
@@ -176,6 +220,11 @@ export class GatewaysService {
     return gateway;
   }
 
+  async getApiKey(id: string, userId: string): Promise<{ apiKey: string }> {
+    const gateway = await this.getOwned(id, userId);
+    return { apiKey: gateway.apiKey };
+  }
+
   async update(id: string, dto: UpdateGatewayDto, userId: string) {
     const gateway = await this.getOwned(id, userId);
 
@@ -195,18 +244,34 @@ export class GatewaysService {
       await this.assertZoneBelongsToFarm(targetFarmId, dto.zoneId);
     }
 
+    if (dto.apiKey?.trim() && dto.apiKey.trim() !== gateway.apiKey) {
+      const existing = await this.prisma.gateway.findUnique({
+        where: { apiKey: dto.apiKey.trim() },
+      });
+      if (existing) {
+        throw new BadRequestException('Ya existe un gateway registrado con esa API Key.');
+      }
+    }
+
     const updated = await this.prisma.gateway.update({
       where: { id },
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.farmId !== undefined ? { farmId: dto.farmId } : {}),
         ...(dto.zoneId !== undefined ? { zoneId: dto.zoneId } : {}),
+        ...(dto.apiKey !== undefined ? { apiKey: dto.apiKey.trim() } : {}),
       },
       include: {
-        farm: { select: { id: true, name: true } },
+        farm: {
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
         zone: { select: { id: true, name: true } },
       },
-      omit: { apiKey: true },
     });
     return this.withStatus(updated);
   }

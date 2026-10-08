@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsBoolean, IsArray, IsInt } from 'class-validator';
 import { CollarRequestStatus } from '@generated/prisma';
 
 export class UpdateCollarRequestDto {
@@ -13,4 +13,10 @@ export class UpdateCollarRequestDto {
   @IsBoolean()
   @IsOptional()
   incrementMaxCollars?: boolean;
+
+  /** IDs de los collares a asignar a la granja al aprobar la solicitud */
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  assignedCollarIds?: number[];
 }

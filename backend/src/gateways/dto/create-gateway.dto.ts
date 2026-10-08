@@ -7,6 +7,10 @@ export class CreateGatewayDto {
 
   @IsString()
   @IsOptional()
+  apiKey?: string;
+
+  @IsString()
+  @IsOptional()
   farmId?: string;
 
   @IsString()

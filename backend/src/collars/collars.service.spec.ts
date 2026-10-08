@@ -10,6 +10,7 @@ describe('CollarsService', () => {
     collar: {
       create: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       count: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
@@ -38,13 +39,16 @@ describe('CollarsService', () => {
     user: {
       update: jest.Mock;
     };
+    $executeRaw: jest.Mock;
   };
 
   beforeEach(async () => {
     prisma = {
+      $executeRaw: jest.fn(),
       collar: {
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         count: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -118,6 +122,26 @@ describe('CollarsService', () => {
   });
 
   describe('update con límite de collares', () => {
+    it('permite modificar el ID numérico de un collar existente si no colisiona', async () => {
+      prisma.collar.findUnique
+        .mockResolvedValueOnce({ id: 2, identifier: 'COLLAR-2', farmId: 'farm-1' }) // getOrThrow(2)
+        .mockResolvedValueOnce(null); // check conflict for new id 5
+      prisma.collar.update.mockResolvedValue({ id: 5, identifier: 'COLLAR-5', farmId: 'farm-1' });
+
+      const result = await service.update(2, { id: 5 });
+
+      expect(prisma.$executeRaw).toHaveBeenCalled();
+      expect(result.id).toBe(5);
+    });
+
+    it('rechaza con ConflictException si el nuevo ID numérico ya existe', async () => {
+      prisma.collar.findUnique
+        .mockResolvedValueOnce({ id: 2, identifier: 'COLLAR-2', farmId: 'farm-1' }) // getOrThrow(2)
+        .mockResolvedValueOnce({ id: 5, identifier: 'COLLAR-5' }); // already exists!
+
+      await expect(service.update(2, { id: 5 })).rejects.toThrow();
+    });
+
     it('rechaza con BadRequestException si se transfiere un collar a una granja cuyo dueño no tiene cupo', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 10, identifier: 'COL-010', farmId: 'farm-old' });
       prisma.farm.findUnique.mockResolvedValue({

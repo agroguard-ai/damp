@@ -38,6 +38,11 @@ export class GatewaysController {
     return this.gatewaysService.findAll(userId);
   }
 
+  @Get(':id/api-key')
+  getApiKey(@Param('id') id: string, @CurrentUser('sub') userId: string) {
+    return this.gatewaysService.getApiKey(id, userId);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateGatewayDto: UpdateGatewayDto, @CurrentUser('sub') userId: string) {
     return this.gatewaysService.update(id, updateGatewayDto, userId);
