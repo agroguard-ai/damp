@@ -302,7 +302,13 @@ export class GatewaysService {
   async validateApiKey(
     providedKey: string,
     gatewayId?: string
-  ): Promise<{ id: string; farmId: string | null; zoneId: string | null } | null> {
+  ): Promise<{
+    id: string;
+    name?: string | null;
+    farmId: string | null;
+    zoneId: string | null;
+    farm?: { id: string; name: string | null } | null;
+  } | null> {
     if (!providedKey || typeof providedKey !== 'string') {
       return null;
     }
@@ -310,7 +316,14 @@ export class GatewaysService {
     if (gatewayId) {
       const gateway = await this.prisma.gateway.findUnique({
         where: { id: gatewayId },
-        select: { id: true, farmId: true, zoneId: true, apiKey: true },
+        select: {
+          id: true,
+          name: true,
+          farmId: true,
+          zoneId: true,
+          apiKey: true,
+          farm: { select: { id: true, name: true } },
+        },
       });
       if (!gateway) return null;
 
@@ -319,15 +332,35 @@ export class GatewaysService {
       if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
         return null;
       }
-      return { id: gateway.id, farmId: gateway.farmId, zoneId: gateway.zoneId };
+      return {
+        id: gateway.id,
+        name: gateway.name,
+        farmId: gateway.farmId,
+        zoneId: gateway.zoneId,
+        farm: gateway.farm,
+      };
     }
 
     // Buscar directamente por apiKey única
     const gateway = await this.prisma.gateway.findUnique({
       where: { apiKey: providedKey },
-      select: { id: true, farmId: true, zoneId: true },
+      select: {
+        id: true,
+        name: true,
+        farmId: true,
+        zoneId: true,
+        farm: { select: { id: true, name: true } },
+      },
     });
-    return gateway || null;
+    return gateway
+      ? {
+          id: gateway.id,
+          name: gateway.name,
+          farmId: gateway.farmId,
+          zoneId: gateway.zoneId,
+          farm: gateway.farm,
+        }
+      : null;
   }
 }
 

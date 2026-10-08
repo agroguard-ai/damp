@@ -19,6 +19,7 @@ import {
   FileDown,
   Users,
   Building2,
+  Activity,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -114,6 +115,12 @@ export default function Sidebar() {
                 href="/admin/farms"
                 label="Todas las Granjas"
                 logo={<Building2 className="text-purple-400" />}
+                isCollapsed={isCollapsed}
+              />
+              <SidebarLink
+                href="/admin/logs"
+                label="Logs de Peticiones IoT"
+                logo={<Activity className="text-purple-400" />}
                 isCollapsed={isCollapsed}
               />
             </div>

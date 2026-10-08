@@ -426,3 +426,46 @@ model ZoneRotationStep {
   @@unique([rotationPlanId, orderIndex])
   @@map("zone_rotation_steps")
 }
+
+model IotRequestLog {
+  id           String    @id @default(uuid())
+  createdAt    DateTime  @default(now()) @map("created_at")
+  endpoint     String    @default("/api/iot/telemetry")
+  method       String    @default("POST")
+  ipAddress    String?   @map("ip_address")
+
+  // Gateway info
+  gatewayId    String?   @map("gateway_id")
+  gatewayName  String?   @map("gateway_name")
+  farmId       String?   @map("farm_id")
+  farmName     String?   @map("farm_name")
+  apiKeyUsed   String?   @map("api_key_used")
+
+  // Collar info
+  collarId     Int?      @map("collar_id")
+
+  // Request data
+  headers      Json?
+  payload      Json?
+
+  // Telemetry parsed metrics
+  lat          Float?
+  lng          Float?
+  temp         Float?
+  rssi         Float?
+  snr          Float?
+
+  // Response details
+  statusCode   Int       @map("status_code")
+  status       String    @default("SUCCESS")
+  responseBody Json?     @map("response_body")
+  errorMessage String?   @map("error_message")
+  downlinkSent String?   @map("downlink_sent")
+  durationMs   Int?      @map("duration_ms")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([collarId])
+  @@index([gatewayId])
+  @@index([statusCode])
+  @@map("iot_request_logs")
+}
