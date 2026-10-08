@@ -24,6 +24,7 @@ describe('AdminUsersService', () => {
         findUnique: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
+        count: jest.fn().mockResolvedValue(1),
       },
       farm: {
         findMany: jest.fn(),
@@ -61,9 +62,9 @@ describe('AdminUsersService', () => {
       ]);
 
       const result = await service.findAll();
-      expect(result).toHaveLength(1);
-      expect(result[0].assignedCollarsCount).toBe(8);
-      expect((result[0] as any).farms).toBeUndefined();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].assignedCollarsCount).toBe(8);
+      expect((result.data[0] as any).farms).toBeUndefined();
     });
   });
 

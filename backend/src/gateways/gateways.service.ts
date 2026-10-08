@@ -33,33 +33,85 @@ export class GatewaysService {
   }
 
   async create(dto: CreateGatewayDto, userId: string) {
-    const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
-    if (!farm) {
-      throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
-    }
-
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
 
-    if (!isSuperAdmin && farm.userId !== userId) {
-      const member = await this.prisma.farmUser.findUnique({
-        where: { farmId_userId: { farmId: dto.farmId, userId } },
-        include: { role: true },
-      });
-      if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
-        throw new ForbiddenException('No tienes acceso a este establecimiento.');
+    if (dto.farmId) {
+      const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
+      if (!farm) {
+        throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
       }
+
+      if (!isSuperAdmin && farm.userId !== userId) {
+        const member = await this.prisma.farmUser.findUnique({
+          where: { farmId_userId: { farmId: dto.farmId, userId } },
+          include: { role: true },
+        });
+        if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
+          throw new ForbiddenException('No tienes acceso a este establecimiento.');
+        }
+      }
+
+      if (dto.zoneId) {
+        await this.assertZoneBelongsToFarm(dto.farmId, dto.zoneId);
+      }
+    } else if (dto.zoneId) {
+      throw new BadRequestException('No se puede asignar una zona sin asignar primero un establecimiento.');
     }
-    await this.assertZoneBelongsToFarm(dto.farmId, dto.zoneId);
 
     // apiKey se genera server-side y se devuelve UNA sola vez, en la respuesta de este create()
     // (ver el omit en findByFarm/update más abajo) — es lo que el gateway físico manda en el
     // header X-API-Key para autenticarse en POST /api/iot/telemetry (ver iot/guards/iot-device-auth.guard.ts).
     const apiKey = randomBytes(32).toString('hex');
     const gateway = await this.prisma.gateway.create({
-      data: { name: dto.name, farmId: dto.farmId, zoneId: dto.zoneId, apiKey },
+      data: {
+        name: dto.name,
+        farmId: dto.farmId || null,
+        zoneId: dto.zoneId || null,
+        apiKey,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+        zone: { select: { id: true, name: true } },
+      },
     });
     return this.withStatus(gateway);
+  }
+
+  async findAll(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+
+    if (isSuperAdmin) {
+      const gateways = await this.prisma.gateway.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          farm: { select: { id: true, name: true } },
+          zone: { select: { id: true, name: true } },
+        },
+        omit: { apiKey: true },
+      });
+      return gateways.map((g) => this.withStatus(g));
+    }
+
+    const userFarms = await this.prisma.farm.findMany({
+      where: {
+        OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+      },
+      select: { id: true },
+    });
+    const farmIds = userFarms.map((f) => f.id);
+
+    const gateways = await this.prisma.gateway.findMany({
+      where: { farmId: { in: farmIds } },
+      include: {
+        farm: { select: { id: true, name: true } },
+        zone: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      omit: { apiKey: true },
+    });
+    return gateways.map((g) => this.withStatus(g));
   }
 
   async findByFarm(farmId: string, userId: string) {
@@ -82,7 +134,10 @@ export class GatewaysService {
 
     const gateways = await this.prisma.gateway.findMany({
       where: { farmId },
-      include: { zone: { select: { id: true, name: true } } },
+      include: {
+        farm: { select: { id: true, name: true } },
+        zone: { select: { id: true, name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       omit: { apiKey: true },
     });
@@ -101,7 +156,15 @@ export class GatewaysService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
 
-    if (!isSuperAdmin && gateway.farm.userId !== userId) {
+    if (isSuperAdmin) {
+      return gateway;
+    }
+
+    if (!gateway.farmId || !gateway.farm) {
+      throw new ForbiddenException('No tienes permisos sobre este dispositivo no asignado.');
+    }
+
+    if (gateway.farm.userId !== userId) {
       const member = await this.prisma.farmUser.findUnique({
         where: { farmId_userId: { farmId: gateway.farmId, userId } },
         include: { role: true },
@@ -115,12 +178,34 @@ export class GatewaysService {
 
   async update(id: string, dto: UpdateGatewayDto, userId: string) {
     const gateway = await this.getOwned(id, userId);
-    if (dto.zoneId) {
-      await this.assertZoneBelongsToFarm(gateway.farmId, dto.zoneId);
+
+    const targetFarmId = dto.farmId !== undefined ? dto.farmId : gateway.farmId;
+
+    if (dto.farmId && dto.farmId !== gateway.farmId) {
+      const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
+      if (!farm) {
+        throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
+      }
     }
+
+    if (dto.zoneId) {
+      if (!targetFarmId) {
+        throw new BadRequestException('No se puede asignar una zona sin asignar primero un establecimiento.');
+      }
+      await this.assertZoneBelongsToFarm(targetFarmId, dto.zoneId);
+    }
+
     const updated = await this.prisma.gateway.update({
       where: { id },
-      data: { name: dto.name, zoneId: dto.zoneId },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.farmId !== undefined ? { farmId: dto.farmId } : {}),
+        ...(dto.zoneId !== undefined ? { zoneId: dto.zoneId } : {}),
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+        zone: { select: { id: true, name: true } },
+      },
       omit: { apiKey: true },
     });
     return this.withStatus(updated);
@@ -149,7 +234,10 @@ export class GatewaysService {
    * Si se provee gatewayId, verifica la coincidencia; si no se provee, busca el gateway por apiKey.
    * Usado exclusivamente por IotDeviceAuthGuard.
    */
-  async validateApiKey(providedKey: string, gatewayId?: string): Promise<{ id: string; farmId: string; zoneId: string } | null> {
+  async validateApiKey(
+    providedKey: string,
+    gatewayId?: string
+  ): Promise<{ id: string; farmId: string | null; zoneId: string | null } | null> {
     if (!providedKey || typeof providedKey !== 'string') {
       return null;
     }
@@ -177,3 +265,4 @@ export class GatewaysService {
     return gateway || null;
   }
 }
+

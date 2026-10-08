@@ -7,7 +7,11 @@ export class UpdateGatewayDto {
   name?: string;
 
   @IsString()
-  @IsNotEmpty()
   @IsOptional()
-  zoneId?: string;
+  farmId?: string | null;
+
+  @IsString()
+  @IsOptional()
+  zoneId?: string | null;
 }
+

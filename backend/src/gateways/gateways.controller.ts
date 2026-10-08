@@ -21,35 +21,31 @@ import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
 @Controller('gateways')
-@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+@UseGuards(JwtAuthGuard, GlobalRolesGuard)
 export class GatewaysController {
   constructor(private readonly gatewaysService: GatewaysService) {}
 
   @Post()
-  @RequireFarmRole('ADMIN', 'OPERATOR')
   create(@Body() createGatewayDto: CreateGatewayDto, @CurrentUser('sub') userId: string) {
     return this.gatewaysService.create(createGatewayDto, userId);
   }
 
   @Get()
-  findByFarm(@Query('farmId') farmId: string, @CurrentUser('sub') userId: string) {
-    if (!farmId) {
-      throw new BadRequestException('farmId query parameter is required');
+  find(@Query('farmId') farmId: string | undefined, @CurrentUser('sub') userId: string) {
+    if (farmId) {
+      return this.gatewaysService.findByFarm(farmId, userId);
     }
-    return this.gatewaysService.findByFarm(farmId, userId);
+    return this.gatewaysService.findAll(userId);
   }
 
   @Patch(':id')
-  @ResolveFarmIdFrom('gateway')
-  @RequireFarmRole('ADMIN', 'OPERATOR')
   update(@Param('id') id: string, @Body() updateGatewayDto: UpdateGatewayDto, @CurrentUser('sub') userId: string) {
     return this.gatewaysService.update(id, updateGatewayDto, userId);
   }
 
   @Delete(':id')
-  @ResolveFarmIdFrom('gateway')
-  @RequireFarmRole('ADMIN', 'OPERATOR')
   remove(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.gatewaysService.remove(id, userId);
   }
 }
+

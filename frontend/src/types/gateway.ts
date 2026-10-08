@@ -3,9 +3,10 @@ export type GatewayStatus = 'NO_DATA' | 'ONLINE' | 'OFFLINE';
 export interface Gateway {
   id: string;
   name: string;
-  farmId: string;
-  zoneId: string;
-  zone?: { id: string; name: string };
+  farmId?: string | null;
+  zoneId?: string | null;
+  farm?: { id: string; name: string | null } | null;
+  zone?: { id: string; name: string } | null;
   apiKey?: string;
   status: GatewayStatus;
   lastSeenAt?: string | null;
@@ -16,11 +17,13 @@ export interface Gateway {
 
 export interface CreateGatewayPayload {
   name: string;
-  farmId: string;
-  zoneId: string;
+  farmId?: string;
+  zoneId?: string;
 }
 
 export interface UpdateGatewayPayload {
   name?: string;
-  zoneId?: string;
+  farmId?: string | null;
+  zoneId?: string | null;
 }
+

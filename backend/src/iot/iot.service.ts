@@ -42,7 +42,7 @@ export class IotService {
    */
   async handleTelemetry(
     payload: TelemetryPayloadDto,
-    authenticatedGateway?: { id: string; farmId: string; zoneId: string }
+    authenticatedGateway?: { id: string; farmId: string | null; zoneId: string | null }
   ) {
     const collar = await this.prisma.collar.findUnique({
       where: { id: payload.collar_id },

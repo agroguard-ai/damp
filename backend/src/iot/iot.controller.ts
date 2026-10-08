@@ -22,7 +22,7 @@ export class IotController {
   @UseGuards(IotDeviceAuthGuard)
   async ingestTelemetry(
     @Body() payload: TelemetryPayloadDto,
-    @Req() req: Request & { gateway?: { id: string; farmId: string; zoneId: string } },
+    @Req() req: Request & { gateway?: { id: string; farmId: string | null; zoneId: string | null } },
     @Res() res: Response
   ) {
     const result = await this.iotService.handleTelemetry(payload, req.gateway);

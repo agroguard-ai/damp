@@ -2,6 +2,9 @@ import { apiFetch } from './client';
 import type { Gateway, CreateGatewayPayload, UpdateGatewayPayload } from '@/types';
 
 export const gatewaysApi = {
+  /** GET /api/gateways — returns all gateways accessible to current user / all global gateways if superadmin */
+  getAll: (): Promise<Gateway[]> => apiFetch<Gateway[]>('/api/gateways'),
+
   /** GET /api/gateways?farmId=xxx — returns all gateways for a given farm */
   getByFarm: (farmId: string): Promise<Gateway[]> => apiFetch<Gateway[]>(`/api/gateways?farmId=${farmId}`),
 
