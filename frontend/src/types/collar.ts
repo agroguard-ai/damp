@@ -22,7 +22,8 @@ export interface Collar {
 }
 
 export interface CreateCollarPayload {
-  identifier: string;
+  id?: number;
+  identifier?: string;
   farmId?: string;
 }
 

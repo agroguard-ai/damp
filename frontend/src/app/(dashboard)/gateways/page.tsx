@@ -13,7 +13,8 @@ import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { SignalStrength } from '@/components/gateways/SignalStrength';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import type { GatewayStatus } from '@/types';
+import { KeyRound, Copy, Check, AlertTriangle, ShieldCheck, X } from 'lucide-react';
+import type { GatewayStatus, Gateway } from '@/types';
 
 const STATUS_LABELS: Record<GatewayStatus, string> = {
   ONLINE: 'En línea',
@@ -55,6 +56,8 @@ export default function GatewaysPage() {
 
   const [name, setName] = useState('');
   const [zoneId, setZoneId] = useState('');
+  const [createdGatewayKey, setCreatedGatewayKey] = useState<{ name: string; apiKey: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="la Gestión de Gateways LoRa" />;
@@ -64,12 +67,26 @@ export default function GatewaysPage() {
     e.preventDefault();
     if (!activeFarmId || !zoneId) return;
     try {
-      await createGateway({ name, farmId: activeFarmId, zoneId });
+      const created = await createGateway({ name, farmId: activeFarmId, zoneId });
       setName('');
       setZoneId('');
       toast.success('Gateway registrado con éxito');
+      if (created?.apiKey) {
+        setCreatedGatewayKey({ name: created.name, apiKey: created.apiKey });
+      }
       refetch();
     } catch {}
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedKey(true);
+      toast.success('API Key copiada al portapapeles');
+      setTimeout(() => setCopiedKey(false), 2500);
+    } catch {
+      toast.error('No se pudo copiar la clave');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -240,6 +257,79 @@ export default function GatewaysPage() {
                   )}
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CREDENCIALES DEL GATEWAY */}
+      {createdGatewayKey && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800/40">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
+                    API Key del Gateway
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Dispositivo: <strong>{createdGatewayKey.name}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCreatedGatewayKey(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-bold">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                ¡Copiá esta clave ahora!
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-450">
+                Por seguridad, esta es la única vez que el sistema mostrará la API Key completa. Deberás pegarla en el campo <strong>API Key del Gateway</strong> al conectarte a la red WiFi <code>AgroGuard-Setup</code> (192.168.4.1) del ESP32.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
+                API Key Generada (X-API-Key)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  type="text"
+                  value={createdGatewayKey.apiKey}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white font-mono select-all focus:outline-none"
+                />
+                <button
+                  onClick={() => void copyToClipboard(createdGatewayKey.apiKey)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                    copiedKey
+                      ? 'bg-green-600 text-white'
+                      : 'bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900'
+                  }`}
+                >
+                  {copiedKey ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedKey ? 'Copiado' : 'Copiar'}
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+              <button
+                onClick={() => setCreatedGatewayKey(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+              >
+                Entendido y guardado
+              </button>
             </div>
           </div>
         </div>

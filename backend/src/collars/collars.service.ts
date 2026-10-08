@@ -48,19 +48,44 @@ export class CollarsService {
       await this.assertCollarQuota(dto.farmId);
     }
 
+    if (dto.id) {
+      const existing = await this.prisma.collar.findUnique({ where: { id: dto.id } });
+      if (existing) {
+        throw new ConflictException(`Ya existe un collar con el ID numérico ${dto.id}`);
+      }
+    }
+
+    const resolvedIdentifier = dto.identifier?.trim()
+      ? dto.identifier.trim()
+      : dto.id
+        ? `COLLAR-${dto.id}`
+        : `COLLAR-TEMP-${Date.now()}`;
+
     try {
-      return await this.prisma.collar.create({
+      const collar = await this.prisma.collar.create({
         data: {
-          identifier: dto.identifier,
+          ...(dto.id ? { id: dto.id } : {}),
+          identifier: resolvedIdentifier,
           ...(dto.farmId ? { farmId: dto.farmId } : {}),
         },
         include: {
           farm: { select: { id: true, name: true } },
         },
       });
+
+      // Si no se proveyó identifier ni id al crear, actualizar identifier con el id generado
+      if (!dto.identifier?.trim() && !dto.id) {
+        return await this.prisma.collar.update({
+          where: { id: collar.id },
+          data: { identifier: `COLLAR-${collar.id}` },
+          include: { farm: { select: { id: true, name: true } } },
+        });
+      }
+
+      return collar;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new ConflictException(`A collar with identifier "${dto.identifier}" already exists`);
+        throw new ConflictException(`Ya existe un collar con el identificador "${resolvedIdentifier}"`);
       }
       throw err;
     }

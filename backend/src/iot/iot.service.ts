@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { GatewaysService } from '@/gateways/gateways.service';
 import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
@@ -34,18 +34,32 @@ export class IotService {
    * Procesa una lectura de telemetría enviada por un collar IoT.
    *
    * 1. Valida que el collar exista.
-   * 2. Persiste la lectura (lat, lng, temp).
-   * 3. Busca el animal activo asociado al collar y su cerco virtual activo.
-   * 4. Si el animal está fuera del cerco, dispara una alerta ESCAPE (si no hay ya una sin resolver).
-   * 5. Devuelve downlink con las coordenadas del cerco activo para el collar (o "NONE").
+   * 2. Valida que el collar pertenezca a la misma granja que el gateway autenticado.
+   * 3. Persiste la lectura (lat, lng, temp).
+   * 4. Busca el animal activo asociado al collar y su cerco virtual activo.
+   * 5. Si el animal está fuera del cerco, dispara una alerta ESCAPE (si no hay ya una sin resolver).
+   * 6. Devuelve downlink con las coordenadas del cerco activo para el collar (o "NONE").
    */
-  async handleTelemetry(payload: TelemetryPayloadDto) {
+  async handleTelemetry(
+    payload: TelemetryPayloadDto,
+    authenticatedGateway?: { id: string; farmId: string; zoneId: string }
+  ) {
     const collar = await this.prisma.collar.findUnique({
       where: { id: payload.collar_id },
     });
 
     if (!collar) {
       throw new NotFoundException(`Collar with id ${payload.collar_id} not found`);
+    }
+
+    // Validación de pertenencia estricta: el collar debe pertenecer al mismo establecimiento que el gateway autenticado
+    if (authenticatedGateway?.farmId && collar.farmId && collar.farmId !== authenticatedGateway.farmId) {
+      this.logger.warn(
+        `[IoT Telemetry] Rechazado 403: El collar ${collar.id} pertenece al campo ${collar.farmId}, pero fue retransmitido por un gateway del campo ${authenticatedGateway.farmId}.`
+      );
+      throw new ForbiddenException(
+        `El collar con ID ${payload.collar_id} no pertenece al establecimiento de este gateway.`
+      );
     }
 
     await this.prisma.telemetryReading.create({

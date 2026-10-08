@@ -100,6 +100,7 @@ export default function CollaresPage() {
   const { mutate: updateStatus } = useMutation(collarsApi.updateStatus);
 
   // SuperAdmin register form state
+  const [collarId, setCollarId] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [targetFarmId, setTargetFarmId] = useState('');
   const [allFarms, setAllFarms] = useState<Array<{ id: string; name: string }>>([]);
@@ -141,12 +142,16 @@ export default function CollaresPage() {
   // Handle register collar
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier.trim()) return;
+    const parsedId = collarId.trim() ? parseInt(collarId.trim(), 10) : undefined;
+    const finalIdentifier = identifier.trim() || (parsedId ? `COLLAR-${parsedId}` : '');
+
     try {
       await createCollar({
-        identifier: identifier.trim(),
+        id: parsedId,
+        identifier: finalIdentifier || undefined,
         farmId: targetFarmId || undefined,
       });
+      setCollarId('');
       setIdentifier('');
       setTargetFarmId('');
       toast.success('Collar registrado con éxito en el catálogo de hardware');
@@ -434,6 +439,9 @@ export default function CollaresPage() {
                       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono">
+                              ID #{c.id}
+                            </span>
                             <span className="font-bold text-zinc-900 dark:text-white font-mono text-sm tracking-wide">
                               {c.identifier}
                             </span>
@@ -775,9 +783,26 @@ export default function CollaresPage() {
 
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                    ID del Collar (Hardware) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={collarId}
+                    onChange={(e) => setCollarId(e.target.value)}
+                    placeholder="Ej: 2, 3, 4 (o vacío para auto-asignar)"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-zinc-400">
+                    Número con el que se flasheará el firmware (#define COLLAR_ID).
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      Identificador único *
+                      Identificador / Alias (Opcional)
                     </label>
                     <button
                       type="button"
@@ -791,11 +816,10 @@ export default function CollaresPage() {
 
                   <div className="relative">
                     <input
-                      required
                       type="text"
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder="Ej: COLLAR-0042"
+                      placeholder="Ej: COLLAR-0042 (por defecto COLLAR-<ID>)"
                       className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-sm font-mono"
                     />
                   </div>

@@ -6,6 +6,7 @@ export interface Gateway {
   farmId: string;
   zoneId: string;
   zone?: { id: string; name: string };
+  apiKey?: string;
   status: GatewayStatus;
   lastSeenAt?: string | null;
   lastRssi?: number | null;
