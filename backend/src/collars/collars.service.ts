@@ -17,6 +17,7 @@ export class CollarsService {
     id: number;
     identifier: string;
     status: CollarStatus;
+    isArchived?: boolean;
     lastTelemetryDate: Date | null;
     createdAt: Date;
     farmId?: string | null;
@@ -270,12 +271,79 @@ export class CollarsService {
     });
   }
 
-  async remove(id: number) {
-    await this.getOrThrow(id);
+  async archive(id: number, user?: JwtPayload) {
+    const collar = await this.getOrThrow(id);
+
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+    if (!isSuperAdmin && user?.sub) {
+      const farmIds = await this.getUserFarmIds(user.sub);
+      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
+      if (!belongsToFarm) {
+        throw new ForbiddenException('No tienes permisos para archivar este collar');
+      }
+    }
+
+    // 1. Liberar asignación activa en ganado si la tuviera
     await this.prisma.animalCollar.updateMany({
       where: { collarId: id, endAt: null },
       data: { endAt: new Date() },
     });
+
+    // 2. Dar de baja lógica: fuera de servicio, archivado y desvinculado de campo para no consumir cupo
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        isArchived: true,
+        status: CollarStatus.OUT_OF_SERVICE,
+        farmId: null,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async restore(id: number) {
+    await this.getOrThrow(id);
+
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        isArchived: false,
+        status: CollarStatus.AVAILABLE,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async remove(id: number, forceArchive = false) {
+    const collar = await this.getOrThrow(id);
+
+    // Contar historial asociado (asignaciones a ganado, telemetrías y reclamos)
+    const [assignmentCount, telemetryCount, claimCount] = await Promise.all([
+      this.prisma.animalCollar.count({ where: { collarId: id } }),
+      this.prisma.telemetryReading.count({ where: { collarId: id } }),
+      this.prisma.collarClaim.count({ where: { collarId: id } }),
+    ]);
+
+    const totalRelations = assignmentCount + telemetryCount + claimCount;
+    if (totalRelations > 0) {
+      if (forceArchive) {
+        return this.archive(id);
+      }
+
+      const reasons: string[] = [];
+      if (assignmentCount > 0) reasons.push(`${assignmentCount} asignación(es) a animales`);
+      if (telemetryCount > 0) reasons.push(`${telemetryCount} lectura(s) de telemetría`);
+      if (claimCount > 0) reasons.push(`${claimCount} reclamo(s) de avería`);
+
+      throw new BadRequestException(
+        `No se puede eliminar permanentemente el collar #${id} (${collar.identifier}) porque posee historial registrado (${reasons.join(', ')}). Utilizá la opción "Archivar / Dar de baja" para retirarlo del inventario conservando los datos de trazabilidad.`
+      );
+    }
+
     return this.prisma.collar.delete({ where: { id } });
   }
 
@@ -283,6 +351,9 @@ export class CollarsService {
     const collar = await this.prisma.collar.findUnique({ where: { id } });
     if (!collar) {
       throw new NotFoundException(`El collar con ID ${id} no existe.`);
+    }
+    if (collar.isArchived) {
+      throw new BadRequestException(`El collar ${collar.identifier} está archivado / fuera de servicio.`);
     }
     if (collar.status !== 'AVAILABLE') {
       throw new BadRequestException(`El collar ${collar.identifier} no está disponible (estado: ${collar.status}).`);
@@ -498,6 +569,7 @@ export class CollarsService {
     const currentAssigned = await this.prisma.collar.count({
       where: {
         farm: { userId: owner.id },
+        isArchived: false,
         ...(excludeCollarId ? { id: { not: excludeCollarId } } : {}),
       },
     });

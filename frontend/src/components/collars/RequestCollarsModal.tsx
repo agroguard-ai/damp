@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { PlusCircle, X, Check, Building2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { PlusCircle, X, Check, Building2, AlertTriangle } from 'lucide-react';
 
 interface RequestCollarsModalProps {
   isOpen: boolean;
@@ -12,25 +12,48 @@ interface RequestCollarsModalProps {
 
 export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: RequestCollarsModalProps) {
   const [farmId, setFarmId] = useState(farms[0]?.id || '');
-  const [requestedCount, setRequestedCount] = useState(5);
+  const [requestedCount, setRequestedCount] = useState<number | string>(5);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Sincronizar farmId cada vez que se abre el modal o cambian los establecimientos disponibles
+  useEffect(() => {
+    if (isOpen) {
+      setError(null);
+      setLoading(false);
+      setNotes('');
+      setFarmId((prev) => {
+        if (prev && farms.some((f) => f.id === prev)) {
+          return prev;
+        }
+        return farms[0]?.id || '';
+      });
+    }
+  }, [isOpen, farms]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!farmId) {
+    const effectiveFarmId = farmId || farms[0]?.id || '';
+    if (!effectiveFarmId) {
       setError('Seleccione un establecimiento');
       return;
     }
+
+    const countNum = typeof requestedCount === 'string' ? parseInt(requestedCount, 10) : requestedCount;
+    if (isNaN(countNum) || countNum < 1) {
+      setError('La cantidad requerida debe ser al menos 1 unidad');
+      return;
+    }
+
     setError(null);
     setLoading(true);
     try {
       await onSubmit({
-        farmId,
-        requestedCount,
+        farmId: effectiveFarmId,
+        requestedCount: countNum,
         notes: notes.trim() || undefined,
       });
       onClose();
@@ -66,6 +89,13 @@ export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: Reques
             </div>
           )}
 
+          {farms.length === 0 && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-xl text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+              <span>No tienes establecimientos registrados en la plataforma. Creá un campo primero para solicitar collares.</span>
+            </div>
+          )}
+
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Enviá un pedido formal a la administración central de AgroGuard para ampliar la dotación contratada de
             collares para tu hacienda.
@@ -78,15 +108,25 @@ export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: Reques
               Establecimiento destino *
             </label>
             <select
-              value={farmId}
-              onChange={(e) => setFarmId(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
+              value={farmId || farms[0]?.id || ''}
+              onChange={(e) => {
+                setFarmId(e.target.value);
+                setError(null);
+              }}
+              disabled={farms.length === 0}
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50"
             >
-              {farms.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
+              {farms.length === 0 ? (
+                <option value="" disabled>
+                  No hay establecimientos disponibles
                 </option>
-              ))}
+              ) : (
+                farms.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -102,7 +142,11 @@ export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: Reques
                 min={1}
                 max={200}
                 value={requestedCount}
-                onChange={(e) => setRequestedCount(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setRequestedCount(val === '' ? '' : Math.max(1, parseInt(val, 10) || 1));
+                  setError(null);
+                }}
                 className="w-32 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-sm font-semibold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <span className="text-xs text-zinc-400">unidades de hardware</span>
@@ -134,7 +178,7 @@ export function RequestCollarsModal({ isOpen, farms, onClose, onSubmit }: Reques
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || farms.length === 0}
               className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-2 px-4 rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               {loading ? (

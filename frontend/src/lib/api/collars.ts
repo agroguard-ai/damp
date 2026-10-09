@@ -40,9 +40,21 @@ export const collarsApi = {
       body: JSON.stringify({ status }),
     }),
 
-  /** DELETE /api/collars/[id] — permanently deletes a collar from the inventory */
-  delete: (id: number): Promise<void> =>
-    apiFetch<void>(`/api/collars/${id}`, {
+  /** PATCH /api/collars/[id]/archive — archives a collar (soft delete), releases active animal & farm quota */
+  archive: (id: number): Promise<Collar> =>
+    apiFetch<Collar>(`/api/collars/${id}/archive`, {
+      method: 'PATCH',
+    }),
+
+  /** PATCH /api/collars/[id]/restore — restores an archived collar to available status */
+  restore: (id: number): Promise<Collar> =>
+    apiFetch<Collar>(`/api/collars/${id}/restore`, {
+      method: 'PATCH',
+    }),
+
+  /** DELETE /api/collars/[id] — deletes a collar permanently if unreferenced, or archives if forceArchive=true */
+  delete: (id: number, forceArchive?: boolean): Promise<void> =>
+    apiFetch<void>(`/api/collars/${id}${forceArchive ? '?forceArchive=true' : ''}`, {
       method: 'DELETE',
     }),
 

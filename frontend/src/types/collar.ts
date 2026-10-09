@@ -6,6 +6,7 @@ export interface Collar {
   id: number;
   identifier: string;
   status: CollarStatus;
+  isArchived?: boolean;
   lastTelemetryDate?: string | null;
   farmId?: string | null;
   farm?: {

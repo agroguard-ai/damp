@@ -41,6 +41,8 @@ import {
   Package,
   Cpu,
   Layers as LayersIcon,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 
 const STATUS_LABELS: Record<CollarStatus, string> = {
@@ -102,7 +104,7 @@ export default function CollaresPage() {
 
   // Filters for collars tab
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'AVAILABLE' | 'DAMAGED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ASSIGNED' | 'AVAILABLE' | 'DAMAGED' | 'ARCHIVED'>('ALL');
   const [selectedUserFilter, setSelectedUserFilter] = useState<string>('ALL');
   const [selectedFarmFilter, setSelectedFarmFilter] = useState<string>('ALL');
 
@@ -151,6 +153,8 @@ export default function CollaresPage() {
       collarsApi.update(params.id, params.data)
   );
   const { mutate: updateStatus } = useMutation(collarsApi.updateStatus);
+  const { mutate: archiveCollar } = useMutation(collarsApi.archive);
+  const { mutate: restoreCollar } = useMutation(collarsApi.restore);
   const { mutate: updateRequestMutation, loading: resolvingRequest } = useMutation(
     (params: { requestId: string; data: { status: 'APPROVED' | 'REJECTED'; incrementMaxCollars?: boolean; assignedCollarIds?: number[]; responseNotes?: string } }) =>
       collarsApi.updateRequest(params.requestId, params.data)
@@ -337,19 +341,89 @@ export default function CollaresPage() {
     }
   };
 
-  // Handle delete collar
-  const handleDelete = async (id: number, collarIdentifier: string) => {
+  // Handle archive collar
+  const handleArchive = async (collar: Collar) => {
     if (!isSuperAdmin) return;
     const ok = await confirm({
-      title: `Eliminar collar ${collarIdentifier}`,
-      description: 'Esta acción dará de baja el dispositivo físico y lo removerá del inventario. ¿Continuar?',
+      title: `Archivar collar ${collar.identifier}`,
+      description:
+        'El collar pasará a estado fuera de servicio, liberará cualquier animal vinculado y el cupo en el establecimiento, conservando intacto su historial de telemetría y trazabilidad. ¿Deseas archivar este dispositivo?',
+      confirmLabel: 'Archivar Collar',
+      danger: true,
+    });
+    if (!ok) return;
+
+    try {
+      await archiveCollar(collar.id);
+      toast.success(`Collar ${collar.identifier} archivado correctamente`);
+      refetch();
+      if (expandedId === collar.id) refetchDetail();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al archivar el collar');
+    }
+  };
+
+  // Handle restore collar
+  const handleRestore = async (collar: Collar) => {
+    if (!isSuperAdmin) return;
+    const ok = await confirm({
+      title: `Reactivar collar ${collar.identifier}`,
+      description:
+        'El collar volverá a estar disponible en el inventario como disponible para ser asignado a un campo o colocado en ganado.',
+      confirmLabel: 'Reactivar Collar',
+    });
+    if (!ok) return;
+
+    try {
+      await restoreCollar(collar.id);
+      toast.success(`Collar ${collar.identifier} reactivado en el inventario`);
+      refetch();
+      if (expandedId === collar.id) refetchDetail();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al reactivar el collar');
+    }
+  };
+
+  // Handle delete collar
+  const handleDelete = async (collar: Collar) => {
+    if (!isSuperAdmin) return;
+
+    const hasHistory =
+      (collar.animalCollars && collar.animalCollars.length > 0) ||
+      !!collar.assignedAnimal ||
+      !!collar.lastTelemetryDate;
+
+    if (hasHistory) {
+      const ok = await confirm({
+        title: `El collar ${collar.identifier} tiene historial`,
+        description:
+          'Este dispositivo contiene historial de asignación a animales o telemetría registrada, por lo que no puede eliminarse físicamente de la base de datos. ¿Deseas darlo de baja y archivarlo en su lugar?',
+        confirmLabel: 'Dar de baja y archivar',
+        danger: true,
+      });
+      if (!ok) return;
+
+      try {
+        await archiveCollar(collar.id);
+        toast.success(`Collar ${collar.identifier} dado de baja y archivado correctamente`);
+        refetch();
+      } catch (err: unknown) {
+        toast.error(err instanceof Error ? err.message : 'Error al archivar el collar');
+      }
+      return;
+    }
+
+    const ok = await confirm({
+      title: `Eliminar collar ${collar.identifier}`,
+      description:
+        'El collar no posee historial registrado y se eliminará definitivamente del catálogo. ¿Continuar?',
       confirmLabel: 'Eliminar Collar',
       danger: true,
     });
     if (!ok) return;
 
     try {
-      await collarsApi.delete(id);
+      await collarsApi.delete(collar.id);
       toast.success('Collar eliminado del inventario');
       refetch();
     } catch (err: unknown) {
@@ -471,7 +545,7 @@ export default function CollaresPage() {
 
   // Collars available in free stock for request approval
   const availableStockCollars = useMemo(() => {
-    return collars.filter((c) => !c.farmId && c.status === 'AVAILABLE');
+    return collars.filter((c) => !c.isArchived && !c.farmId && c.status === 'AVAILABLE');
   }, [collars]);
 
   // Filtered collars for display
@@ -494,9 +568,14 @@ export default function CollaresPage() {
       }
 
       // 3. Status Filter
-      if (statusFilter === 'ASSIGNED' && !c.assignedAnimal) return false;
-      if (statusFilter === 'AVAILABLE' && (c.assignedAnimal || c.status !== 'AVAILABLE')) return false;
-      if (statusFilter === 'DAMAGED' && c.status !== 'DAMAGED' && c.status !== 'OUT_OF_SERVICE') return false;
+      if (statusFilter === 'ARCHIVED') {
+        if (!c.isArchived && c.status !== 'OUT_OF_SERVICE') return false;
+      } else {
+        if (c.isArchived && statusFilter !== 'ALL') return false;
+        if (statusFilter === 'ASSIGNED' && !c.assignedAnimal) return false;
+        if (statusFilter === 'AVAILABLE' && (c.assignedAnimal || c.status !== 'AVAILABLE')) return false;
+        if (statusFilter === 'DAMAGED' && c.status !== 'DAMAGED') return false;
+      }
 
       // 4. Text Search
       if (searchQuery.trim()) {
@@ -517,10 +596,11 @@ export default function CollaresPage() {
   }, [collars, selectedUserFilter, selectedFarmFilter, statusFilter, searchQuery, allFarms]);
 
   // Counts
-  const placedCount = collars.filter((c) => c.assignedAnimal).length;
-  const availableCount = collars.filter((c) => !c.assignedAnimal && c.status === 'AVAILABLE' && c.farmId).length;
-  const freeStockCount = collars.filter((c) => !c.farmId).length;
-  const damagedCount = collars.filter((c) => c.status === 'DAMAGED' || c.status === 'OUT_OF_SERVICE').length;
+  const placedCount = collars.filter((c) => !c.isArchived && c.assignedAnimal).length;
+  const availableCount = collars.filter((c) => !c.isArchived && !c.assignedAnimal && c.status === 'AVAILABLE' && c.farmId).length;
+  const freeStockCount = collars.filter((c) => !c.isArchived && !c.farmId).length;
+  const damagedCount = collars.filter((c) => !c.isArchived && c.status === 'DAMAGED').length;
+  const archivedCount = collars.filter((c) => c.isArchived || c.status === 'OUT_OF_SERVICE').length;
   const pendingClaimsCount = claims.filter((c) => c.status === 'PENDING').length;
   const pendingRequestsCount = requests.filter((r) => r.status === 'PENDING').length;
 
@@ -739,6 +819,7 @@ export default function CollaresPage() {
                     <option value="ASSIGNED">🟢 En uso ({placedCount})</option>
                     <option value="AVAILABLE">🟡 Disponibles ({availableCount})</option>
                     <option value="DAMAGED">🔴 Dañados / Averías ({damagedCount})</option>
+                    <option value="ARCHIVED">⚪ Archivados / Fuera de servicio ({archivedCount})</option>
                   </select>
                 </div>
               </div>
@@ -811,15 +892,24 @@ export default function CollaresPage() {
                                 {c.identifier}
                               </span>
                               <span
-                                className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${STATUS_CLASSES[c.status]}`}
+                                className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${
+                                  c.isArchived
+                                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'
+                                    : STATUS_CLASSES[c.status]
+                                }`}
                               >
-                                {STATUS_LABELS[c.status]}
+                                {c.isArchived ? 'Archivado' : STATUS_LABELS[c.status]}
                               </span>
                             </div>
 
                             {/* Assigned Animal Pill */}
                             <div className="text-xs pt-1">
-                              {c.assignedAnimal ? (
+                              {c.isArchived ? (
+                                <span className="text-zinc-500 dark:text-zinc-400 font-medium inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700/40">
+                                  <RadioOff className="w-3.5 h-3.5 text-zinc-400" />
+                                  Dado de baja / Fuera de servicio
+                                </span>
+                              ) : c.assignedAnimal ? (
                                 <span className="text-green-700 dark:text-green-400 font-semibold inline-flex items-center gap-1.5 bg-green-50/60 dark:bg-green-950/20 px-2.5 py-1 rounded-lg border border-green-200/50 dark:border-green-800/40">
                                   <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                                   Colocado en: {c.assignedAnimal.tag || `Animal (${c.assignedAnimal.id.slice(0, 5)})`}
@@ -916,19 +1006,40 @@ export default function CollaresPage() {
 
                         {isSuperAdmin && (
                           <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleOpenEditModal(c)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                              title="Modificar ID de hardware o reasignar a otro campo"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              Editar ID / Asignar
-                            </button>
+                            {c.isArchived ? (
+                              <button
+                                onClick={() => void handleRestore(c)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
+                                title="Reactivar collar y habilitarlo para uso"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                Reactivar
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleOpenEditModal(c)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                                  title="Modificar ID de hardware o reasignar a otro campo"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                  Editar ID
+                                </button>
+
+                                <button
+                                  onClick={() => void handleArchive(c)}
+                                  className="p-1.5 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                  title="Archivar / Dar de baja collar (conserva historial)"
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
 
                             <button
-                              onClick={() => void handleDelete(c.id, c.identifier)}
+                              onClick={() => void handleDelete(c)}
                               className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                              title="Eliminar collar"
+                              title="Eliminar o dar de baja collar"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
