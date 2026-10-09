@@ -88,7 +88,7 @@ export class GeofencesService {
       data: { endAt: now },
     });
 
-    return this.prisma.geofence.create({
+    const createdGeofence = await this.prisma.geofence.create({
       data: {
         zoneId: dto.zoneId,
         name: dto.name,
@@ -109,6 +109,23 @@ export class GeofencesService {
         },
       },
     });
+
+    // Marcar los collares activos de los animales asignados como pendientes de notificación de cerco
+    if (dto.animalIds.length > 0) {
+      const activeAnimalCollars = await this.prisma.animalCollar.findMany({
+        where: { animalId: { in: dto.animalIds }, endAt: null },
+        select: { collarId: true },
+      });
+      const collarIds = activeAnimalCollars.map((ac) => ac.collarId);
+      if (collarIds.length > 0) {
+        await this.prisma.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { fenceNotificationPending: true },
+        });
+      }
+    }
+
+    return createdGeofence;
   }
 
   async findAllByZone(zoneId: string, userId: string) {

@@ -52,6 +52,12 @@ export const collarsApi = {
       method: 'PATCH',
     }),
 
+  /** POST /api/collars/[id]/sync-fence — marks collar to receive fence downlink on next report */
+  syncFence: (id: number): Promise<Collar> =>
+    apiFetch<Collar>(`/api/collars/${id}/sync-fence`, {
+      method: 'POST',
+    }),
+
   /** DELETE /api/collars/[id] — deletes a collar permanently if unreferenced, or archives if forceArchive=true */
   delete: (id: number, forceArchive?: boolean): Promise<void> =>
     apiFetch<void>(`/api/collars/${id}${forceArchive ? '?forceArchive=true' : ''}`, {

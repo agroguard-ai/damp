@@ -82,7 +82,7 @@ describe('IotService', () => {
         zoneRotationsService as any
       );
 
-      prisma.collar.findUnique.mockResolvedValue({ id: 1 });
+      prisma.collar.findUnique.mockResolvedValue({ id: 1, fenceNotificationPending: true });
       prisma.telemetryReading.create.mockResolvedValue({});
       prisma.collar.update.mockResolvedValue({});
       prisma.animalCollar.findFirst.mockResolvedValue({
@@ -105,6 +105,54 @@ describe('IotService', () => {
         'zone-1'
       );
       expect(result.downlink).toBe('-34.1,-58.1;-34.1,-58.2;-34.2,-58.2');
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: expect.objectContaining({
+          fenceNotificationPending: false,
+          lastFenceSyncedAt: expect.any(Date),
+        }),
+      });
+    });
+
+    it('returns downlink NONE when fenceNotificationPending is false', async () => {
+      const zoneRotationsService = {
+        resolveActiveCoordinatesForAnimal: jest.fn().mockResolvedValue({
+          polygon: [
+            [-34.1, -58.1],
+            [-34.1, -58.2],
+            [-34.2, -58.2],
+          ],
+          geofenceName: 'Cerco Rotado Paso 2',
+        }),
+      };
+
+      const customService = new IotService(
+        prisma as any,
+        gatewaysService as any,
+        alertSettingsService as any,
+        mlHealthService as any,
+        zoneRotationsService as any
+      );
+
+      prisma.collar.findUnique.mockResolvedValue({ id: 1, fenceNotificationPending: false });
+      prisma.telemetryReading.create.mockResolvedValue({});
+      prisma.collar.update.mockResolvedValue({});
+      prisma.animalCollar.findFirst.mockResolvedValue({
+        animalId: 'animal-1',
+        animal: { farmId: 'farm-1', zoneId: 'zone-1' },
+      });
+      prisma.animal.findUnique.mockResolvedValue({ sex: 'FEMALE' });
+      prisma.telemetryReading.findMany.mockResolvedValue([]);
+      prisma.alert.findFirst.mockResolvedValue(null);
+
+      const result = await customService.handleTelemetry({
+        collar_id: 1,
+        lat: -34.15,
+        lng: -58.15,
+        temp: 38.5,
+      } as any);
+
+      expect(result.downlink).toBe('NONE');
     });
   });
 

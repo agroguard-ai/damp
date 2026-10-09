@@ -94,10 +94,13 @@ export class AnimalsService {
         },
       });
 
-      // Asegurar que el collar quede asignado al farmId de este animal
+      // Asegurar que el collar quede asignado al farmId de este animal y con notificación pendiente de cerco
       await this.prisma.collar.update({
         where: { id: collarId },
-        data: { farmId },
+        data: {
+          farmId,
+          fenceNotificationPending: true,
+        },
       });
     }
 
@@ -644,10 +647,13 @@ export class AnimalsService {
         },
       });
 
-      // Asegurar farmId en el collar
+      // Asegurar farmId en el collar y marcarlo pendiente de notificación de cerco
       await tx.collar.update({
         where: { id: collarId },
-        data: { farmId: animal.farmId },
+        data: {
+          farmId: animal.farmId,
+          fenceNotificationPending: true,
+        },
       });
     });
 
@@ -761,6 +767,15 @@ export class AnimalsService {
         await tx.animal.update({
           where: { id },
           data: { zoneId: geofence.zoneId },
+        });
+      }
+
+      // Marcar el collar activo del animal como pendiente de notificación de cerco
+      if (animal.animalCollars.length > 0) {
+        const collarIds = animal.animalCollars.map((ac) => ac.collarId);
+        await tx.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { fenceNotificationPending: true },
         });
       }
     });

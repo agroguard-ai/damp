@@ -325,6 +325,29 @@ describe('CollarsService', () => {
       });
       expect(res.isArchived).toBe(false);
     });
+
+    it('marca un collar con fenceNotificationPending = true en syncFence', async () => {
+      prisma.collar.findUnique.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        fenceNotificationPending: false,
+      });
+      prisma.collar.update.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        fenceNotificationPending: true,
+      });
+
+      const res = await service.syncFence(10);
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          fenceNotificationPending: true,
+        },
+        include: expect.any(Object),
+      });
+      expect(res.fenceNotificationPending).toBe(true);
+    });
   });
 
   describe('remove (eliminación segura)', () => {

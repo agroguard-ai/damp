@@ -7,6 +7,8 @@ export interface Collar {
   identifier: string;
   status: CollarStatus;
   isArchived?: boolean;
+  fenceNotificationPending?: boolean;
+  lastFenceSyncedAt?: string | null;
   lastTelemetryDate?: string | null;
   farmId?: string | null;
   farm?: {

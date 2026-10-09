@@ -119,6 +119,22 @@ export class CollarsController {
     return this.collarsService.restore(id);
   }
 
+  @Patch(':id/sync-fence')
+  syncFence(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.collarsService.syncFence(id, user);
+  }
+
+  @Post(':id/sync-fence')
+  syncFencePost(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.collarsService.syncFence(id, user);
+  }
+
   @Delete(':id')
   @UseGuards(GlobalRolesGuard)
   @GlobalRoles(GlobalRole.SUPER_ADMIN)

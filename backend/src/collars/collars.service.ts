@@ -318,6 +318,29 @@ export class CollarsService {
     });
   }
 
+  async syncFence(id: number, user?: JwtPayload) {
+    const collar = await this.getOrThrow(id);
+
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+    if (!isSuperAdmin && user?.sub) {
+      const farmIds = await this.getUserFarmIds(user.sub);
+      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
+      if (!belongsToFarm) {
+        throw new ForbiddenException('No tienes acceso a este collar');
+      }
+    }
+
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        fenceNotificationPending: true,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async remove(id: number, forceArchive = false) {
     const collar = await this.getOrThrow(id);
 

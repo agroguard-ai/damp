@@ -140,9 +140,11 @@ model Collar {
   id                Int          @id @default(autoincrement())
   identifier        String       @unique
   status            CollarStatus @default(AVAILABLE)
-  isArchived        Boolean      @default(false) @map("is_archived")
-  lastTelemetryDate DateTime?    @map("last_telemetry_date")
-  farmId            String?      @map("farm_id")
+  isArchived               Boolean      @default(false) @map("is_archived")
+  fenceNotificationPending Boolean      @default(true) @map("fence_notification_pending")
+  lastFenceSyncedAt        DateTime?    @map("last_fence_synced_at")
+  lastTelemetryDate        DateTime?    @map("last_telemetry_date")
+  farmId                   String?      @map("farm_id")
   createdAt         DateTime     @default(now()) @map("created_at")
 
   farm              Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
