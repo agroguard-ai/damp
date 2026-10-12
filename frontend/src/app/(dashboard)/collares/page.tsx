@@ -63,6 +63,11 @@ interface FarmOption {
   name: string;
   userId: string | null;
   user?: { id: string; name: string | null; email: string } | null;
+  farmUsers?: Array<{
+    userId: string;
+    role?: { name: string } | null;
+    user?: { id: string; name: string | null; email: string } | null;
+  }>;
 }
 
 export default function CollaresPage() {
@@ -124,8 +129,8 @@ export default function CollaresPage() {
       try {
         if (isSuperAdmin) {
           const [farmsRes, usersRes] = await Promise.all([
-            fetch('/api/admin/farms?limit=500'),
-            fetch('/api/admin/users?limit=500'),
+            fetch('/api/admin/farms?limit=1000'),
+            fetch('/api/admin/users?limit=1000'),
           ]);
 
           if (farmsRes.ok) {
@@ -138,11 +143,17 @@ export default function CollaresPage() {
                   name?: string | null;
                   userId?: string | null;
                   user?: { id: string; name: string | null; email: string } | null;
+                  farmUsers?: Array<{
+                    userId: string;
+                    role?: { name: string } | null;
+                    user?: { id: string; name: string | null; email: string } | null;
+                  }>;
                 }) => ({
                   id: f.id,
                   name: f.name || 'Sin nombre',
                   userId: f.userId || null,
                   user: f.user || null,
+                  farmUsers: f.farmUsers || [],
                 })
               )
             );
@@ -178,23 +189,41 @@ export default function CollaresPage() {
     void loadMetadata();
   }, [isSuperAdmin]);
 
-  // Derived unique producers list from usersList + allFarms
-  const producersList = useMemo(() => {
+  // Derived unique farm admins / producers list
+  const farmAdminsList = useMemo(() => {
     const map = new Map<string, UserOption>();
+
+    // 1. All users from usersList (USER role)
     usersList.forEach((u) => {
       map.set(u.id, u);
     });
+
+    // 2. Direct farm owners
     allFarms.forEach((f) => {
       if (f.userId) {
         if (!map.has(f.userId)) {
           map.set(f.userId, {
             id: f.userId,
             name: f.user?.name || null,
-            email: f.user?.email || 'productor@agro.com',
+            email: f.user?.email || 'admin@granja.com',
           });
         }
       }
+
+      // 3. Admin users in farmUsers
+      if (f.farmUsers && Array.isArray(f.farmUsers)) {
+        f.farmUsers.forEach((fu) => {
+          if (fu.user && !map.has(fu.user.id)) {
+            map.set(fu.user.id, {
+              id: fu.user.id,
+              name: fu.user.name || null,
+              email: fu.user.email,
+            });
+          }
+        });
+      }
     });
+
     return Array.from(map.values());
   }, [usersList, allFarms]);
 
@@ -257,7 +286,7 @@ export default function CollaresPage() {
     if (!assigningCollar) return;
 
     if (!assignFarmId) {
-      toast.error('Por favor seleccioná el establecimiento/campo del productor');
+      toast.error('Por favor seleccioná el establecimiento/campo a asignar');
       return;
     }
 
@@ -269,7 +298,7 @@ export default function CollaresPage() {
         },
       });
 
-      toast.success(`Collar #${assigningCollar.id} asignado con éxito al productor`);
+      toast.success(`Collar #${assigningCollar.id} asignado con éxito al administrador`);
       setAssigningCollar(null);
       refetch();
     } catch (err: unknown) {
@@ -472,17 +501,25 @@ export default function CollaresPage() {
     }
   };
 
-  // Filtered farms for Assign Modal
+  // Filtered farms for Assign Modal (campos donde el usuario es dueño o administrador)
   const farmsForAssignModal = useMemo(() => {
     if (!assignProducerId) return [];
-    return allFarms.filter((f) => f.userId === assignProducerId);
+    return allFarms.filter((f) => {
+      if (f.userId === assignProducerId) return true;
+      if (f.farmUsers && f.farmUsers.some((fu) => fu.userId === assignProducerId)) return true;
+      return false;
+    });
   }, [allFarms, assignProducerId]);
 
   const farmsForFilterToolbar = useMemo(() => {
     if (selectedUserFilter === 'ALL' || selectedUserFilter === 'UNASSIGNED') {
       return allFarms;
     }
-    return allFarms.filter((f) => f.userId === selectedUserFilter);
+    return allFarms.filter((f) => {
+      if (f.userId === selectedUserFilter) return true;
+      if (f.farmUsers && f.farmUsers.some((fu) => fu.userId === selectedUserFilter)) return true;
+      return false;
+    });
   }, [allFarms, selectedUserFilter]);
 
   // Filtered collars for display
@@ -493,8 +530,9 @@ export default function CollaresPage() {
         if (c.farmId) return false;
       } else if (selectedUserFilter !== 'ALL') {
         const farmObj = allFarms.find((f) => f.id === c.farmId);
-        const ownerId = farmObj?.userId || c.farm?.userId || farmObj?.user?.id;
-        if (ownerId !== selectedUserFilter) return false;
+        const isOwner = (farmObj?.userId || c.farm?.userId || farmObj?.user?.id) === selectedUserFilter;
+        const isFarmAdmin = farmObj?.farmUsers?.some((fu) => fu.userId === selectedUserFilter);
+        if (!isOwner && !isFarmAdmin) return false;
       }
 
       // 2. Farm Filter
@@ -611,7 +649,7 @@ export default function CollaresPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filtros de Búsqueda y Productor
+            Filtros de Búsqueda y Administrador de Granja
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -627,7 +665,7 @@ export default function CollaresPage() {
               />
             </div>
 
-            {/* 2. Productor Filter (SuperAdmin only) */}
+            {/* 2. Admin de Granja Filter (SuperAdmin only) */}
             {isSuperAdmin && (
               <div>
                 <select
@@ -638,10 +676,12 @@ export default function CollaresPage() {
                   }}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                 >
-                  <option value="ALL">👤 Todos los Productores ({producersList.length})</option>
+                  <option value="ALL">👤 Todos los Administradores de Granja ({farmAdminsList.length})</option>
                   <option value="UNASSIGNED">📦 Stock Libre (Sin asignar)</option>
-                  {producersList.map((u) => {
-                    const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
+                  {farmAdminsList.map((u) => {
+                    const userFarmsCount = allFarms.filter(
+                      (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
+                    ).length;
                     return (
                       <option key={u.id} value={u.id}>
                         {u.name || u.email} ({userFarmsCount} {userFarmsCount === 1 ? 'campo' : 'campos'})
@@ -925,10 +965,10 @@ export default function CollaresPage() {
                                 <button
                                   onClick={() => handleOpenAssignModal(c)}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
-                                  title="Asignar collar a un productor y campo"
+                                  title="Asignar collar a un administrador de granja y campo"
                                 >
                                   <UserIcon className="w-3.5 h-3.5" />
-                                  {c.farmId ? 'Reasignar Productor' : 'Asignar a Productor'}
+                                  {c.farmId ? 'Reasignar Granja' : 'Asignar a Granja'}
                                 </button>
 
                                 <button
@@ -1105,7 +1145,7 @@ export default function CollaresPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Asignar Collar a Productor
+                    Asignar Collar a Administrador de Granja
                   </h3>
                   <p className="text-xs text-zinc-500">
                     Dispositivo: <strong className="font-mono text-zinc-900 dark:text-white">ID #{assigningCollar.id} ({assigningCollar.identifier})</strong>
@@ -1143,17 +1183,17 @@ export default function CollaresPage() {
                 <div>
                   <p className="font-semibold">Collar en Stock Central Libre</p>
                   <p className="text-[11px] opacity-80 mt-0.5">
-                    Al seleccionar el productor y establecimiento, este dispositivo quedará inmediatamente habilitado en su cuenta.
+                    Al seleccionar el administrador y establecimiento, este dispositivo quedará inmediatamente habilitado en su cuenta.
                   </p>
                 </div>
               </div>
             )}
 
             <form onSubmit={handleAssignSubmit} className="space-y-4">
-              {/* Paso 1: Productor / Dueño */}
+              {/* Paso 1: Administrador de Granja */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider block">
-                  1. Productor / Dueño *
+                  1. Administrador de Granja *
                 </label>
                 <select
                   required
@@ -1161,18 +1201,22 @@ export default function CollaresPage() {
                   onChange={(e) => {
                     const nextUserId = e.target.value;
                     setAssignProducerId(nextUserId);
-                    const matchingFarms = allFarms.filter((f) => f.userId === nextUserId);
+                    const matchingFarms = allFarms.filter(
+                      (f) => f.userId === nextUserId || f.farmUsers?.some((fu) => fu.userId === nextUserId)
+                    );
                     setAssignFarmId(matchingFarms.length === 1 ? matchingFarms[0].id : '');
                   }}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                 >
                   <option value="">
-                    {producersList.length === 0
-                      ? 'No hay productores registrados...'
-                      : `Seleccionar productor (${producersList.length})...`}
+                    {farmAdminsList.length === 0
+                      ? 'No hay administradores de granja registrados...'
+                      : `Seleccionar administrador de granja (${farmAdminsList.length})...`}
                   </option>
-                  {producersList.map((u) => {
-                    const farmCount = allFarms.filter((f) => f.userId === u.id).length;
+                  {farmAdminsList.map((u) => {
+                    const farmCount = allFarms.filter(
+                      (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
+                    ).length;
                     return (
                       <option key={u.id} value={u.id}>
                         {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
@@ -1186,15 +1230,15 @@ export default function CollaresPage() {
               {/* Paso 2: Establecimiento / Campo */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider block">
-                  2. Establecimiento / Campo del Productor *
+                  2. Establecimiento / Campo Asignado *
                 </label>
                 {!assignProducerId ? (
                   <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5">
-                    Seleccioná primero un productor en el paso 1
+                    Seleccioná primero un administrador de granja en el paso 1
                   </div>
                 ) : farmsForAssignModal.length === 0 ? (
                   <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3.5 py-2.5">
-                    Este productor no tiene campos o establecimientos registrados actualmente.
+                    Este administrador no tiene campos o establecimientos registrados actualmente.
                   </div>
                 ) : (
                   <select
