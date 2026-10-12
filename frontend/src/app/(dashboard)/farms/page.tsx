@@ -30,23 +30,9 @@ import {
   Save,
   AlertTriangle,
   Check,
-  Map as MapIcon,
 } from 'lucide-react';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
-
-const RENSPA_FORMAT = /^\d{2}\.\d{3}\.\d\.\d{5}\/\d{2}$/;
-
-function formatRenspa(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 13);
-  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 6), digits.slice(6, 11), digits.slice(11, 13)];
-  let result = parts[0];
-  if (parts[1]) result += `.${parts[1]}`;
-  if (parts[2]) result += `.${parts[2]}`;
-  if (parts[3]) result += `.${parts[3]}`;
-  if (parts[4]) result += `/${parts[4]}`;
-  return result;
-}
 
 export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
@@ -73,7 +59,6 @@ export default function FarmsPage() {
   const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
-    renspa: '',
     province: '',
     department: '',
     address: '',
@@ -110,7 +95,6 @@ export default function FarmsPage() {
       (f) =>
         f.name?.toLowerCase().includes(q) ||
         f.province?.toLowerCase().includes(q) ||
-        f.renspa?.toLowerCase().includes(q) ||
         f.location?.toLowerCase().includes(q) ||
         f.address?.toLowerCase().includes(q)
     );
@@ -187,7 +171,6 @@ export default function FarmsPage() {
     setEditingFarm(farm);
     setEditFormData({
       name: farm.name || '',
-      renspa: farm.renspa || '',
       province: farm.province || '',
       department: farm.location || '',
       address: farm.address || '',
@@ -196,9 +179,7 @@ export default function FarmsPage() {
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'renspa') {
-      setEditFormData((prev) => ({ ...prev, renspa: formatRenspa(value) }));
-    } else if (name === 'province') {
+    if (name === 'province') {
       setEditFormData((prev) => ({ ...prev, province: value, department: '' }));
     } else {
       setEditFormData((prev) => ({ ...prev, [name]: value }));
@@ -213,17 +194,12 @@ export default function FarmsPage() {
       toast.warning('Ingresá el nombre del campo.');
       return;
     }
-    if (editFormData.renspa && !RENSPA_FORMAT.test(editFormData.renspa)) {
-      toast.warning('El RENSPA debe tener el formato XX.XXX.X.XXXXX/XX o dejarse vacío.');
-      return;
-    }
 
     try {
       await updateFarm(editingFarm.id, {
         name: editFormData.name.trim(),
         province: editFormData.province || undefined,
         address: editFormData.address.trim() || undefined,
-        renspa: editFormData.renspa || undefined,
       });
 
       toast.success('Establecimiento actualizado con éxito');
@@ -292,7 +268,7 @@ export default function FarmsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por nombre, RENSPA o ubicación..."
+              placeholder="Buscar por nombre o ubicación..."
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
             />
           </div>
@@ -323,40 +299,14 @@ export default function FarmsPage() {
               <thead className="bg-zinc-50 dark:bg-zinc-950/60 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-100 dark:border-zinc-800">
                 <tr>
                   <th className="px-5 py-3.5">Establecimiento</th>
-                  <th className="px-5 py-3.5">RENSPA</th>
                   <th className="px-5 py-3.5">Ubicación</th>
                   <th className="px-5 py-3.5">Superficie</th>
-                  <th className="px-5 py-3.5">Perímetro</th>
-                  <th className="px-5 py-3.5">Recursos</th>
                   <th className="px-5 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {filteredFarms.map((farm) => {
-                  const hasCoordinates = Boolean(
-                    farm.polygonCoordinates &&
-                    (typeof farm.polygonCoordinates === 'string'
-                      ? farm.polygonCoordinates.length > 2
-                      : (farm.polygonCoordinates as unknown[]).length > 0)
-                  );
-
-                  let pointsCount = 0;
-                  if (hasCoordinates) {
-                    try {
-                      const pts =
-                        typeof farm.polygonCoordinates === 'string'
-                          ? JSON.parse(farm.polygonCoordinates)
-                          : farm.polygonCoordinates;
-                      if (Array.isArray(pts)) pointsCount = pts.length;
-                    } catch {
-                      pointsCount = 0;
-                    }
-                  }
-
                   const isAdmin = canManageFarm(farm);
-                  const animalsCount = farm._count?.animals ?? 0;
-                  const zonesCount = farm._count?.zones ?? 0;
-                  const usersCount = farm._count?.farmUsers ?? 0;
 
                   return (
                     <tr key={farm.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-850/40 transition-colors">
@@ -376,17 +326,6 @@ export default function FarmsPage() {
                         </div>
                       </td>
 
-                      {/* RENSPA */}
-                      <td className="px-5 py-4 font-mono">
-                        {farm.renspa ? (
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold">
-                            {farm.renspa}
-                          </span>
-                        ) : (
-                          <span className="text-zinc-400 dark:text-zinc-500 italic text-[11px]">Sin registrar</span>
-                        )}
-                      </td>
-
                       {/* Ubicación */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
@@ -403,47 +342,6 @@ export default function FarmsPage() {
                         <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
                           <Ruler className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                           <span>{farm.totalAreaHa ? `${farm.totalAreaHa} Ha` : 'Sin definir'}</span>
-                        </div>
-                      </td>
-
-                      {/* Perímetro */}
-                      <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPerimeterModal(farm)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
-                            hasCoordinates
-                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                          }`}
-                          title="Abrir mapa de delimitación perimetral"
-                        >
-                          <MapIcon className="w-3.5 h-3.5 shrink-0" />
-                          <span>{hasCoordinates ? `Delimitado (${pointsCount} pts)` : 'Sin trazar'}</span>
-                        </button>
-                      </td>
-
-                      {/* Recursos */}
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40 text-[11px] font-semibold"
-                            title={`${animalsCount} animales registrados en este campo`}
-                          >
-                            🐾 {animalsCount}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 text-[11px] font-semibold"
-                            title={`${zonesCount} zonas o potreros delimitados`}
-                          >
-                            ▦ {zonesCount}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 text-[11px] font-semibold"
-                            title={`${usersCount} usuarios con acceso asignado`}
-                          >
-                            👥 {usersCount}
-                          </span>
                         </div>
                       </td>
 
@@ -665,21 +563,6 @@ export default function FarmsPage() {
                   value={editFormData.name}
                   onChange={handleEditChange}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
-                />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-                  RENSPA (SENASA)
-                </label>
-                <input
-                  type="text"
-                  name="renspa"
-                  value={editFormData.renspa}
-                  onChange={handleEditChange}
-                  placeholder="XX.XXX.X.XXXXX/XX"
-                  maxLength={17}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
                 />
               </div>
 

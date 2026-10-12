@@ -12,7 +12,6 @@ interface FarmAdminRecord {
   province: string | null;
   location: string | null;
   totalAreaHa: number | null;
-  renspa: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -117,11 +116,6 @@ export default function AdminFarmsPage() {
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-white leading-tight">
                     {f.name || 'Granja sin nombre'}
                   </h3>
-                  {f.renspa && (
-                    <span className="text-[10px] font-mono bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-600 dark:text-zinc-400">
-                      {f.renspa}
-                    </span>
-                  )}
                 </div>
 
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
