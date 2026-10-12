@@ -17,6 +17,7 @@ export class CollarsService {
     id: number;
     identifier: string;
     status: CollarStatus;
+    isArchived?: boolean;
     lastTelemetryDate: Date | null;
     createdAt: Date;
     farmId?: string | null;
@@ -48,19 +49,44 @@ export class CollarsService {
       await this.assertCollarQuota(dto.farmId);
     }
 
+    if (dto.id) {
+      const existing = await this.prisma.collar.findUnique({ where: { id: dto.id } });
+      if (existing) {
+        throw new ConflictException(`Ya existe un collar con el ID numérico ${dto.id}`);
+      }
+    }
+
+    const resolvedIdentifier = dto.identifier?.trim()
+      ? dto.identifier.trim()
+      : dto.id
+        ? `COLLAR-${dto.id}`
+        : `COLLAR-TEMP-${Date.now()}`;
+
     try {
-      return await this.prisma.collar.create({
+      const collar = await this.prisma.collar.create({
         data: {
-          identifier: dto.identifier,
+          ...(dto.id ? { id: dto.id } : {}),
+          identifier: resolvedIdentifier,
           ...(dto.farmId ? { farmId: dto.farmId } : {}),
         },
         include: {
           farm: { select: { id: true, name: true } },
         },
       });
+
+      // Si no se proveyó identifier ni id al crear, actualizar identifier con el id generado
+      if (!dto.identifier?.trim() && !dto.id) {
+        return await this.prisma.collar.update({
+          where: { id: collar.id },
+          data: { identifier: `COLLAR-${collar.id}` },
+          include: { farm: { select: { id: true, name: true } } },
+        });
+      }
+
+      return collar;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new ConflictException(`A collar with identifier "${dto.identifier}" already exists`);
+        throw new ConflictException(`Ya existe un collar con el identificador "${resolvedIdentifier}"`);
       }
       throw err;
     }
@@ -73,7 +99,14 @@ export class CollarsService {
       const collars = await this.prisma.collar.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
-          farm: { select: { id: true, name: true } },
+          farm: {
+            select: {
+              id: true,
+              name: true,
+              userId: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
           telemetryReadings: {
             orderBy: { timestamp: 'desc' },
             take: 1,
@@ -148,26 +181,62 @@ export class CollarsService {
   }
 
   async update(id: number, dto: UpdateCollarDto) {
-    await this.getOrThrow(id);
+    const existing = await this.getOrThrow(id);
+
+    const targetId = dto.id !== undefined ? dto.id : id;
+
+    if (dto.id !== undefined && dto.id !== id) {
+      const alreadyExists = await this.prisma.collar.findUnique({ where: { id: dto.id } });
+      if (alreadyExists) {
+        throw new ConflictException(`Ya existe un collar con el ID numérico ${dto.id}`);
+      }
+    }
 
     if (dto.farmId) {
       await this.assertCollarQuota(dto.farmId, id);
     }
 
+    // Si se cambia de granja o se pasa a stock libre, liberar animal activo si lo hubiera
+    if (dto.farmId !== undefined && dto.farmId !== existing.farmId) {
+      await this.prisma.animalCollar.updateMany({
+        where: { collarId: id, endAt: null },
+        data: { endAt: new Date() },
+      });
+    }
+
+    // Actualizar el ID en PostgreSQL si cambió (las FKs de animal_collars, telemetry_readings y collar_claims tienen ON UPDATE CASCADE)
+    if (dto.id !== undefined && dto.id !== id) {
+      await this.prisma.$executeRaw`UPDATE collars SET id = ${dto.id} WHERE id = ${id}`;
+    }
+
+    let targetIdentifier = dto.identifier?.trim();
+    if (targetIdentifier === undefined && dto.id !== undefined && dto.id !== id) {
+      if (existing.identifier === `COLLAR-${id}`) {
+        targetIdentifier = `COLLAR-${dto.id}`;
+      }
+    }
+
     try {
       return await this.prisma.collar.update({
-        where: { id },
+        where: { id: targetId },
         data: {
-          ...(dto.identifier !== undefined ? { identifier: dto.identifier } : {}),
+          ...(targetIdentifier !== undefined ? { identifier: targetIdentifier } : {}),
           ...(dto.farmId !== undefined ? { farmId: dto.farmId } : {}),
         },
         include: {
-          farm: { select: { id: true, name: true } },
+          farm: {
+            select: {
+              id: true,
+              name: true,
+              userId: true,
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
         },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new ConflictException(`A collar with identifier "${dto.identifier}" already exists`);
+        throw new ConflictException(`A collar with identifier "${targetIdentifier || dto.identifier}" already exists`);
       }
       throw err;
     }
@@ -202,12 +271,102 @@ export class CollarsService {
     });
   }
 
-  async remove(id: number) {
-    await this.getOrThrow(id);
+  async archive(id: number, user?: JwtPayload) {
+    const collar = await this.getOrThrow(id);
+
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+    if (!isSuperAdmin && user?.sub) {
+      const farmIds = await this.getUserFarmIds(user.sub);
+      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
+      if (!belongsToFarm) {
+        throw new ForbiddenException('No tienes permisos para archivar este collar');
+      }
+    }
+
+    // 1. Liberar asignación activa en ganado si la tuviera
     await this.prisma.animalCollar.updateMany({
       where: { collarId: id, endAt: null },
       data: { endAt: new Date() },
     });
+
+    // 2. Dar de baja lógica: fuera de servicio, archivado y desvinculado de campo para no consumir cupo
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        isArchived: true,
+        status: CollarStatus.OUT_OF_SERVICE,
+        farmId: null,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async restore(id: number) {
+    await this.getOrThrow(id);
+
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        isArchived: false,
+        status: CollarStatus.AVAILABLE,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async syncFence(id: number, user?: JwtPayload) {
+    const collar = await this.getOrThrow(id);
+
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
+    if (!isSuperAdmin && user?.sub) {
+      const farmIds = await this.getUserFarmIds(user.sub);
+      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
+      if (!belongsToFarm) {
+        throw new ForbiddenException('No tienes acceso a este collar');
+      }
+    }
+
+    return this.prisma.collar.update({
+      where: { id },
+      data: {
+        fenceNotificationPending: true,
+      },
+      include: {
+        farm: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async remove(id: number, forceArchive = false) {
+    const collar = await this.getOrThrow(id);
+
+    // Contar historial asociado (asignaciones a ganado, telemetrías y reclamos)
+    const [assignmentCount, telemetryCount, claimCount] = await Promise.all([
+      this.prisma.animalCollar.count({ where: { collarId: id } }),
+      this.prisma.telemetryReading.count({ where: { collarId: id } }),
+      this.prisma.collarClaim.count({ where: { collarId: id } }),
+    ]);
+
+    const totalRelations = assignmentCount + telemetryCount + claimCount;
+    if (totalRelations > 0) {
+      if (forceArchive) {
+        return this.archive(id);
+      }
+
+      const reasons: string[] = [];
+      if (assignmentCount > 0) reasons.push(`${assignmentCount} asignación(es) a animales`);
+      if (telemetryCount > 0) reasons.push(`${telemetryCount} lectura(s) de telemetría`);
+      if (claimCount > 0) reasons.push(`${claimCount} reclamo(s) de avería`);
+
+      throw new BadRequestException(
+        `No se puede eliminar permanentemente el collar #${id} (${collar.identifier}) porque posee historial registrado (${reasons.join(', ')}). Utilizá la opción "Archivar / Dar de baja" para retirarlo del inventario conservando los datos de trazabilidad.`
+      );
+    }
+
     return this.prisma.collar.delete({ where: { id } });
   }
 
@@ -215,6 +374,9 @@ export class CollarsService {
     const collar = await this.prisma.collar.findUnique({ where: { id } });
     if (!collar) {
       throw new NotFoundException(`El collar con ID ${id} no existe.`);
+    }
+    if (collar.isArchived) {
+      throw new BadRequestException(`El collar ${collar.identifier} está archivado / fuera de servicio.`);
     }
     if (collar.status !== 'AVAILABLE') {
       throw new BadRequestException(`El collar ${collar.identifier} no está disponible (estado: ${collar.status}).`);
@@ -365,13 +527,28 @@ export class CollarsService {
       throw new NotFoundException(`Solicitud con ID "${requestId}" no encontrada`);
     }
 
-    if (dto.status === 'APPROVED' && dto.incrementMaxCollars && request.farm.userId) {
-      await this.prisma.user.update({
-        where: { id: request.farm.userId },
-        data: {
-          maxCollars: { increment: request.requestedCount },
-        },
-      });
+    if (dto.status === 'APPROVED') {
+      if (dto.incrementMaxCollars && request.farm.userId) {
+        await this.prisma.user.update({
+          where: { id: request.farm.userId },
+          data: {
+            maxCollars: { increment: request.requestedCount },
+          },
+        });
+      }
+
+      // Si se especificaron collares a asignar a esta granja:
+      if (dto.assignedCollarIds && dto.assignedCollarIds.length > 0) {
+        await this.prisma.collar.updateMany({
+          where: {
+            id: { in: dto.assignedCollarIds },
+          },
+          data: {
+            farmId: request.farmId,
+            status: CollarStatus.AVAILABLE,
+          },
+        });
+      }
     }
 
     return this.prisma.collarRequest.update({
@@ -415,6 +592,7 @@ export class CollarsService {
     const currentAssigned = await this.prisma.collar.count({
       where: {
         farm: { userId: owner.id },
+        isArchived: false,
         ...(excludeCollarId ? { id: { not: excludeCollarId } } : {}),
       },
     });

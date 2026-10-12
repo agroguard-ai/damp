@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Building2, Users, MapPin, Tag, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Pagination, PaginationMeta } from '@/components/ui/Pagination';
 
 interface FarmAdminRecord {
   id: string;
@@ -42,16 +43,27 @@ export default function AdminFarmsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
   useEffect(() => {
     async function loadFarms() {
       try {
         setLoading(true);
-        const res = await fetch('/api/admin/farms');
+        const res = await fetch(`/api/admin/farms?page=${page}&limit=${limit}`);
         if (!res.ok) {
           throw new Error('No se pudo cargar la lista global de granjas.');
         }
         const data = await res.json();
-        setFarms(data);
+        if (Array.isArray(data)) {
+          setFarms(data);
+          setMeta(null);
+        } else {
+          setFarms(data.data || []);
+          setMeta(data.meta || null);
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Error de conexión';
         setError(message);
@@ -60,7 +72,7 @@ export default function AdminFarmsPage() {
       }
     }
     void loadFarms();
-  }, []);
+  }, [page, limit]);
 
   if (loading) {
     return (
@@ -88,7 +100,7 @@ export default function AdminFarmsPage() {
           </h1>
         </div>
         <div className="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-200">
-          Total Granjas: {farms.length}
+          Total Granjas: {meta ? meta.totalItems : farms.length}
         </div>
       </div>
 
@@ -181,6 +193,19 @@ export default function AdminFarmsPage() {
           );
         })}
       </div>
+
+      {meta && (
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+          <Pagination
+            meta={meta}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

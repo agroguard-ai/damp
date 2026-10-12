@@ -5,6 +5,8 @@ function makePrismaMock() {
   return {
     zone: { findUnique: jest.fn() },
     animal: { findMany: jest.fn() },
+    animalCollar: { findMany: jest.fn() },
+    collar: { updateMany: jest.fn() },
     animalGeofence: { updateMany: jest.fn() },
     geofence: {
       create: jest.fn(),

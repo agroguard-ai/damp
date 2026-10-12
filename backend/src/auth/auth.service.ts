@@ -83,12 +83,17 @@ export class AuthService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
-    if (!isMatch) {
-      throw new UnauthorizedException('La contraseña actual es incorrecta');
+    if (dto.currentPassword) {
+      const isMatch = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+      if (!isMatch) {
+        throw new UnauthorizedException('La contraseña actual es incorrecta');
+      }
+    } else if (!user.mustChangePassword) {
+      // Cambio voluntario (no es el forzado de primer login): se exige la contraseña actual.
+      throw new BadRequestException('La contraseña actual es requerida');
     }
 
-    if (dto.currentPassword === dto.newPassword) {
+    if (dto.currentPassword && dto.currentPassword === dto.newPassword) {
       throw new BadRequestException('La nueva contraseña no puede ser igual a la actual');
     }
 

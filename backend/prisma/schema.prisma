@@ -140,8 +140,11 @@ model Collar {
   id                Int          @id @default(autoincrement())
   identifier        String       @unique
   status            CollarStatus @default(AVAILABLE)
-  lastTelemetryDate DateTime?    @map("last_telemetry_date")
-  farmId            String?      @map("farm_id")
+  isArchived               Boolean      @default(false) @map("is_archived")
+  fenceNotificationPending Boolean      @default(true) @map("fence_notification_pending")
+  lastFenceSyncedAt        DateTime?    @map("last_fence_synced_at")
+  lastTelemetryDate        DateTime?    @map("last_telemetry_date")
+  farmId                   String?      @map("farm_id")
   createdAt         DateTime     @default(now()) @map("created_at")
 
   farm              Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
@@ -159,7 +162,7 @@ model AnimalCollar {
   startAt  DateTime @map("start_at")
   endAt    DateTime? @map("end_at")
 
-  collar Collar @relation(fields: [collarId], references: [id])
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   animal Animal @relation(fields: [animalId], references: [id])
 
   @@map("animal_collars")
@@ -226,16 +229,16 @@ model Zone {
 model Gateway {
   id         String    @id @default(uuid())
   name       String
-  farmId     String    @map("farm_id")
-  zoneId     String    @map("zone_id")
+  farmId     String?   @map("farm_id")
+  zoneId     String?   @map("zone_id")
   apiKey     String    @unique @map("api_key")
   lastSeenAt DateTime? @map("last_seen_at")
   lastRssi   Float?    @map("last_rssi")
   lastSnr    Float?    @map("last_snr")
   createdAt  DateTime  @default(now()) @map("created_at")
 
-  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  zone Zone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  zone Zone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
 
   @@map("gateways")
 }
@@ -262,7 +265,7 @@ model TelemetryReading {
   temperature Float
   timestamp   DateTime @default(now())
 
-  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@map("telemetry_readings")
 }
@@ -351,7 +354,7 @@ model CollarClaim {
   createdAt       DateTime          @default(now()) @map("created_at")
   resolvedAt      DateTime?         @map("resolved_at")
 
-  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade)
+  collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   farm   Farm?  @relation(fields: [farmId], references: [id], onDelete: SetNull)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -425,4 +428,47 @@ model ZoneRotationStep {
 
   @@unique([rotationPlanId, orderIndex])
   @@map("zone_rotation_steps")
+}
+
+model IotRequestLog {
+  id           String    @id @default(uuid())
+  createdAt    DateTime  @default(now()) @map("created_at")
+  endpoint     String    @default("/api/iot/telemetry")
+  method       String    @default("POST")
+  ipAddress    String?   @map("ip_address")
+
+  // Gateway info
+  gatewayId    String?   @map("gateway_id")
+  gatewayName  String?   @map("gateway_name")
+  farmId       String?   @map("farm_id")
+  farmName     String?   @map("farm_name")
+  apiKeyUsed   String?   @map("api_key_used")
+
+  // Collar info
+  collarId     Int?      @map("collar_id")
+
+  // Request data
+  headers      Json?
+  payload      Json?
+
+  // Telemetry parsed metrics
+  lat          Float?
+  lng          Float?
+  temp         Float?
+  rssi         Float?
+  snr          Float?
+
+  // Response details
+  statusCode   Int       @map("status_code")
+  status       String    @default("SUCCESS")
+  responseBody Json?     @map("response_body")
+  errorMessage String?   @map("error_message")
+  downlinkSent String?   @map("downlink_sent")
+  durationMs   Int?      @map("duration_ms")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([collarId])
+  @@index([gatewayId])
+  @@index([statusCode])
+  @@map("iot_request_logs")
 }

@@ -560,6 +560,15 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
             startAt: now,
           })),
         });
+
+        // Marcar todos los collares de los animales de la zona como pendientes de recibir el nuevo cerco
+        const collarIds = animalsInZone.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+        if (collarIds.length > 0) {
+          await tx.collar.updateMany({
+            where: { id: { in: collarIds } },
+            data: { fenceNotificationPending: true },
+          });
+        }
       }
 
       // 4. Actualizar plan con nuevo índice y próxima fecha

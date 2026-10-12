@@ -10,6 +10,7 @@ describe('CollarsService', () => {
     collar: {
       create: jest.Mock;
       update: jest.Mock;
+      updateMany: jest.Mock;
       count: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
@@ -22,12 +23,17 @@ describe('CollarsService', () => {
     animalCollar: {
       findFirst: jest.Mock;
       updateMany: jest.Mock;
+      count: jest.Mock;
+    };
+    telemetryReading: {
+      count: jest.Mock;
     };
     collarClaim: {
       create: jest.Mock;
       findUnique: jest.Mock;
       findMany: jest.Mock;
       update: jest.Mock;
+      count: jest.Mock;
     };
     collarRequest: {
       create: jest.Mock;
@@ -38,13 +44,16 @@ describe('CollarsService', () => {
     user: {
       update: jest.Mock;
     };
+    $executeRaw: jest.Mock;
   };
 
   beforeEach(async () => {
     prisma = {
+      $executeRaw: jest.fn(),
       collar: {
         create: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn(),
         count: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -57,12 +66,17 @@ describe('CollarsService', () => {
       animalCollar: {
         findFirst: jest.fn(),
         updateMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      telemetryReading: {
+        count: jest.fn().mockResolvedValue(0),
       },
       collarClaim: {
         create: jest.fn(),
         findUnique: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
       },
       collarRequest: {
         create: jest.fn(),
@@ -118,6 +132,26 @@ describe('CollarsService', () => {
   });
 
   describe('update con límite de collares', () => {
+    it('permite modificar el ID numérico de un collar existente si no colisiona', async () => {
+      prisma.collar.findUnique
+        .mockResolvedValueOnce({ id: 2, identifier: 'COLLAR-2', farmId: 'farm-1' }) // getOrThrow(2)
+        .mockResolvedValueOnce(null); // check conflict for new id 5
+      prisma.collar.update.mockResolvedValue({ id: 5, identifier: 'COLLAR-5', farmId: 'farm-1' });
+
+      const result = await service.update(2, { id: 5 });
+
+      expect(prisma.$executeRaw).toHaveBeenCalled();
+      expect(result.id).toBe(5);
+    });
+
+    it('rechaza con ConflictException si el nuevo ID numérico ya existe', async () => {
+      prisma.collar.findUnique
+        .mockResolvedValueOnce({ id: 2, identifier: 'COLLAR-2', farmId: 'farm-1' }) // getOrThrow(2)
+        .mockResolvedValueOnce({ id: 5, identifier: 'COLLAR-5' }); // already exists!
+
+      await expect(service.update(2, { id: 5 })).rejects.toThrow();
+    });
+
     it('rechaza con BadRequestException si se transfiere un collar a una granja cuyo dueño no tiene cupo', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 10, identifier: 'COL-010', farmId: 'farm-old' });
       prisma.farm.findUnique.mockResolvedValue({
@@ -229,6 +263,132 @@ describe('CollarsService', () => {
         }),
         include: expect.any(Object),
       });
+    });
+  });
+
+  describe('archive y restore', () => {
+    it('archiva un collar liberando animales activos y estableciendo OUT_OF_SERVICE', async () => {
+      prisma.collar.findUnique.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        farmId: 'farm-1',
+        status: 'AVAILABLE',
+      });
+      prisma.animalCollar.updateMany.mockResolvedValue({ count: 1 });
+      prisma.collar.update.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        isArchived: true,
+        status: 'OUT_OF_SERVICE',
+        farmId: null,
+      });
+
+      const res = await service.archive(10);
+      expect(prisma.animalCollar.updateMany).toHaveBeenCalledWith({
+        where: { collarId: 10, endAt: null },
+        data: { endAt: expect.any(Date) },
+      });
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          isArchived: true,
+          status: 'OUT_OF_SERVICE',
+          farmId: null,
+        },
+        include: expect.any(Object),
+      });
+      expect(res.isArchived).toBe(true);
+    });
+
+    it('restaura un collar archivado a AVAILABLE', async () => {
+      prisma.collar.findUnique.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        isArchived: true,
+        status: 'OUT_OF_SERVICE',
+      });
+      prisma.collar.update.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        isArchived: false,
+        status: 'AVAILABLE',
+      });
+
+      const res = await service.restore(10);
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          isArchived: false,
+          status: 'AVAILABLE',
+        },
+        include: expect.any(Object),
+      });
+      expect(res.isArchived).toBe(false);
+    });
+
+    it('marca un collar con fenceNotificationPending = true en syncFence', async () => {
+      prisma.collar.findUnique.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        fenceNotificationPending: false,
+      });
+      prisma.collar.update.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        fenceNotificationPending: true,
+      });
+
+      const res = await service.syncFence(10);
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          fenceNotificationPending: true,
+        },
+        include: expect.any(Object),
+      });
+      expect(res.fenceNotificationPending).toBe(true);
+    });
+  });
+
+  describe('remove (eliminación segura)', () => {
+    it('elimina físicamente si no tiene registros históricos asociados', async () => {
+      prisma.collar.findUnique.mockResolvedValue({ id: 5, identifier: 'COL-005' });
+      prisma.animalCollar.count.mockResolvedValue(0);
+      prisma.telemetryReading.count.mockResolvedValue(0);
+      prisma.collarClaim.count.mockResolvedValue(0);
+      prisma.collar.delete.mockResolvedValue({ id: 5 });
+
+      await service.remove(5);
+      expect(prisma.collar.delete).toHaveBeenCalledWith({ where: { id: 5 } });
+    });
+
+    it('rechaza la eliminación con BadRequestException explicativo si tiene historial', async () => {
+      prisma.collar.findUnique.mockResolvedValue({ id: 19, identifier: 'COLLAR-19' });
+      prisma.animalCollar.count.mockResolvedValue(2);
+      prisma.telemetryReading.count.mockResolvedValue(10);
+      prisma.collarClaim.count.mockResolvedValue(0);
+
+      await expect(service.remove(19)).rejects.toThrow(BadRequestException);
+      await expect(service.remove(19)).rejects.toThrow(/posee historial registrado/);
+      expect(prisma.collar.delete).not.toHaveBeenCalled();
+    });
+
+    it('archiva en vez de fallar si forceArchive es true', async () => {
+      prisma.collar.findUnique.mockResolvedValue({ id: 19, identifier: 'COLLAR-19', farmId: 'farm-1' });
+      prisma.animalCollar.count.mockResolvedValue(1);
+      prisma.telemetryReading.count.mockResolvedValue(0);
+      prisma.collarClaim.count.mockResolvedValue(0);
+      prisma.collar.update.mockResolvedValue({
+        id: 19,
+        identifier: 'COLLAR-19',
+        isArchived: true,
+        status: 'OUT_OF_SERVICE',
+        farmId: null,
+      });
+
+      const res = await service.remove(19, true);
+      expect(res.isArchived).toBe(true);
+      expect(prisma.collar.delete).not.toHaveBeenCalled();
     });
   });
 });

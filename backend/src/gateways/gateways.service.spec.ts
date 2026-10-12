@@ -34,6 +34,38 @@ describe('GatewaysService', () => {
       expect(result1.apiKey).toHaveLength(64); // 32 bytes en hex
       expect(result1.apiKey).not.toEqual(result2.apiKey);
     });
+
+    it('respeta un apiKey personalizado si es provisto', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
+      prisma.zone.findUnique.mockResolvedValue({ id: 'zone-1', farmId: 'farm-1' });
+      prisma.gateway.findUnique.mockResolvedValue(null); // uniqueness check
+      prisma.gateway.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: 'gw-1', ...data, lastSeenAt: null })
+      );
+
+      const result = await service.create(
+        { name: 'Gateway Custom', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'custom-secret-key-123' },
+        'user-1'
+      );
+
+      expect(result.apiKey).toBe('custom-secret-key-123');
+    });
+  });
+
+  describe('getApiKey', () => {
+    it('obtiene el apiKey del gateway si el usuario tiene acceso', async () => {
+      prisma.gateway.findUnique.mockResolvedValue({
+        id: 'gw-1',
+        name: 'GW1',
+        apiKey: 'super-secret-key',
+        farmId: 'farm-1',
+        farm: { userId: 'user-1' },
+      });
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: 'FARMER' });
+
+      const res = await service.getApiKey('gw-1', 'user-1');
+      expect(res).toEqual({ apiKey: 'super-secret-key' });
+    });
   });
 
   describe('findByFarm', () => {

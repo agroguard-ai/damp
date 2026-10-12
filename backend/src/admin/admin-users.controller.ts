@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { GlobalRoles } from '@/auth/decorators/global-roles.decorator';
 import { GlobalRole } from '@generated/prisma';
+import { PaginationQueryDto } from '@/common/pagination/dto/pagination-query.dto';
 import { AdminUsersService } from './admin-users.service';
 import { UpdateGlobalRoleDto } from './dto/update-global-role.dto';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,8 +17,8 @@ export class AdminUsersController {
   constructor(private readonly adminUsersService: AdminUsersService) {}
 
   @Get('users')
-  findAllUsers() {
-    return this.adminUsersService.findAll();
+  findAllUsers(@Query() query: PaginationQueryDto) {
+    return this.adminUsersService.findAll(query);
   }
 
   @Post('users')
@@ -41,7 +42,7 @@ export class AdminUsersController {
   }
 
   @Get('farms')
-  findAllFarms() {
-    return this.adminUsersService.findAllFarms();
+  findAllFarms(@Query() query: PaginationQueryDto) {
+    return this.adminUsersService.findAllFarms(query);
   }
 }
