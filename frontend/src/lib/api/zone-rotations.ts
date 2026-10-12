@@ -19,9 +19,7 @@ export const zoneRotationsApi = {
     }),
 
   /** POST /api/zones/:zoneId/rotation/advance — advances to next step immediately */
-  advanceRotation: (
-    zoneId: string
-  ): Promise<{ message: string; plan?: ZoneRotationPlan; completed?: boolean }> =>
+  advanceRotation: (zoneId: string): Promise<{ message: string; plan?: ZoneRotationPlan; completed?: boolean }> =>
     apiFetch<{ message: string; plan?: ZoneRotationPlan; completed?: boolean }>(
       `/api/zones/${zoneId}/rotation/advance`,
       { method: 'POST' }
@@ -32,13 +30,10 @@ export const zoneRotationsApi = {
     zoneId: string,
     data: PostponeRotationPayload
   ): Promise<{ message: string; nextRotationAt: string }> =>
-    apiFetch<{ message: string; nextRotationAt: string }>(
-      `/api/zones/${zoneId}/rotation/postpone`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    ),
+    apiFetch<{ message: string; nextRotationAt: string }>(`/api/zones/${zoneId}/rotation/postpone`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   /** POST /api/zones/:zoneId/rotation/pause — pauses automatic rotation */
   pauseRotation: (zoneId: string): Promise<{ message: string; plan: ZoneRotationPlan }> =>

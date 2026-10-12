@@ -7,6 +7,7 @@ const PUBLIC_PATHS = [
   '/sign-in',
   '/api/auth/login',
   '/api/auth/logout',
+  '/api/iot',
   '/arquitectura',
   '/architecture',
   '/architecture.html',

@@ -26,10 +26,11 @@ export function EmulationRequiredState({ title = 'Recursos del Sistema' }: { tit
     async function loadUsers() {
       try {
         setLoading(true);
-        const res = await fetch('/api/admin/users');
+        const res = await fetch('/api/admin/users?limit=100');
         if (res.ok) {
           const data = await res.json();
-          setUsers(data);
+          const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+          setUsers(list);
         }
       } catch (err) {
         console.error('Error fetching users for emulation:', err);
@@ -40,10 +41,12 @@ export function EmulationRequiredState({ title = 'Recursos del Sistema' }: { tit
     void loadUsers();
   }, []);
 
-  const filtered = users.filter(
+  const userList = Array.isArray(users) ? users : [];
+  const filtered = userList.filter(
     (u) =>
+      u &&
       u.globalRole !== 'SUPER_ADMIN' &&
-      (u.email.toLowerCase().includes(search.toLowerCase()) ||
+      ((u.email && u.email.toLowerCase().includes(search.toLowerCase())) ||
         (u.name && u.name.toLowerCase().includes(search.toLowerCase())))
   );
 

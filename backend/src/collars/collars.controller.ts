@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Delete, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param, ParseIntPipe, UseGuards, Query } from '@nestjs/common';
 import { CollarsService } from './collars.service';
 import { CreateCollarDto } from './dto/create-collar.dto';
 import { UpdateCollarDto } from './dto/update-collar.dto';
@@ -102,10 +102,46 @@ export class CollarsController {
     return this.collarsService.updateStatus(id, dto.status, user);
   }
 
+  @Patch(':id/archive')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
+  archive(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.collarsService.archive(id, user);
+  }
+
+  @Patch(':id/restore')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
+  restore(@Param('id', ParseIntPipe) id: number) {
+    return this.collarsService.restore(id);
+  }
+
+  @Patch(':id/sync-fence')
+  syncFence(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.collarsService.syncFence(id, user);
+  }
+
+  @Post(':id/sync-fence')
+  syncFencePost(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.collarsService.syncFence(id, user);
+  }
+
   @Delete(':id')
   @UseGuards(GlobalRolesGuard)
   @GlobalRoles(GlobalRole.SUPER_ADMIN)
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.collarsService.remove(id);
+  remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('forceArchive') forceArchive?: string,
+  ) {
+    return this.collarsService.remove(id, forceArchive === 'true');
   }
 }

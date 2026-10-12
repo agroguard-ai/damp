@@ -1,15 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  Polygon,
-  Marker,
-  Popup,
-  CircleMarker,
-  useMap,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapActionControls from './controls/MapActionControls';
@@ -149,16 +141,11 @@ export default function ZoneRotationMap({
 
   const zoneCoords = useMemo(() => parsePolygon(zone?.polygonCoordinates), [zone]);
   const fromCoords = useMemo(() => parsePolygon(fromGeofence?.polygonCoordinates), [fromGeofence]);
-  const currentCoords = useMemo(
-    () => parsePolygon(currentGeofence?.polygonCoordinates),
-    [currentGeofence]
-  );
+  const currentCoords = useMemo(() => parsePolygon(currentGeofence?.polygonCoordinates), [currentGeofence]);
   const nextCoords = useMemo(() => parsePolygon(nextGeofence?.polygonCoordinates), [nextGeofence]);
   const activeTransitionCoords = useMemo(
     () =>
-      Array.isArray(activeTransitionPolygon) && activeTransitionPolygon.length >= 3
-        ? activeTransitionPolygon
-        : [],
+      Array.isArray(activeTransitionPolygon) && activeTransitionPolygon.length >= 3 ? activeTransitionPolygon : [],
     [activeTransitionPolygon]
   );
 
@@ -201,10 +188,7 @@ export default function ZoneRotationMap({
   }, [heatmapPoints, showHeatmap]);
 
   // Filter animals that have GPS coordinates
-  const validAnimals = useMemo(
-    () => animals.filter((a) => a.latestReading !== null),
-    [animals]
-  );
+  const validAnimals = useMemo(() => animals.filter((a) => a.latestReading !== null), [animals]);
 
   return (
     <div
@@ -268,11 +252,7 @@ export default function ZoneRotationMap({
 
         {/* 2. Otros cercos de la zona (inactivos / secundarios) */}
         {allGeofences.map((gf) => {
-          if (
-            gf.id === fromGeofence?.id ||
-            gf.id === currentGeofence?.id ||
-            gf.id === nextGeofence?.id
-          ) {
+          if (gf.id === fromGeofence?.id || gf.id === currentGeofence?.id || gf.id === nextGeofence?.id) {
             return null;
           }
           const coords = parsePolygon(gf.polygonCoordinates);
@@ -317,9 +297,7 @@ export default function ZoneRotationMap({
                   🟢 Desde dónde partió (Paso previo)
                 </span>
                 <h4 className="font-bold text-sm">{fromGeofence?.name}</h4>
-                <p className="text-zinc-600 text-[11px]">
-                  Sector pastoreado en la etapa anterior de la rotación.
-                </p>
+                <p className="text-zinc-600 text-[11px]">Sector pastoreado en la etapa anterior de la rotación.</p>
               </div>
             </Popup>
           </Polygon>
@@ -399,7 +377,8 @@ export default function ZoneRotationMap({
                     : 'Ajuste incremental hacia destino'}
                 </h4>
                 <p className="text-zinc-600 text-[11px]">
-                  Coordenadas activas que los collares reciben en su downlink LoRa cada ~5 minutos para guiar al rodeo progresivamente.
+                  Coordenadas activas que los collares reciben en su downlink LoRa cada ~5 minutos para guiar al rodeo
+                  progresivamente.
                 </p>
               </div>
             </Popup>
@@ -465,11 +444,7 @@ export default function ZoneRotationMap({
           );
         })}
 
-        <MapAutoBounds
-          zoneCoords={zoneCoords}
-          fenceCoords={fenceCoords}
-          recenterTick={recenterTick}
-        />
+        <MapAutoBounds zoneCoords={zoneCoords} fenceCoords={fenceCoords} recenterTick={recenterTick} />
       </MapContainer>
     </div>
   );

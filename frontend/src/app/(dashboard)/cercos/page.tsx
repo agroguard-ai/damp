@@ -58,9 +58,7 @@ function CercosHubContent() {
   const zoneIdFromUrl = searchParams?.get('zoneId') ?? '';
   const tabFromUrl = searchParams?.get('tab') ?? '';
 
-  const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
-    tabFromUrl === 'rotation' ? 'rotation' : 'fences'
-  );
+  const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(tabFromUrl === 'rotation' ? 'rotation' : 'fences');
 
   // 1. Fetch all Farms
   const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
@@ -271,7 +269,8 @@ function CercosHubContent() {
             Gestión de Cercos Eléctricos Virtuales
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-0.5">
-            Nivel 3: Delimitá subdivisiones de contención virtual sobre la zona activa y asigná hacienda con collares LoRa.
+            Nivel 3: Delimitá subdivisiones de contención virtual sobre la zona activa y asigná hacienda con collares
+            LoRa.
           </p>
         </div>
       </div>
@@ -316,9 +315,9 @@ function CercosHubContent() {
             options={zones.map((z) => {
               const hasPoly = Boolean(
                 z.polygonCoordinates &&
-                  (typeof z.polygonCoordinates === 'string'
-                    ? (z.polygonCoordinates as string).length > 2
-                    : Array.isArray(z.polygonCoordinates) && (z.polygonCoordinates as unknown[]).length > 0)
+                (typeof z.polygonCoordinates === 'string'
+                  ? (z.polygonCoordinates as string).length > 2
+                  : Array.isArray(z.polygonCoordinates) && (z.polygonCoordinates as unknown[]).length > 0)
               );
               return {
                 value: z.id,
@@ -379,11 +378,10 @@ function CercosHubContent() {
             <Layers className="w-6 h-6" />
           </div>
           <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="font-bold text-base text-zinc-900 dark:text-white">
-              Este campo no tiene zonas registradas
-            </h3>
+            <h3 className="font-bold text-base text-zinc-900 dark:text-white">Este campo no tiene zonas registradas</h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Para trazar un cerco eléctrico virtual (Nivel 3), primero debés registrar y delimitar al menos una zona o potrero (Nivel 2).
+              Para trazar un cerco eléctrico virtual (Nivel 3), primero debés registrar y delimitar al menos una zona o
+              potrero (Nivel 2).
             </p>
           </div>
           <Link
@@ -410,11 +408,7 @@ function CercosHubContent() {
                 <div>
                   <h3 className="font-bold text-base text-zinc-900 dark:text-white flex items-center gap-2">
                     <span>Mapa del Cerco</span>
-                    {activeZone && (
-                      <span className="text-xs font-normal text-zinc-500">
-                        — Zona: {activeZone.name}
-                      </span>
-                    )}
+                    {activeZone && <span className="text-xs font-normal text-zinc-500">— Zona: {activeZone.name}</span>}
                   </h3>
                   <p className="text-xs text-zinc-400 mt-0.5">
                     {zonePolygon.length > 0
@@ -468,9 +462,7 @@ function CercosHubContent() {
             <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs p-6 space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Cercos Eléctricos en esta Zona
-                  </h3>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Cercos Eléctricos en esta Zona</h3>
                   <p className="text-xs text-zinc-500 mt-0.5">
                     Subdivisiones de contención activas en {activeZone?.name || 'esta zona'}.
                   </p>
@@ -551,21 +543,15 @@ function CercosHubContent() {
                               {fenceArea > 0 ? (
                                 <span className="font-medium text-zinc-900 dark:text-white">
                                   {fenceArea} Ha{' '}
-                                  <span className="text-[11px] text-zinc-400">
-                                    ({coords.length} pts)
-                                  </span>
+                                  <span className="text-[11px] text-zinc-400">({coords.length} pts)</span>
                                 </span>
                               ) : (
-                                <span className="text-zinc-400 italic text-[11px]">
-                                  Sin polígono
-                                </span>
+                                <span className="text-zinc-400 italic text-[11px]">Sin polígono</span>
                               )}
                             </td>
 
                             <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400">
-                              <span className="font-semibold text-zinc-900 dark:text-white">
-                                {assignedCount}
-                              </span>{' '}
+                              <span className="font-semibold text-zinc-900 dark:text-white">{assignedCount}</span>{' '}
                               animal(es)
                             </td>
 
@@ -722,10 +708,10 @@ function CercosHubContent() {
                           >
                             <div className="flex items-center gap-2 truncate">
                               <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                              <span className="truncate">{a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}</span>
-                              {a.breed && (
-                                <span className="text-[10px] text-zinc-400">({a.breed})</span>
-                              )}
+                              <span className="truncate">
+                                {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}
+                              </span>
+                              {a.breed && <span className="text-[10px] text-zinc-400">({a.breed})</span>}
                             </div>
                             <span className="text-[10px] font-mono text-zinc-400">
                               {a.collarId ? '⚡ Collar vinculado' : 'Sin collar'}

@@ -22,12 +22,7 @@ const PREDEFINED_REASONS = [
   'Otro motivo',
 ];
 
-export default function FalsePositiveModal({
-  alert,
-  isOpen,
-  onClose,
-  onSuccess,
-}: FalsePositiveModalProps) {
+export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }: FalsePositiveModalProps) {
   const { toast } = useToast();
   const [selectedReason, setSelectedReason] = useState<string>(PREDEFINED_REASONS[0]);
   const [customNotes, setCustomNotes] = useState<string>('');
@@ -39,9 +34,7 @@ export default function FalsePositiveModal({
     e.preventDefault();
     setLoading(true);
     try {
-      const fullNote = customNotes.trim()
-        ? `${selectedReason}: ${customNotes.trim()}`
-        : selectedReason;
+      const fullNote = customNotes.trim() ? `${selectedReason}: ${customNotes.trim()}` : selectedReason;
 
       await alertsApi.markFalsePositive(alert.id, fullNote);
       toast.success('Alerta marcada como falso positivo. Feedback guardado para reentrenamiento.');
@@ -78,16 +71,15 @@ export default function FalsePositiveModal({
             Animal: {alert.animal?.tag || `ID: ${alert.animalId.slice(0, 8)}`}
           </p>
           <p className="text-zinc-600 dark:text-zinc-400">{alert.message}</p>
-          <p className="text-[11px] text-zinc-400 pt-0.5">
-            Fecha: {new Date(alert.createdAt).toLocaleString()}
-          </p>
+          <p className="text-[11px] text-zinc-400 pt-0.5">Fecha: {new Date(alert.createdAt).toLocaleString()}</p>
         </div>
 
         {/* Explicación de reentrenamiento CU014 */}
         <div className="flex items-start gap-2.5 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 p-3 rounded-xl text-xs text-blue-800 dark:text-blue-300">
           <BrainCircuit className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
           <p>
-            Al marcar esta alerta como falso positivo, el sistema guarda este feedback junto con la ventana de telemetría para incorporarlo en los futuros reentrenamientos del modelo de Machine Learning.
+            Al marcar esta alerta como falso positivo, el sistema guarda este feedback junto con la ventana de
+            telemetría para incorporarlo en los futuros reentrenamientos del modelo de Machine Learning.
           </p>
         </div>
 

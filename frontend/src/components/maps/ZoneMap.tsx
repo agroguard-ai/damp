@@ -108,9 +108,7 @@ function MapAutoBounds({
       zones.forEach((zone) => {
         try {
           const poly =
-            typeof zone.polygonCoordinates === 'string'
-              ? JSON.parse(zone.polygonCoordinates)
-              : zone.polygonCoordinates;
+            typeof zone.polygonCoordinates === 'string' ? JSON.parse(zone.polygonCoordinates) : zone.polygonCoordinates;
           if (Array.isArray(poly)) {
             poly.forEach((pt) => {
               if (Array.isArray(pt) && pt.length === 2) {
@@ -159,10 +157,7 @@ function MapClickHandler({
         const result = validatePointInBoundary(clicked, boundaryPolygon, boundaryLabel, 20, true);
         if (!result.isValid) {
           if (onPointRejected) {
-            onPointRejected(
-              clicked,
-              result.message || `El punto está fuera de los límites ${boundaryLabel}.`
-            );
+            onPointRejected(clicked, result.message || `El punto está fuera de los límites ${boundaryLabel}.`);
           }
           return;
         }
@@ -292,20 +287,14 @@ export default function ZoneMap({
 
   // Resolve which polygon acts as the strict boundary
   const activeBoundaryPolygon = boundaryType === 'zone' && zonePolygon.length >= 3 ? zonePolygon : farmPolygon;
-  const resolvedBoundaryLabel =
-    boundaryLabel || (boundaryType === 'zone' ? 'de la zona' : 'del establecimiento');
+  const resolvedBoundaryLabel = boundaryLabel || (boundaryType === 'zone' ? 'de la zona' : 'del establecimiento');
 
   const activeStrokeColor = boundaryType === 'zone' ? '#0ea5e9' : '#2563eb';
   const activeFillColor = boundaryType === 'zone' ? '#38bdf8' : '#3b82f6';
 
   const handleInsertOrAddPoint = (point: [number, number], message?: string) => {
     pushHistory(newPoints);
-    if (
-      onChangePoints &&
-      selectedIndex !== null &&
-      selectedIndex >= 0 &&
-      selectedIndex < newPoints.length
-    ) {
+    if (onChangePoints && selectedIndex !== null && selectedIndex >= 0 && selectedIndex < newPoints.length) {
       // Insert immediately after the selected vertex
       const insertIndex = selectedIndex + 1;
       const updated = [...newPoints.slice(0, insertIndex), point, ...newPoints.slice(insertIndex)];
@@ -385,10 +374,7 @@ export default function ZoneMap({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-112.5 rounded-2xl overflow-hidden relative z-10 group"
-    >
+    <div ref={containerRef} className="w-full h-112.5 rounded-2xl overflow-hidden relative z-10 group">
       {/* In-Map Action Controls */}
       <MapActionControls
         targetRef={containerRef}
@@ -426,7 +412,9 @@ export default function ZoneMap({
         {newPoints.length > 0 && (
           <div className="flex items-center gap-1.5 text-blue-300">
             <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 border border-blue-400"></span>
-            <span>{selectedZoneId ? 'Vértices Zona' : 'Nuevo Trazado'} ({newPoints.length} pts)</span>
+            <span>
+              {selectedZoneId ? 'Vértices Zona' : 'Nuevo Trazado'} ({newPoints.length} pts)
+            </span>
           </div>
         )}
         {selectedIndex !== null && (
@@ -461,12 +449,7 @@ export default function ZoneMap({
             maxZoom={activeProvider.maxZoom || 19}
           />
         )}
-        <MapAutoBounds
-          farmPolygon={farmPolygon}
-          zonePolygon={zonePolygon}
-          zones={zones}
-          center={center}
-        />
+        <MapAutoBounds farmPolygon={farmPolygon} zonePolygon={zonePolygon} zones={zones} center={center} />
 
         {/* Exterior Red Mask: Shading the forbidden area outside the active boundary */}
         {activeBoundaryPolygon.length >= 3 && (
@@ -604,9 +587,7 @@ export default function ZoneMap({
                   <Tooltip sticky>
                     <div className="text-xs">
                       <div className="font-bold text-cyan-700">⚡ {fence.name}</div>
-                      <div className="text-[10px] text-zinc-500">
-                        {fence.active ? 'Cerco Activo' : 'Desactivado'}
-                      </div>
+                      <div className="text-[10px] text-zinc-500">{fence.active ? 'Cerco Activo' : 'Desactivado'}</div>
                     </div>
                   </Tooltip>
                 </Polygon>
@@ -664,16 +645,16 @@ export default function ZoneMap({
       {interactive && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/85 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 text-center max-w-[95%] truncate">
           {newPoints.length === 0 ? (
-            boundaryType === 'zone'
-              ? 'Hacé clic dentro de la zona (perímetro verde) para trazar el cerco eléctrico'
-              : activeBoundaryPolygon.length > 0
-                ? 'Hacé clic dentro del perímetro del campo (delimitado en amarillo) para trazar la zona'
-                : 'Hacé clic en el mapa para marcar los vértices'
+            boundaryType === 'zone' ? (
+              'Hacé clic dentro de la zona (perímetro verde) para trazar el cerco eléctrico'
+            ) : activeBoundaryPolygon.length > 0 ? (
+              'Hacé clic dentro del perímetro del campo (delimitado en amarillo) para trazar la zona'
+            ) : (
+              'Hacé clic en el mapa para marcar los vértices'
+            )
           ) : selectedIndex !== null ? (
             <div className="flex items-center gap-2">
-              <span className="text-amber-300 font-semibold">
-                📍 Vértice #{selectedIndex + 1} seleccionado:
-              </span>
+              <span className="text-amber-300 font-semibold">📍 Vértice #{selectedIndex + 1} seleccionado:</span>
               <span>El próximo clic insertará un punto contiguo a este vértice.</span>
               <button
                 type="button"

@@ -34,19 +34,18 @@ const EVENT_LABELS: Record<string, { label: string; color: string; badgeBg: stri
   inactividad: {
     label: 'Inactividad Anómala',
     color: 'text-amber-600 dark:text-amber-400',
-    badgeBg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300',
+    badgeBg:
+      'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-300',
   },
   anomalia: {
     label: 'Comportamiento Anómalo',
     color: 'text-purple-600 dark:text-purple-400',
-    badgeBg: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300',
+    badgeBg:
+      'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300',
   },
 };
 
-export default function PredictiveHealthMonitoring({
-  farmId,
-  animals,
-}: PredictiveHealthMonitoringProps) {
+export default function PredictiveHealthMonitoring({ farmId, animals }: PredictiveHealthMonitoringProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [metrics, setMetrics] = useState<MlHealthMetrics | null>(null);
   const [predictions, setPredictions] = useState<HealthPrediction[]>([]);
@@ -98,9 +97,7 @@ export default function PredictiveHealthMonitoring({
             <span className="text-xs font-semibold uppercase tracking-wider">Alertas IA Disparadas</span>
             <BrainCircuit className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           </div>
-          <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-            {metrics?.totalMlAlerts ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-white">{metrics?.totalMlAlerts ?? 0}</p>
           <p className="text-[11px] text-zinc-500">Certeza alta &gt; umbral de detección</p>
         </div>
 
@@ -122,9 +119,7 @@ export default function PredictiveHealthMonitoring({
             <span className="text-xs font-semibold uppercase tracking-wider">Falsos Positivos</span>
             <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
           </div>
-          <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">
-            {metrics?.falsePositives ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">{metrics?.falsePositives ?? 0}</p>
           <p className="text-[11px] text-zinc-500">Feedback registrado para reentrenar</p>
         </div>
 
@@ -134,9 +129,7 @@ export default function PredictiveHealthMonitoring({
             <span className="text-xs font-semibold uppercase tracking-wider">Predicciones Guardadas</span>
             <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <p className="text-2xl font-bold text-zinc-900 dark:text-white">
-            {metrics?.totalPredictions ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-zinc-900 dark:text-white">{metrics?.totalPredictions ?? 0}</p>
           <p className="text-[11px] text-zinc-500">Horizonte predictivo hacia las próximas 6hs</p>
         </div>
       </div>
@@ -148,8 +141,10 @@ export default function PredictiveHealthMonitoring({
           <span>Detección Preventiva de Salud (CU014 — Modelo LSTM Multitarea)</span>
         </div>
         <p className="text-zinc-600 dark:text-zinc-300">
-          El sistema evalúa periódicamente ventanas de telemetría de 24 horas y predice si el animal presentará un evento de salud en las próximas 6 horas.
-          Cuando la probabilidad supera el umbral, se dispara una alerta automática; <b>cuando la certeza es menor (sub-umbral), la predicción se almacena aquí sin alertar</b> para permitir la auditoría veterinaria preventiva y el reentrenamiento futuro.
+          El sistema evalúa periódicamente ventanas de telemetría de 24 horas y predice si el animal presentará un
+          evento de salud en las próximas 6 horas. Cuando la probabilidad supera el umbral, se dispara una alerta
+          automática; <b>cuando la certeza es menor (sub-umbral), la predicción se almacena aquí sin alertar</b> para
+          permitir la auditoría veterinaria preventiva y el reentrenamiento futuro.
         </p>
       </div>
 
@@ -219,9 +214,7 @@ export default function PredictiveHealthMonitoring({
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
           <h4 className="font-bold text-sm text-zinc-900 dark:text-white flex items-center gap-2">
             <span>Historial de Predicciones Guardadas</span>
-            <span className="text-xs text-zinc-400 font-normal">
-              ({filteredPredictions.length} registros)
-            </span>
+            <span className="text-xs text-zinc-400 font-normal">({filteredPredictions.length} registros)</span>
           </h4>
         </div>
 
@@ -234,7 +227,8 @@ export default function PredictiveHealthMonitoring({
             <BrainCircuit className="w-8 h-8 mx-auto text-zinc-300 dark:text-zinc-700" />
             <p>No se encontraron predicciones con los filtros seleccionados.</p>
             <p className="text-[11px] text-zinc-500">
-              Las predicciones se generan y guardan automáticamente cada vez que los collares transmiten telemetría con al menos 24hs de lecturas.
+              Las predicciones se generan y guardan automáticamente cada vez que los collares transmiten telemetría con
+              al menos 24hs de lecturas.
             </p>
           </div>
         ) : (
@@ -273,7 +267,8 @@ export default function PredictiveHealthMonitoring({
                     </div>
 
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      Raza: {pred.animal?.breed || 'N/A'} · Sexo: {pred.animal?.sex || 'N/A'} · Ventana: {pred.windowReadingsCount} lecturas analizadas (24hs)
+                      Raza: {pred.animal?.breed || 'N/A'} · Sexo: {pred.animal?.sex || 'N/A'} · Ventana:{' '}
+                      {pred.windowReadingsCount} lecturas analizadas (24hs)
                     </p>
 
                     {pred.alert?.isFalsePositive && (
@@ -288,7 +283,9 @@ export default function PredictiveHealthMonitoring({
                     <div className="flex-1 space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-zinc-500">Certeza:</span>
-                        <span className={`font-mono font-bold ${pred.detected ? 'text-red-600 dark:text-red-400' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                        <span
+                          className={`font-mono font-bold ${pred.detected ? 'text-red-600 dark:text-red-400' : 'text-zinc-700 dark:text-zinc-300'}`}
+                        >
                           {pct}% (Umbral: {threshPct}%)
                         </span>
                       </div>

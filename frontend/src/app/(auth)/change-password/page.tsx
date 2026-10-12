@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Hexagon, Lock, AlertCircle, ArrowRight, Loader2, ShieldCheck, LogOut } from 'lucide-react';
+import { Hexagon, Lock, AlertCircle, Loader2, LogOut, Eye, EyeOff } from 'lucide-react';
 
 export default function ChangePasswordPage() {
   const { changePassword, logout } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ export default function ChangePasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword) {
       setError('Por favor complete todos los campos');
       return;
     }
@@ -32,14 +33,9 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    if (currentPassword === newPassword) {
-      setError('La nueva contraseña debe ser diferente a la actual');
-      return;
-    }
-
     try {
       setLoading(true);
-      await changePassword(currentPassword, newPassword);
+      await changePassword(newPassword);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error al actualizar la contraseña';
       setError(message);
@@ -61,12 +57,6 @@ export default function ChangePasswordPage() {
               DAMP <span className="text-green-500">Agro</span>
             </span>
           </Link>
-          <div className="pt-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Primer inicio de sesión detectado
-            </span>
-          </div>
           <h2 className="text-xl font-semibold text-white tracking-tight pt-1">Actualizá tu contraseña</h2>
           <p className="text-xs text-zinc-400">
             Por seguridad, debés reemplazar la clave provisional brindada por Ventas por una nueva contraseña personal.
@@ -84,33 +74,26 @@ export default function ChangePasswordPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-zinc-300">Contraseña Provisional Actual</label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="password"
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Clave recibida por ventas"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
             <label className="text-xs font-medium text-zinc-300">Nueva Contraseña</label>
             <div className="relative">
               <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showNewPassword ? 'text' : 'password'}
                 required
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
+                className="w-full pl-10 pr-10 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword((prev) => !prev)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer p-0.5"
+                title={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -119,14 +102,22 @@ export default function ChangePasswordPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 required
                 minLength={8}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repetí la nueva contraseña"
-                className="w-full pl-10 pr-4 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
+                className="w-full pl-10 pr-10 py-2.5 bg-zinc-800/80 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-colors"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer p-0.5"
+                title={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -138,13 +129,10 @@ export default function ChangePasswordPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Actualizando contraseña...</span>
+                <span>Guardando...</span>
               </>
             ) : (
-              <>
-                <span>Guardar y Acceder a la Plataforma</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
+              <span>Guardar</span>
             )}
           </button>
         </form>

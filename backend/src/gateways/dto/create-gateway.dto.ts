@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateGatewayDto {
   @IsString()
@@ -6,10 +6,15 @@ export class CreateGatewayDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  farmId: string;
+  @IsOptional()
+  apiKey?: string;
 
   @IsString()
-  @IsNotEmpty()
-  zoneId: string;
+  @IsOptional()
+  farmId?: string;
+
+  @IsString()
+  @IsOptional()
+  zoneId?: string;
 }
+

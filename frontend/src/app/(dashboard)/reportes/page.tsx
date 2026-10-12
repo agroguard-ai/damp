@@ -106,7 +106,7 @@ export default function ReportesPage() {
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/animals`}
-                className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
               >
                 Descargar Excel
               </a>
@@ -118,7 +118,7 @@ export default function ReportesPage() {
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/telemetry${rangeQuery()}`}
-                className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
               >
                 Descargar Excel
               </a>
@@ -130,7 +130,7 @@ export default function ReportesPage() {
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/escapes${rangeQuery()}`}
-                className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
               >
                 Descargar PDF
               </a>
@@ -144,14 +144,14 @@ export default function ReportesPage() {
                 <select
                   value={alertsFormat}
                   onChange={(e) => setAlertsFormat(e.target.value as 'pdf' | 'xlsx')}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm cursor-pointer"
                 >
                   <option value="pdf">PDF</option>
                   <option value="xlsx">Excel</option>
                 </select>
                 <a
                   href={`/api/reports/farms/${activeFarmId}/alerts${rangeQuery() ? `${rangeQuery()}&format=${alertsFormat}` : `?format=${alertsFormat}`}`}
-                  className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                  className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
                 >
                   Descargar
                 </a>
@@ -164,7 +164,7 @@ export default function ReportesPage() {
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/summary`}
-                className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all"
+                className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
               >
                 Descargar PDF
               </a>
@@ -178,7 +178,7 @@ export default function ReportesPage() {
                 <select
                   value={selectedAnimal}
                   onChange={(e) => setSelectedAnimal(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer flex-1"
+                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm cursor-pointer flex-1"
                 >
                   <option value="" disabled>
                     Elegir animal...
@@ -192,7 +192,7 @@ export default function ReportesPage() {
                 {selectedAnimal ? (
                   <a
                     href={`/api/reports/animals/${selectedAnimal}/medical-history`}
-                    className="inline-block bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-all whitespace-nowrap"
+                    className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all whitespace-nowrap"
                   >
                     Descargar PDF
                   </a>

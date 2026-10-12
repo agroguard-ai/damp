@@ -25,9 +25,11 @@ const WGS84_AUTHALIC_RADIUS_METERS = 6371007.1809;
  * Proyecta un conjunto de coordenadas angulares [lat, lng] a coordenadas métricas planas [x, y]
  * utilizando la Proyección Azimutal Equivalente de Lambert centrada en el centroide del polígono.
  */
-export function projectToLambertEqualArea(
-  points: LatLngTuple[]
-): { projected: [number, number][]; centerLat: number; centerLng: number } {
+export function projectToLambertEqualArea(points: LatLngTuple[]): {
+  projected: [number, number][];
+  centerLat: number;
+  centerLng: number;
+} {
   if (!points || points.length === 0) {
     return { projected: [], centerLat: 0, centerLng: 0 };
   }

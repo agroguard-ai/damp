@@ -92,7 +92,7 @@ export default function NewAnimalPage() {
             <p className="text-zinc-500 text-sm">No tienes campos registrados aún en DAMP.</p>
             <Link
               href="/farms/new"
-              className="inline-block bg-green-600 hover:bg-green-750 text-white font-semibold px-6 py-3 rounded-lg transition-all shadow-sm"
+              className="inline-block bg-primary hover:bg-primary-hover text-on-primary font-semibold px-6 py-3 rounded-lg transition-all shadow-sm"
             >
               Registrar Primer Campo
             </Link>
@@ -219,7 +219,7 @@ export default function NewAnimalPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-green-500/50 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer"
+                className="w-full bg-primary hover:bg-primary-hover text-on-primary font-semibold py-3 px-4 rounded-lg shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>

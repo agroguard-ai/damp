@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   // Imagen de producción liviana (copia solo lo necesario para `node server.js`,
   // sin arrastrar node_modules completo) — ver frontend/Dockerfile.
   output: 'standalone',
+  experimental: {
+    cpus: 1,
+    workerThreads: false,
+  },
 };
 
 export default nextConfig;

@@ -70,9 +70,7 @@ export function HierarchyGuideBar({
                 farmName || 'Establecimiento Seleccionado'
               )}
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Perímetro general del campo
-            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Perímetro general del campo</div>
           </div>
         </div>
 
@@ -127,9 +125,7 @@ export function HierarchyGuideBar({
                 'Subdivisiones del campo'
               )}
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Contenido dentro del Campo
-            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Contenido dentro del Campo</div>
           </div>
         </div>
 
@@ -178,9 +174,7 @@ export function HierarchyGuideBar({
                 'Cercos Eléctricos Virtuales'
               )}
             </div>
-            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-              Contenido dentro de la Zona
-            </div>
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Contenido dentro de la Zona</div>
           </div>
         </div>
       </div>
@@ -189,12 +183,11 @@ export function HierarchyGuideBar({
       <div className="bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200/70 dark:border-zinc-800/80 rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-xs text-zinc-600 dark:text-zinc-400">
         <ShieldAlert className="w-4 h-4 shrink-0 text-green-600 dark:text-green-500" />
         <span>
-          <strong className="text-zinc-800 dark:text-zinc-200 font-semibold">
-            Principio de Contención Espacial:
-          </strong>{' '}
+          <strong className="text-zinc-800 dark:text-zinc-200 font-semibold">Principio de Contención Espacial:</strong>{' '}
           {currentLevel === 1 ? (
             <>
-              El <strong>Campo</strong> define el límite general. Cualquier potrero o zona interna debe estar dentro del perímetro delimitado.
+              El <strong>Campo</strong> define el límite general. Cualquier potrero o zona interna debe estar dentro del
+              perímetro delimitado.
             </>
           ) : currentLevel === 2 ? (
             <>

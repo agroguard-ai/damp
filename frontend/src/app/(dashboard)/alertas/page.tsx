@@ -14,15 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import FalsePositiveModal from '@/components/alerts/FalsePositiveModal';
 import PredictiveHealthMonitoring from '@/components/alerts/PredictiveHealthMonitoring';
-import {
-  Bell,
-  BrainCircuit,
-  AlertTriangle,
-  CheckCircle2,
-  SlidersHorizontal,
-  Clock,
-  Zap,
-} from 'lucide-react';
+import { Bell, BrainCircuit, AlertTriangle, CheckCircle2, SlidersHorizontal, Clock, Zap } from 'lucide-react';
 import type { Alert, AlertType } from '@/types';
 
 const TYPE_LABELS: Record<AlertType, string> = {
@@ -32,8 +24,7 @@ const TYPE_LABELS: Record<AlertType, string> = {
 };
 
 const TYPE_CLASSES: Record<AlertType, string> = {
-  ESCAPE:
-    'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30',
+  ESCAPE: 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30',
   HEALTH:
     'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30',
   SYSTEM: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/30',
@@ -47,9 +38,7 @@ export default function AlertasPage() {
   const activeFarmId = selectedFarm || farms[0]?.id || '';
 
   const [activeTab, setActiveTab] = useState<'alerts' | 'predictive'>('alerts');
-  const [selectedAlertForFalsePositive, setSelectedAlertForFalsePositive] = useState<Alert | null>(
-    null
-  );
+  const [selectedAlertForFalsePositive, setSelectedAlertForFalsePositive] = useState<Alert | null>(null);
 
   const fetchAnimals = useCallback(
     () => (activeFarmId ? animalsApi.getAll({ farmId: activeFarmId, status: 'ACTIVE' }) : Promise.resolve([])),
@@ -74,8 +63,8 @@ export default function AlertasPage() {
             ...(filters.resolved === 'fp'
               ? { isFalsePositive: true }
               : filters.resolved !== ''
-              ? { resolved: filters.resolved === 'true', isFalsePositive: false }
-              : {}),
+                ? { resolved: filters.resolved === 'true', isFalsePositive: false }
+                : {}),
             ...(filters.source ? { source: filters.source as any } : {}),
           })
         : Promise.resolve([]),
@@ -134,10 +123,7 @@ export default function AlertasPage() {
     }
   };
 
-  const activeAlertsCount = useMemo(
-    () => alerts.filter((a) => !a.isResolved).length,
-    [alerts]
-  );
+  const activeAlertsCount = useMemo(() => alerts.filter((a) => !a.isResolved).length, [alerts]);
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="las Alertas de Campo" />;
@@ -248,9 +234,7 @@ export default function AlertasPage() {
 
                   {/* Animal */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                      Animal
-                    </label>
+                    <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Animal</label>
                     <select
                       value={filters.animalId}
                       onChange={(e) => setFilters({ ...filters, animalId: e.target.value })}
@@ -332,12 +316,12 @@ export default function AlertasPage() {
                               a.isFalsePositive
                                 ? 'border-amber-200 dark:border-amber-900/30 bg-amber-50/20 dark:bg-amber-950/10'
                                 : a.isResolved
-                                ? 'border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20'
-                                : isMl
-                                ? 'border-purple-200 dark:border-purple-900/50 bg-purple-50/20 dark:bg-purple-950/10'
-                                : isEscape
-                                ? 'border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10'
-                                : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+                                  ? 'border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20'
+                                  : isMl
+                                    ? 'border-purple-200 dark:border-purple-900/50 bg-purple-50/20 dark:bg-purple-950/10'
+                                    : isEscape
+                                      ? 'border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10'
+                                      : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
                             }`}
                           >
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -465,9 +449,7 @@ export default function AlertasPage() {
                         type="number"
                         step="0.1"
                         value={effectiveSettingsForm.feverThreshold}
-                        onChange={(e) =>
-                          setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })
-                        }
+                        onChange={(e) => setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })}
                         className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
                       />
                     </div>

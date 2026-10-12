@@ -196,13 +196,7 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
           {activeTab === 'camera' && (
             <div className="space-y-3">
               <div className="relative rounded-xl overflow-hidden bg-black aspect-square flex items-center justify-center border border-zinc-200 dark:border-zinc-800">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover"
-                  playsInline
-                  autoPlay
-                  muted
-                />
+                <video ref={videoRef} className="w-full h-full object-cover" playsInline autoPlay muted />
                 {/* Visual scan overlay */}
                 <div className="absolute inset-0 border-2 border-green-500/60 rounded-xl pointer-events-none flex items-center justify-center">
                   <div className="w-48 h-48 border-2 border-green-400 rounded-lg relative animate-pulse">
@@ -243,17 +237,10 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
                   Seleccionar foto o captura del código QR
                 </span>
                 <span className="text-[11px] text-zinc-400">PNG, JPG, WEBP soportados</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => void handleImageUpload(e)}
-                  className="hidden"
-                />
+                <input type="file" accept="image/*" onChange={(e) => void handleImageUpload(e)} className="hidden" />
               </label>
               {cameraError && (
-                <p className="text-xs text-red-600 dark:text-red-400 text-center font-medium">
-                  {cameraError}
-                </p>
+                <p className="text-xs text-red-600 dark:text-red-400 text-center font-medium">{cameraError}</p>
               )}
             </div>
           )}
@@ -261,7 +248,8 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
           {activeTab === 'manual' && (
             <div className="space-y-4">
               <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Si utiliza una pistola lectora de código de barras/QR USB o Bluetooth, simplemente escanee el código ahora.
+                Si utiliza una pistola lectora de código de barras/QR USB o Bluetooth, simplemente escanee el código
+                ahora.
               </p>
               <form
                 onSubmit={(e) => {

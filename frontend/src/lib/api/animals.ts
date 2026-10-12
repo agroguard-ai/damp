@@ -90,10 +90,7 @@ export const animalsApi = {
     apiFetch<AnimalLocation[]>(`/api/animals/locations?farmId=${farmId}`),
 
   /** GET /api/animals/[id]/trajectory?from=...&to=... — returns historical trajectory */
-  getTrajectory: (
-    animalId: string,
-    params?: { from?: string; to?: string }
-  ): Promise<AnimalTrajectoryResponse> => {
+  getTrajectory: (animalId: string, params?: { from?: string; to?: string }): Promise<AnimalTrajectoryResponse> => {
     const query = new URLSearchParams();
     if (params?.from) query.set('from', params.from);
     if (params?.to) query.set('to', params.to);
