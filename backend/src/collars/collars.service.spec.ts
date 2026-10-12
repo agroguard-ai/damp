@@ -28,19 +28,6 @@ describe('CollarsService', () => {
     telemetryReading: {
       count: jest.Mock;
     };
-    collarClaim: {
-      create: jest.Mock;
-      findUnique: jest.Mock;
-      findMany: jest.Mock;
-      update: jest.Mock;
-      count: jest.Mock;
-    };
-    collarRequest: {
-      create: jest.Mock;
-      findUnique: jest.Mock;
-      findMany: jest.Mock;
-      update: jest.Mock;
-    };
     user: {
       update: jest.Mock;
     };
@@ -70,19 +57,6 @@ describe('CollarsService', () => {
       },
       telemetryReading: {
         count: jest.fn().mockResolvedValue(0),
-      },
-      collarClaim: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
-        count: jest.fn().mockResolvedValue(0),
-      },
-      collarRequest: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-        update: jest.fn(),
       },
       user: {
         update: jest.fn(),
@@ -201,34 +175,6 @@ describe('CollarsService', () => {
 
       const farmerUser = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
       await expect(service.updateStatus(2, 'DAMAGED', farmerUser)).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('Reclamos (Collar Claims)', () => {
-    it('crea un reclamo y marca como DAMAGED liberando el animal si markAsDamaged es true', async () => {
-      prisma.collar.findUnique.mockResolvedValue({ id: 5, identifier: 'COL-005', status: 'AVAILABLE', farmId: 'farm-1' });
-      prisma.farm.findMany.mockResolvedValue([{ id: 'farm-1' }]);
-      prisma.collar.update.mockResolvedValue({ id: 5, identifier: 'COL-005', status: 'DAMAGED' });
-      prisma.collarClaim.create.mockResolvedValue({
-        id: 'claim-1',
-        collarId: 5,
-        reason: 'Correa rota',
-        status: 'PENDING',
-      });
-
-      const user = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
-      const res = await service.createClaim(
-        5,
-        { reason: 'Correa rota', description: 'Se rompió la correa', markAsDamaged: true },
-        user
-      );
-
-      expect(res.id).toBe('claim-1');
-      expect(prisma.animalCollar.updateMany).toHaveBeenCalledWith({
-        where: { collarId: 5, endAt: null },
-        data: { endAt: expect.any(Date) },
-      });
-      expect(prisma.collarClaim.create).toHaveBeenCalled();
     });
   });
 
@@ -355,7 +301,6 @@ describe('CollarsService', () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 5, identifier: 'COL-005' });
       prisma.animalCollar.count.mockResolvedValue(0);
       prisma.telemetryReading.count.mockResolvedValue(0);
-      prisma.collarClaim.count.mockResolvedValue(0);
       prisma.collar.delete.mockResolvedValue({ id: 5 });
 
       await service.remove(5);
@@ -366,7 +311,6 @@ describe('CollarsService', () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 19, identifier: 'COLLAR-19' });
       prisma.animalCollar.count.mockResolvedValue(2);
       prisma.telemetryReading.count.mockResolvedValue(10);
-      prisma.collarClaim.count.mockResolvedValue(0);
 
       await expect(service.remove(19)).rejects.toThrow(BadRequestException);
       await expect(service.remove(19)).rejects.toThrow(/posee historial registrado/);
@@ -377,7 +321,6 @@ describe('CollarsService', () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 19, identifier: 'COLLAR-19', farmId: 'farm-1' });
       prisma.animalCollar.count.mockResolvedValue(1);
       prisma.telemetryReading.count.mockResolvedValue(0);
-      prisma.collarClaim.count.mockResolvedValue(0);
       prisma.collar.update.mockResolvedValue({
         id: 19,
         identifier: 'COLLAR-19',
