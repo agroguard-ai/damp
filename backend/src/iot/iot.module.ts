@@ -19,6 +19,6 @@ import { AuthModule } from '@/auth/auth.module';
 })
 export class IotModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(IotLoggingMiddleware).forRoutes('api/iot', 'api/iot/*');
+    consumer.apply(IotLoggingMiddleware).forRoutes('api/iot', 'api/iot/{*path}');
   }
 }
