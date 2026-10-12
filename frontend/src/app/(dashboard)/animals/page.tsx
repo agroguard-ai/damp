@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
@@ -44,6 +45,7 @@ function AnimalsContent() {
   const urlFarmId = searchParams.get('farmId') || '';
 
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -62,6 +64,9 @@ function AnimalsContent() {
   }, [farms, urlFarmId, selectedFarm]);
 
   const activeFarmId = selectedFarm || farms[0]?.id || '';
+  // VIEWER: solo lectura (el backend igual rechaza cualquier escritura con 403).
+  const { canEdit } = useFarmPermissions(activeFarmId || null);
+  const canCreateFarm = farmPerms.role === null || farmPerms.role === 'ADMIN';
   const activeFarm = farms.find((f) => f.id === activeFarmId);
 
   const fetchZones = useCallback(
@@ -545,22 +550,26 @@ function AnimalsContent() {
         </div>
         {farms.length > 0 && (
           <div className="flex gap-3">
-            <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
-              Registrar Campo
-            </Button>
-            <Button
-              variant="success"
-              size="md"
-              icon={CirclePlus}
-              onClick={() => {
-                if (animalTypes.length > 0 && !addAnimalForm.animalTypeId) {
-                  setAddAnimalForm((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
-                }
-                setIsAddModalOpen(true);
-              }}
-            >
-              Añadir Animal
-            </Button>
+            {canCreateFarm && (
+              <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
+                Registrar Campo
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                variant="success"
+                size="md"
+                icon={CirclePlus}
+                onClick={() => {
+                  if (animalTypes.length > 0 && !addAnimalForm.animalTypeId) {
+                    setAddAnimalForm((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
+                  }
+                  setIsAddModalOpen(true);
+                }}
+              >
+                Añadir Animal
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -707,7 +716,7 @@ function AnimalsContent() {
           </div>
 
           {/* Bulk Action Sticky Bar */}
-          {selectedIds.length > 0 && (
+          {canEdit && selectedIds.length > 0 && (
             <div className="sticky top-4 z-40 bg-zinc-900/95 dark:bg-zinc-800/95 text-white p-3.5 rounded-2xl shadow-xl border border-zinc-700/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
@@ -865,7 +874,8 @@ function AnimalsContent() {
                                   setTargetZoneId(animal.zoneId || '');
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
-                                title="Clic para cambiar de potrero"
+                                title={canEdit ? 'Clic para cambiar de potrero' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Layers className="w-3 h-3" />
                                 <span>{animal.zone.name}</span>
@@ -878,7 +888,8 @@ function AnimalsContent() {
                                   setTargetZoneId('');
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Clic para asignar potrero"
+                                title={canEdit ? 'Clic para asignar potrero' : undefined}
+                                disabled={!canEdit}
                               >
                                 <span>Campo abierto</span>
                               </button>
@@ -895,7 +906,8 @@ function AnimalsContent() {
                                   setTargetCollarId(String(collar.id));
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
-                                title="Clic para gestionar collar"
+                                title={canEdit ? 'Clic para gestionar collar' : undefined}
+                                disabled={!canEdit}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
@@ -917,7 +929,8 @@ function AnimalsContent() {
                                   setTargetCollarId('');
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Clic para vincular collar"
+                                title={canEdit ? 'Clic para vincular collar' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Radio className="w-3 h-3 text-zinc-300" />
                                 <span>Sin vincular</span>
@@ -935,7 +948,8 @@ function AnimalsContent() {
                                   setTargetGeofenceId(activeGeofence.id);
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-800/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 transition-colors cursor-pointer"
-                                title="Clic para gestionar cerco"
+                                title={canEdit ? 'Clic para gestionar cerco' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Zap className="w-3 h-3" />
                                 <span>{activeGeofence.name}</span>
@@ -948,7 +962,8 @@ function AnimalsContent() {
                                   setTargetGeofenceId('');
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Asignar cerco virtual disponible"
+                                title={canEdit ? 'Asignar cerco virtual disponible' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Zap className="w-3 h-3 text-zinc-300" />
                                 <span>Sin cerco</span>
@@ -966,7 +981,7 @@ function AnimalsContent() {
 
                           {/* Quick Actions */}
                           <td className="py-3 pr-4 pl-2 text-right whitespace-nowrap space-x-1.5">
-                            {animal.status === 'ACTIVE' && (
+                            {canEdit && animal.status === 'ACTIVE' && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(animal)}
@@ -986,7 +1001,7 @@ function AnimalsContent() {
                               <HeartPulse className="w-4 h-4" />
                             </button>
 
-                            {animal.status === 'ACTIVE' && (
+                            {canEdit && animal.status === 'ACTIVE' && (
                               <select
                                 defaultValue=""
                                 onChange={(e) => {
@@ -1734,59 +1749,61 @@ function AnimalsContent() {
                   )}
                 </div>
 
-                <form
-                  onSubmit={handleAddMedicalEvent}
-                  className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
-                >
-                  <div className="grid grid-cols-3 gap-2.5 pt-4">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
-                      <select
-                        value={medicalForm.type}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
-                      >
-                        <option value="VACCINATION">Vacunación</option>
-                        <option value="WEIGHING">Pesaje</option>
-                        <option value="BIRTH">Parto</option>
-                        <option value="TREATMENT">Tratamiento</option>
-                        <option value="SURGERY">Cirugía</option>
-                      </select>
+                {canEdit && (
+                  <form
+                    onSubmit={handleAddMedicalEvent}
+                    className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
+                  >
+                    <div className="grid grid-cols-3 gap-2.5 pt-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
+                        <select
+                          value={medicalForm.type}
+                          onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
+                        >
+                          <option value="VACCINATION">Vacunación</option>
+                          <option value="WEIGHING">Pesaje</option>
+                          <option value="BIRTH">Parto</option>
+                          <option value="TREATMENT">Tratamiento</option>
+                          <option value="SURGERY">Cirugía</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
+                          value={medicalForm.value}
+                          onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
+                        <input
+                          type="date"
+                          value={medicalForm.occurredAt}
+                          onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                        {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
-                        value={medicalForm.value}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
-                      <input
-                        type="date"
-                        value={medicalForm.occurredAt}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Descripción o anotación clínica..."
-                    value={medicalForm.description}
-                    onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
-                  />
-                  <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
-                    {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
-                  </Button>
-                </form>
+                    <input
+                      type="text"
+                      placeholder="Descripción o anotación clínica..."
+                      value={medicalForm.description}
+                      onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
+                    />
+                    <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
+                      {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
+                    </Button>
+                  </form>
+                )}
               </div>
             </div>
           );

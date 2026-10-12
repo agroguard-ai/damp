@@ -5,7 +5,7 @@ function makePrismaMock() {
   return {
     farm: { findUnique: jest.fn() },
     user: { findUnique: jest.fn() },
-    role: { findUnique: jest.fn(), create: jest.fn() },
+    role: { upsert: jest.fn() },
     farmUser: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -91,10 +91,10 @@ describe('FarmUsersService', () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
       prisma.farmUser.findFirst.mockResolvedValue(null);
-      prisma.role.findUnique.mockResolvedValue({ id: 'role-1', name: 'OPERATOR' });
+      prisma.role.upsert.mockResolvedValue({ id: 'role-1', name: 'OPERATOR' });
       prisma.farmUser.upsert.mockResolvedValue({ id: 'fu1', isActive: true });
 
-      await service.assignSubUser('farm-1', { userId: 'user-1', roleName: 'operator' });
+      await service.assignSubUser('farm-1', { userId: 'user-1', roleName: 'OPERATOR' });
 
       expect(prisma.farmUser.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -144,12 +144,28 @@ describe('FarmUsersService', () => {
         farmId: 'farm-1',
         userId: 'user-2',
         isActive: true,
+        role: { name: 'VIEWER' },
       });
       prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu-admin-1', userId: 'user-1', roleId: 'role-admin' });
 
       await expect(service.updateSubUserRole('farm-1', 'user-2', { roleName: 'ADMIN' } as any)).rejects.toThrow(
         'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'
       );
+    });
+
+    it('rechaza degradar al administrador de la granja (quedaría sin admin)', async () => {
+      prisma.farmUser.findUnique.mockResolvedValue({
+        id: 'fu-admin',
+        farmId: 'farm-1',
+        userId: 'user-1',
+        isActive: true,
+        role: { name: 'ADMIN' },
+      });
+
+      await expect(service.updateSubUserRole('farm-1', 'user-1', { roleName: 'OPERATOR' })).rejects.toThrow(
+        'No se puede cambiar el rol del administrador de la granja'
+      );
+      expect(prisma.farmUser.update).not.toHaveBeenCalled();
     });
   });
 });

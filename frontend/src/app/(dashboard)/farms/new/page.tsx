@@ -13,6 +13,8 @@ import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { MapPin, Ruler, ChevronDown, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
+import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 
@@ -32,6 +34,7 @@ function formatRenspa(input: string): string {
 
 export default function NewFarmPage() {
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -160,6 +163,12 @@ export default function NewFarmPage() {
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="el Alta y Gestión de Campos" />;
+  }
+
+  if (!farmPerms.loading && farmPerms.role !== null && farmPerms.role !== 'ADMIN') {
+    return (
+      <AccessDeniedState description="Solo el administrador de la granja puede registrar nuevos establecimientos." />
+    );
   }
 
   return (

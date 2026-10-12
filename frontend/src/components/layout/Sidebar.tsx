@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { SidebarLink } from '@/components/layout/SidebarLink';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import {
   Hexagon,
   Menu,
@@ -25,6 +26,7 @@ import {
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, emulatedUser } = useAuth();
+  const { adminFarmId } = useFarmPermissions();
 
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
   const isEmulating = isSuperAdmin && !!emulatedUser;
@@ -196,6 +198,15 @@ export default function Sidebar() {
             <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
             <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
             <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
+            {/* Personal: gestión de usuarios internos, exclusiva del administrador de la granja (CU018) */}
+            {adminFarmId && (
+              <SidebarLink
+                href={`/farms/${adminFarmId}/users`}
+                label="Personal"
+                logo={<Users />}
+                isCollapsed={isCollapsed}
+              />
+            )}
           </div>
         )}
       </nav>

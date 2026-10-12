@@ -33,9 +33,17 @@ interface ZoneRotationViewProps {
   geofences: Geofence[];
   animals: Animal[];
   onRefreshGeofences?: () => void;
+  /** VIEWER: solo ve el estado de la rotación, sin controles ni configurador. */
+  readOnly?: boolean;
 }
 
-export default function ZoneRotationView({ zone, geofences, animals, onRefreshGeofences }: ZoneRotationViewProps) {
+export default function ZoneRotationView({
+  zone,
+  geofences,
+  animals,
+  onRefreshGeofences,
+  readOnly = false,
+}: ZoneRotationViewProps) {
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -493,63 +501,65 @@ export default function ZoneRotationView({ zone, geofences, animals, onRefreshGe
             </div>
 
             {/* Acciones de Control Manual (Camino Alternativo 2) */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-3">
-              <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                Control Operativo de Rotación
-              </h4>
+            {!readOnly && (
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-3">
+                <h4 className="font-bold text-xs uppercase tracking-wider text-zinc-900 dark:text-white border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                  Control Operativo de Rotación
+                </h4>
 
-              <div className="space-y-2">
-                {/* Adelantar Rotación */}
-                <button
-                  type="button"
-                  onClick={handleAdvanceRotation}
-                  disabled={!rotationData?.nextGeofence}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-xs"
-                >
-                  <FastForward className="w-3.5 h-3.5" />
-                  <span>Adelantar rotación ahora</span>
-                </button>
+                <div className="space-y-2">
+                  {/* Adelantar Rotación */}
+                  <button
+                    type="button"
+                    onClick={handleAdvanceRotation}
+                    disabled={!rotationData?.nextGeofence}
+                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-xs"
+                  >
+                    <FastForward className="w-3.5 h-3.5" />
+                    <span>Adelantar rotación ahora</span>
+                  </button>
 
-                {/* Posponer Rotación */}
-                <button
-                  type="button"
-                  onClick={() => setShowPostponeModal(true)}
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Posponer próximo cambio (+X horas)</span>
-                </button>
+                  {/* Posponer Rotación */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPostponeModal(true)}
+                    className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Posponer próximo cambio (+X horas)</span>
+                  </button>
 
-                {/* Pausar / Reanudar */}
-                <button
-                  type="button"
-                  onClick={handleTogglePause}
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-                >
-                  {plan.status === 'PAUSED' ? (
-                    <>
-                      <Play className="w-3.5 h-3.5 text-green-600" />
-                      <span>Reanudar rotación automática</span>
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Pausar rotación temporalmente</span>
-                    </>
-                  )}
-                </button>
+                  {/* Pausar / Reanudar */}
+                  <button
+                    type="button"
+                    onClick={handleTogglePause}
+                    className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    {plan.status === 'PAUSED' ? (
+                      <>
+                        <Play className="w-3.5 h-3.5 text-green-600" />
+                        <span>Reanudar rotación automática</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pause className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Pausar rotación temporalmente</span>
+                      </>
+                    )}
+                  </button>
 
-                {/* Finalizar / Cancelar Plan */}
-                <button
-                  type="button"
-                  onClick={handleCancelRotation}
-                  className="w-full border border-red-200 dark:border-red-800/40 text-red-650 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Finalizar / Cancelar rotación</span>
-                </button>
+                  {/* Finalizar / Cancelar Plan */}
+                  <button
+                    type="button"
+                    onClick={handleCancelRotation}
+                    className="w-full border border-red-200 dark:border-red-800/40 text-red-650 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Finalizar / Cancelar rotación</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Modal / Diálogo para Posponer */}
             {showPostponeModal && (
@@ -618,161 +628,168 @@ export default function ZoneRotationView({ zone, geofences, animals, onRefreshGe
             </div>
           )}
 
-          <form onSubmit={handleCreatePlan} className="space-y-6 max-w-3xl">
-            {/* Nombre y Frecuencia */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
-                  Nombre del Plan de Rotación
-                </label>
-                <input
-                  type="text"
-                  value={planName}
-                  onChange={(e) => setPlanName(e.target.value)}
-                  placeholder={`Ej: Rotación Invierno - ${zone.name}`}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
-                  Frecuencia de Rotación (Horas por Cerco)
-                </label>
-                <select
-                  value={frequencyHours}
-                  onChange={(e) => setFrequencyHours(parseInt(e.target.value, 10))}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer font-medium"
-                >
-                  <option value={1}>Cada 1 hora (Rotación rápida / prueba)</option>
-                  <option value={4}>Cada 4 horas</option>
-                  <option value={8}>Cada 8 horas</option>
-                  <option value={12}>Cada 12 horas (Medio día)</option>
-                  <option value={24}>Cada 24 horas (1 día completo)</option>
-                  <option value={48}>Cada 48 horas (2 días)</option>
-                  <option value={72}>Cada 72 horas (3 días)</option>
-                  <option value={168}>Cada 7 días (1 semana)</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Selección y Ordenamiento de Cercos (Mínimo 2) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500">
-                  Seleccionar Perímetros para la Secuencia (Mínimo 2)
-                </label>
-                <span className="text-xs text-orange-600 dark:text-orange-400 font-semibold">
-                  {selectedGeofenceIds.length} seleccionado(s)
-                </span>
-              </div>
-
-              {geofences.length === 0 ? (
-                <p className="text-xs text-zinc-400 italic">No hay cercos creados en esta zona.</p>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {geofences.map((gf) => {
-                    const isSelected = selectedGeofenceIds.includes(gf.id);
-                    const orderIndex = selectedGeofenceIds.indexOf(gf.id);
-
-                    return (
-                      <div
-                        key={gf.id}
-                        onClick={() => toggleGeofenceSelection(gf.id)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected
-                            ? 'bg-orange-50/40 dark:bg-orange-950/20 border-orange-400 dark:border-orange-700 shadow-xs'
-                            : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}} // Handled by container onClick
-                            className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-                          />
-                          <div>
-                            <h5 className="font-bold text-xs text-zinc-900 dark:text-white">{gf.name}</h5>
-                            <span className="text-[10px] text-zinc-400">
-                              {isSelected ? `Paso ${orderIndex + 1} de la secuencia` : 'Hacé clic para agregar'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {isSelected && (
-                          <div
-                            className="flex items-center gap-1"
-                            onClick={(e) => e.stopPropagation()} // Prevent deselecting when clicking reorder arrows
-                          >
-                            <button
-                              type="button"
-                              onClick={() => moveGeofenceOrder(orderIndex, 'up')}
-                              disabled={orderIndex === 0}
-                              className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
-                              title="Mover antes en la rotación"
-                            >
-                              ▲
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => moveGeofenceOrder(orderIndex, 'down')}
-                              disabled={orderIndex === selectedGeofenceIds.length - 1}
-                              className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
-                              title="Mover después en la rotación"
-                            >
-                              ▼
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+          {readOnly ? (
+            <p className="text-xs text-zinc-500 italic">
+              Esta zona no tiene una rotación activa. Tu rol es de solo lectura: la configuración la realiza el
+              administrador o un operador del campo.
+            </p>
+          ) : (
+            <form onSubmit={handleCreatePlan} className="space-y-6 max-w-3xl">
+              {/* Nombre y Frecuencia */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                    Nombre del Plan de Rotación
+                  </label>
+                  <input
+                    type="text"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    placeholder={`Ej: Rotación Invierno - ${zone.name}`}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  />
                 </div>
-              )}
 
-              {/* Validación instantánea si selecciona 1 solo cerco (Camino Alternativo 1) */}
-              {selectedGeofenceIds.length === 1 && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Se necesitan al menos dos perímetros para poder rotar. Seleccioná otro cerco.</span>
-                </p>
-              )}
-            </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                    Frecuencia de Rotación (Horas por Cerco)
+                  </label>
+                  <select
+                    value={frequencyHours}
+                    onChange={(e) => setFrequencyHours(parseInt(e.target.value, 10))}
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer font-medium"
+                  >
+                    <option value={1}>Cada 1 hora (Rotación rápida / prueba)</option>
+                    <option value={4}>Cada 4 horas</option>
+                    <option value={8}>Cada 8 horas</option>
+                    <option value={12}>Cada 12 horas (Medio día)</option>
+                    <option value={24}>Cada 24 horas (1 día completo)</option>
+                    <option value={48}>Cada 48 horas (2 días)</option>
+                    <option value={72}>Cada 72 horas (3 días)</option>
+                    <option value={168}>Cada 7 días (1 semana)</option>
+                  </select>
+                </div>
+              </div>
 
-            {/* Checkbox de Rotación Automática */}
-            <div className="flex items-center gap-2 pt-2">
-              <input
-                type="checkbox"
-                id="autoRotate"
-                checked={autoRotate}
-                onChange={(e) => setAutoRotate(e.target.checked)}
-                className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
-              />
-              <label
-                htmlFor="autoRotate"
-                className="text-xs text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer"
-              >
-                Activar rotación automática periódica según el calendario (el sistema cambia el cerco y asigna los
-                animales automáticamente)
-              </label>
-            </div>
+              {/* Selección y Ordenamiento de Cercos (Mínimo 2) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500">
+                    Seleccionar Perímetros para la Secuencia (Mínimo 2)
+                  </label>
+                  <span className="text-xs text-orange-600 dark:text-orange-400 font-semibold">
+                    {selectedGeofenceIds.length} seleccionado(s)
+                  </span>
+                </div>
 
-            {/* Botón de Enviar */}
-            <div className="pt-2 flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={submitting || selectedGeofenceIds.length < 2 || !hasAnimals}
-                className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-colors flex items-center gap-2 shadow-xs"
-              >
-                {submitting ? (
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                {geofences.length === 0 ? (
+                  <p className="text-xs text-zinc-400 italic">No hay cercos creados en esta zona.</p>
                 ) : (
-                  <RotateCw className="w-4 h-4" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {geofences.map((gf) => {
+                      const isSelected = selectedGeofenceIds.includes(gf.id);
+                      const orderIndex = selectedGeofenceIds.indexOf(gf.id);
+
+                      return (
+                        <div
+                          key={gf.id}
+                          onClick={() => toggleGeofenceSelection(gf.id)}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-orange-50/40 dark:bg-orange-950/20 border-orange-400 dark:border-orange-700 shadow-xs'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}} // Handled by container onClick
+                              className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                            />
+                            <div>
+                              <h5 className="font-bold text-xs text-zinc-900 dark:text-white">{gf.name}</h5>
+                              <span className="text-[10px] text-zinc-400">
+                                {isSelected ? `Paso ${orderIndex + 1} de la secuencia` : 'Hacé clic para agregar'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {isSelected && (
+                            <div
+                              className="flex items-center gap-1"
+                              onClick={(e) => e.stopPropagation()} // Prevent deselecting when clicking reorder arrows
+                            >
+                              <button
+                                type="button"
+                                onClick={() => moveGeofenceOrder(orderIndex, 'up')}
+                                disabled={orderIndex === 0}
+                                className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
+                                title="Mover antes en la rotación"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveGeofenceOrder(orderIndex, 'down')}
+                                disabled={orderIndex === selectedGeofenceIds.length - 1}
+                                className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
+                                title="Mover después en la rotación"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-                <span>Iniciar Rotación Programada</span>
-              </button>
-            </div>
-          </form>
+
+                {/* Validación instantánea si selecciona 1 solo cerco (Camino Alternativo 1) */}
+                {selectedGeofenceIds.length === 1 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Se necesitan al menos dos perímetros para poder rotar. Seleccioná otro cerco.</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Checkbox de Rotación Automática */}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="autoRotate"
+                  checked={autoRotate}
+                  onChange={(e) => setAutoRotate(e.target.checked)}
+                  className="w-4 h-4 rounded text-orange-600 focus:ring-orange-500"
+                />
+                <label
+                  htmlFor="autoRotate"
+                  className="text-xs text-zinc-700 dark:text-zinc-300 font-medium cursor-pointer"
+                >
+                  Activar rotación automática periódica según el calendario (el sistema cambia el cerco y asigna los
+                  animales automáticamente)
+                </label>
+              </div>
+
+              {/* Botón de Enviar */}
+              <div className="pt-2 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={submitting || selectedGeofenceIds.length < 2 || !hasAnimals}
+                  className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-colors flex items-center gap-2 shadow-xs"
+                >
+                  {submitting ? (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <RotateCw className="w-4 h-4" />
+                  )}
+                  <span>Iniciar Rotación Programada</span>
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       )}
     </div>

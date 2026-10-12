@@ -15,6 +15,7 @@ import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
@@ -90,13 +91,8 @@ function ZonasPageContent() {
     }
   }, [activeFarm]);
 
-  const currentUserId = emulatedUser?.id || user?.id;
-  const canManageActiveFarm = useMemo(() => {
-    if (!activeFarm || !currentUserId) return false;
-    if (activeFarm.userId === currentUserId) return true;
-    const membership = activeFarm.farmUsers?.find((fu) => fu.userId === currentUserId);
-    return membership?.role?.name === 'ADMIN';
-  }, [activeFarm, currentUserId]);
+  // ADMIN y OPERATOR gestionan zonas; VIEWER solo consulta (CU004).
+  const { canEdit: canManageActiveFarm } = useFarmPermissions(activeFarmId || null);
 
   const fetchZones = useCallback(
     () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
@@ -396,8 +392,9 @@ function ZonasPageContent() {
               <ZoneMap
                 zones={zones}
                 newPoints={newPoints}
-                onChangePoints={setNewPoints}
+                onChangePoints={canManageActiveFarm ? setNewPoints : undefined}
                 onAddPoint={handleAddPoint}
+                interactive={canManageActiveFarm}
                 onPointRejected={(_pt, msg) => {
                   toast.warning(msg);
                 }}
@@ -588,13 +585,13 @@ function ZonasPageContent() {
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-4 sticky top-6">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
                   <ShieldCheck className="w-4 h-4 text-zinc-400" />
-                  <span>Modo Lectura (Empleado)</span>
+                  <span>Modo Solo Lectura</span>
                 </div>
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Potreros y Subdivisiones</h3>
                 <p className="text-xs text-zinc-500 leading-relaxed">
                   Tenés permisos de consulta para este establecimiento. Podés navegar por las zonas en el mapa y
                   consultar sus cercos eléctricos. Para dar de alta o modificar potreros, comunicate con el
-                  administrador del campo.
+                  administrador o un operador del campo.
                 </p>
                 {editingZone && (
                   <div className="p-3.5 bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs space-y-1.5">

@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import FalsePositiveModal from '@/components/alerts/FalsePositiveModal';
 import PredictiveHealthMonitoring from '@/components/alerts/PredictiveHealthMonitoring';
@@ -36,6 +37,8 @@ export default function AlertasPage() {
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farms[0]?.id || '';
+  // Resolver / falso positivo: ADMIN y OPERATOR. Umbrales (CU016): solo ADMIN. VIEWER: solo lectura.
+  const { canEdit, canManageUsers: canConfigureAlerts } = useFarmPermissions(activeFarmId || null);
 
   const [activeTab, setActiveTab] = useState<'alerts' | 'predictive'>('alerts');
   const [selectedAlertForFalsePositive, setSelectedAlertForFalsePositive] = useState<Alert | null>(null);
@@ -399,7 +402,7 @@ export default function AlertasPage() {
                               </div>
 
                               {/* Acciones */}
-                              {!a.isResolved && (
+                              {canEdit && !a.isResolved && (
                                 <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 pt-2 sm:pt-0">
                                   <button
                                     onClick={() => handleResolve(a.id)}
@@ -441,78 +444,88 @@ export default function AlertasPage() {
                     </p>
                   </div>
                   <form onSubmit={handleSaveSettings} className="space-y-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                        Umbral de fiebre (°C)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={effectiveSettingsForm.feverThreshold}
-                        onChange={(e) => setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                        Umbral de hipotermia (°C)
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={effectiveSettingsForm.hypothermiaThreshold}
-                        onChange={(e) =>
-                          setSettingsForm({ ...effectiveSettingsForm, hypothermiaThreshold: e.target.value })
-                        }
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                        Inactividad (minutos)
-                      </label>
-                      <input
-                        type="number"
-                        value={effectiveSettingsForm.inactivityMinutes}
-                        onChange={(e) =>
-                          setSettingsForm({ ...effectiveSettingsForm, inactivityMinutes: e.target.value })
-                        }
-                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                      <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                    <fieldset disabled={!canConfigureAlerts} className="space-y-4 disabled:opacity-70">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                          Umbral de fiebre (°C)
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={effectiveSettingsForm.emailOnEscape}
+                          type="number"
+                          step="0.1"
+                          value={effectiveSettingsForm.feverThreshold}
                           onChange={(e) =>
-                            setSettingsForm({ ...effectiveSettingsForm, emailOnEscape: e.target.checked })
+                            setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })
                           }
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
                         />
-                        Enviar correo en escapes de cerco
-                      </label>
-                      <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                          Umbral de hipotermia (°C)
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={effectiveSettingsForm.emailOnHealth}
+                          type="number"
+                          step="0.1"
+                          value={effectiveSettingsForm.hypothermiaThreshold}
                           onChange={(e) =>
-                            setSettingsForm({ ...effectiveSettingsForm, emailOnHealth: e.target.checked })
+                            setSettingsForm({ ...effectiveSettingsForm, hypothermiaThreshold: e.target.value })
                           }
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
                         />
-                        Enviar correo en alertas de salud
-                      </label>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={savingSettings}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all focus:outline-none disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm"
-                    >
-                      {savingSettings ? (
-                        <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        'Guardar Configuración'
-                      )}
-                    </button>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+                          Inactividad (minutos)
+                        </label>
+                        <input
+                          type="number"
+                          value={effectiveSettingsForm.inactivityMinutes}
+                          onChange={(e) =>
+                            setSettingsForm({ ...effectiveSettingsForm, inactivityMinutes: e.target.value })
+                          }
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={effectiveSettingsForm.emailOnEscape}
+                            onChange={(e) =>
+                              setSettingsForm({ ...effectiveSettingsForm, emailOnEscape: e.target.checked })
+                            }
+                          />
+                          Enviar correo en escapes de cerco
+                        </label>
+                        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={effectiveSettingsForm.emailOnHealth}
+                            onChange={(e) =>
+                              setSettingsForm({ ...effectiveSettingsForm, emailOnHealth: e.target.checked })
+                            }
+                          />
+                          Enviar correo en alertas de salud
+                        </label>
+                      </div>
+                    </fieldset>
+                    {canConfigureAlerts ? (
+                      <button
+                        type="submit"
+                        disabled={savingSettings}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all focus:outline-none disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm"
+                      >
+                        {savingSettings ? (
+                          <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          'Guardar Configuración'
+                        )}
+                      </button>
+                    ) : (
+                      <p className="text-[11px] text-zinc-500 italic">
+                        Solo el administrador de la granja puede modificar los umbrales de alerta.
+                      </p>
+                    )}
                   </form>
                 </div>
               </div>

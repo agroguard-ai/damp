@@ -11,9 +11,12 @@ import { collarsApi } from '@/lib/api/collars';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
+import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 
 export default function NewAnimalPage() {
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -57,6 +60,12 @@ export default function NewAnimalPage() {
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="el Alta y Gestión de Animales" />;
+  }
+
+  if (!farmPerms.loading && farmPerms.role !== null && !farmPerms.canEdit) {
+    return (
+      <AccessDeniedState description="Tu rol es de solo lectura: no podés registrar animales. Consultá con el administrador de la granja." />
+    );
   }
 
   return (

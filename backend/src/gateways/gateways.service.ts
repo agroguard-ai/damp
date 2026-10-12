@@ -235,6 +235,18 @@ export class GatewaysService {
       if (!farm) {
         throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
       }
+
+      // Mover el gateway a otra granja requiere permisos de escritura también en la granja destino.
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.globalRole !== GlobalRole.SUPER_ADMIN) {
+        const member = await this.prisma.farmUser.findUnique({
+          where: { farmId_userId: { farmId: dto.farmId, userId } },
+          include: { role: true },
+        });
+        if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
+          throw new ForbiddenException('No tienes acceso al establecimiento destino.');
+        }
+      }
     }
 
     if (dto.zoneId) {

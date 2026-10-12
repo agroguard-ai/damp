@@ -14,6 +14,18 @@ export class FarmsService {
       throw new NotFoundException('User record not found in system database');
     }
 
+    // Solo crean granjas el superadmin, los administradores de granja o un productor nuevo que
+    // todavía no pertenece a ninguna. Un OPERATOR/VIEWER no puede crearse una granja propia para
+    // escalar a ADMIN ni saltear la regla de "un usuario, una granja" de los sub-usuarios.
+    if (dbUser.globalRole !== GlobalRole.SUPER_ADMIN) {
+      const nonAdminMembership = await this.prisma.farmUser.findFirst({
+        where: { userId: dbUser.id, isActive: true, role: { name: { not: 'ADMIN' } } },
+      });
+      if (nonAdminMembership) {
+        throw new ForbiddenException('Solo el administrador de la granja puede crear establecimientos.');
+      }
+    }
+
     let adminRole = await this.prisma.role.findUnique({ where: { name: 'ADMIN' } });
     if (!adminRole) {
       adminRole = await this.prisma.role.create({ data: { name: 'ADMIN' } });

@@ -198,6 +198,20 @@ describe('FarmRoleGuard', () => {
       expect(prisma.animal.findUnique).toHaveBeenCalledWith({ where: { id: 'animal-5' }, select: { farmId: true } });
     });
 
+    it('ignora un ?farmId= de otra granja: rechaza si no coincide con la granja del recurso', async () => {
+      mockReflector(['ADMIN', 'OPERATOR'], { resource: 'animal', idKey: 'id' });
+      prisma.animal.findUnique.mockResolvedValue({ farmId: 'farm-donde-es-viewer' });
+      const { context } = makeContext({
+        clerkSub: 'clerk_1',
+        dbUser: { id: 'u1', globalRole: GlobalRole.USER },
+        params: { id: 'animal-1' },
+        query: { farmId: 'farm-donde-es-admin' },
+      });
+
+      await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
+      expect(prisma.farmUser.findUnique).not.toHaveBeenCalled();
+    });
+
     it('tira 404 si el recurso a resolver no existe', async () => {
       mockReflector(undefined, { resource: 'animal', idKey: 'id' });
       prisma.animal.findUnique.mockResolvedValue(null);

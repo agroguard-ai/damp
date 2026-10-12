@@ -20,6 +20,9 @@ describe('CollarsService', () => {
       findUnique: jest.Mock;
       findMany: jest.Mock;
     };
+    farmUser: {
+      findMany: jest.Mock;
+    };
     animalCollar: {
       findFirst: jest.Mock;
       updateMany: jest.Mock;
@@ -49,6 +52,9 @@ describe('CollarsService', () => {
       farm: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
+      },
+      farmUser: {
+        findMany: jest.fn().mockResolvedValue([]),
       },
       animalCollar: {
         findFirst: jest.fn(),
@@ -159,7 +165,7 @@ describe('CollarsService', () => {
 
     it('permite a un granjero marcar como DAMAGED un collar de su propio campo', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'AVAILABLE', farmId: 'farm-1' });
-      prisma.farm.findMany.mockResolvedValue([{ id: 'farm-1' }]);
+      prisma.farmUser.findMany.mockResolvedValue([{ farmId: 'farm-1' }]);
       prisma.collar.update.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'DAMAGED' });
 
       const farmerUser = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
@@ -171,10 +177,24 @@ describe('CollarsService', () => {
 
     it('rechaza con ForbiddenException si un usuario intenta cambiar el estado de un collar de otro campo', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 2, identifier: 'COL-002', status: 'AVAILABLE', farmId: 'farm-other' });
-      prisma.farm.findMany.mockResolvedValue([{ id: 'farm-my' }]);
+      prisma.farmUser.findMany.mockResolvedValue([{ farmId: 'farm-my' }]);
 
       const farmerUser = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
       await expect(service.updateStatus(2, 'DAMAGED', farmerUser)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rechaza a un VIEWER aunque el collar sea de su campo (solo se buscan membresías ADMIN/OPERATOR)', async () => {
+      prisma.collar.findUnique.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'AVAILABLE', farmId: 'farm-1' });
+      prisma.farmUser.findMany.mockResolvedValue([]);
+
+      const viewerUser = { sub: 'viewer-1', globalRole: GlobalRole.USER, email: 'viewer@test.com' };
+      await expect(service.updateStatus(1, 'DAMAGED', viewerUser)).rejects.toThrow(ForbiddenException);
+      expect(prisma.farmUser.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ role: { name: { in: ['ADMIN', 'OPERATOR'] } } }),
+        })
+      );
+      expect(prisma.collar.update).not.toHaveBeenCalled();
     });
   });
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
@@ -47,10 +48,8 @@ const STATUS_LABELS: Record<GatewayStatus, string> = {
 const STATUS_CLASSES: Record<GatewayStatus, string> = {
   ONLINE:
     'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40',
-  OFFLINE:
-    'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40',
-  NO_DATA:
-    'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/40',
+  OFFLINE: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40',
+  NO_DATA: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/40',
 };
 
 function generateRandomApiKey(): string {
@@ -78,6 +77,8 @@ interface FarmOption {
 export default function GatewaysPage() {
   const { user, emulatedUser } = useAuth();
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN' && !emulatedUser;
+  // La API Key y el setup del ESP32 son solo para ADMIN/OPERATOR del campo (el backend rechaza a VIEWER).
+  const { canEditIn } = useFarmPermissions();
 
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -98,8 +99,10 @@ export default function GatewaysPage() {
   // Mutations
   const { mutate: createGateway, loading: creating } = useMutation(gatewaysApi.create);
   const { mutate: updateGateway, loading: updating } = useMutation(
-    (params: { id: string; data: { name?: string; apiKey?: string; farmId?: string | null; zoneId?: string | null } }) =>
-      gatewaysApi.update(params.id, params.data)
+    (params: {
+      id: string;
+      data: { name?: string; apiKey?: string; farmId?: string | null; zoneId?: string | null };
+    }) => gatewaysApi.update(params.id, params.data)
   );
   const { mutate: deleteGateway } = useMutation(gatewaysApi.delete);
 
@@ -153,12 +156,19 @@ export default function GatewaysPage() {
             const data = await farmsRes.json();
             const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
             setAllFarms(
-              list.map((f: { id: string; name?: string | null; userId?: string | null; user?: { id: string; name: string | null; email: string } | null }) => ({
-                id: f.id,
-                name: f.name || 'Sin nombre',
-                userId: f.userId || null,
-                user: f.user || null,
-              }))
+              list.map(
+                (f: {
+                  id: string;
+                  name?: string | null;
+                  userId?: string | null;
+                  user?: { id: string; name: string | null; email: string } | null;
+                }) => ({
+                  id: f.id,
+                  name: f.name || 'Sin nombre',
+                  userId: f.userId || null,
+                  user: f.user || null,
+                })
+              )
             );
           }
 
@@ -620,8 +630,11 @@ export default function GatewaysPage() {
               className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50"
             >
               <option value="ALL">
-                🏢 {selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED' ? 'Todos los campos del productor' : 'Todos los Campos'} (
-                {farmsForFilterToolbar.length})
+                🏢{' '}
+                {selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
+                  ? 'Todos los campos del productor'
+                  : 'Todos los Campos'}{' '}
+                ({farmsForFilterToolbar.length})
               </option>
               {isSuperAdmin && selectedUserFilter === 'ALL' && (
                 <option value="UNASSIGNED">📦 Sin campo asignado</option>
@@ -650,7 +663,10 @@ export default function GatewaysPage() {
         </div>
 
         {/* Clear filters pill if any is applied */}
-        {(searchQuery || selectedUserFilter !== 'ALL' || selectedFarmFilter !== 'ALL' || selectedStatusFilter !== 'ALL') && (
+        {(searchQuery ||
+          selectedUserFilter !== 'ALL' ||
+          selectedFarmFilter !== 'ALL' ||
+          selectedStatusFilter !== 'ALL') && (
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs text-zinc-500">
               Mostrando <strong>{filteredGateways.length}</strong> de <strong>{gateways.length}</strong> gateways
@@ -715,9 +731,7 @@ export default function GatewaysPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-zinc-900 dark:text-white text-base">
-                          {g.name}
-                        </span>
+                        <span className="font-bold text-zinc-900 dark:text-white text-base">{g.name}</span>
                         <span
                           className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${STATUS_CLASSES[g.status]}`}
                         >
@@ -767,61 +781,65 @@ export default function GatewaysPage() {
                   </div>
 
                   {/* API Key Box */}
-                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-2.5 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-green-600 dark:text-green-500" />
-                        API Key (Header X-API-Key)
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => void handleToggleRevealKey(g)}
-                          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
-                          title={isKeyVisible ? 'Ocultar clave' : 'Mostrar clave'}
-                        >
-                          {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                            const keyToCopy = currentKey || g.apiKey;
-                            if (keyToCopy) {
-                              void handleCopyKey(keyToCopy, g.id);
-                            } else {
-                              void handleToggleRevealKey(g).then(() => {
-                                const fetched = revealedKeys[g.id];
-                                if (fetched) void handleCopyKey(fetched, g.id);
-                              });
-                            }
-                          }}
-                          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
-                          title="Copiar API Key"
-                        >
-                          {copiedKeyId === g.id ? (
-                            <Check className="w-3.5 h-3.5 text-green-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                  {canEditIn(g.farmId) && (
+                    <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                          <KeyRound className="w-3 h-3 text-green-600 dark:text-green-500" />
+                          API Key (Header X-API-Key)
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => void handleToggleRevealKey(g)}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
+                            title={isKeyVisible ? 'Ocultar clave' : 'Mostrar clave'}
+                          >
+                            {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              const keyToCopy = currentKey || g.apiKey;
+                              if (keyToCopy) {
+                                void handleCopyKey(keyToCopy, g.id);
+                              } else {
+                                void handleToggleRevealKey(g).then(() => {
+                                  const fetched = revealedKeys[g.id];
+                                  if (fetched) void handleCopyKey(fetched, g.id);
+                                });
+                              }
+                            }}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
+                            title="Copiar API Key"
+                          >
+                            {copiedKeyId === g.id ? (
+                              <Check className="w-3.5 h-3.5 text-green-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-xs text-zinc-700 dark:text-zinc-300 break-all select-all">
+                        {isKeyVisible && currentKey ? currentKey : '••••••••••••••••••••••••••••••••••••••••••••••••'}
                       </div>
                     </div>
-
-                    <div className="font-mono text-xs text-zinc-700 dark:text-zinc-300 break-all select-all">
-                      {isKeyVisible && currentKey
-                        ? currentKey
-                        : '••••••••••••••••••••••••••••••••••••••••••••••••'}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Card Action Buttons */}
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => void handleOpenSetupModal(g)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
-                  >
-                    <Wifi className="w-3.5 h-3.5" />
-                    Setup ESP32
-                  </button>
+                  {canEditIn(g.farmId) ? (
+                    <button
+                      onClick={() => void handleOpenSetupModal(g)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
+                    >
+                      <Wifi className="w-3.5 h-3.5" />
+                      Setup ESP32
+                    </button>
+                  ) : (
+                    <span />
+                  )}
 
                   <div className="flex items-center gap-1">
                     {isSuperAdmin && (
@@ -1020,7 +1038,8 @@ export default function GatewaysPage() {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
                           return (
                             <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount} {farmCount === 1 ? 'campo' : 'campos'}
+                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
+                              {farmCount === 1 ? 'campo' : 'campos'}
                             </option>
                           );
                         })}
@@ -1047,7 +1066,9 @@ export default function GatewaysPage() {
                           onChange={(e) => setCreateFarmId(e.target.value)}
                           className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                         >
-                          <option value="">Seleccioná el campo ({farmsForCreateModal.length} de este usuario)...</option>
+                          <option value="">
+                            Seleccioná el campo ({farmsForCreateModal.length} de este usuario)...
+                          </option>
                           {farmsForCreateModal.map((f) => (
                             <option key={f.id} value={f.id}>
                               {f.name}
@@ -1115,9 +1136,7 @@ export default function GatewaysPage() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-150 my-8">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                  Editar / Reasignar Gateway
-                </h3>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Editar / Reasignar Gateway</h3>
                 <p className="text-xs text-zinc-500">
                   Modificá el nombre, la API Key o transferí este dispositivo a otro productor o campo.
                 </p>
@@ -1257,7 +1276,8 @@ export default function GatewaysPage() {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
                           return (
                             <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount} {farmCount === 1 ? 'campo' : 'campos'}
+                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
+                              {farmCount === 1 ? 'campo' : 'campos'}
                             </option>
                           );
                         })}
@@ -1349,9 +1369,7 @@ export default function GatewaysPage() {
                   <KeyRound className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Credenciales & Setup ESP32
-                  </h3>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Credenciales & Setup ESP32</h3>
                   <p className="text-xs text-zinc-500">
                     Dispositivo: <strong>{setupModalGateway.name}</strong>
                   </p>
@@ -1423,7 +1441,8 @@ export default function GatewaysPage() {
                   Pegá esta <strong>API Key</strong> en el campo del portal y configurá la red WiFi o 4G del campo.
                 </li>
                 <li>
-                  El gateway comenzará a emitir telemetría al endpoint <code>POST /api/iot/telemetry</code> y se pondrá en línea automáticamente.
+                  El gateway comenzará a emitir telemetría al endpoint <code>POST /api/iot/telemetry</code> y se pondrá
+                  en línea automáticamente.
                 </li>
               </ol>
             </div>

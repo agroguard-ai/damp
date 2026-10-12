@@ -18,6 +18,7 @@ import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import {
   Zap,
@@ -66,6 +67,8 @@ function CercosHubContent() {
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const activeFarmId = selectedFarmId || farmIdFromUrl || farms[0]?.id || '';
   const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
+  // ADMIN y OPERATOR crean/desactivan cercos y rotaciones; VIEWER solo consulta (CU011/CU012).
+  const { canEdit } = useFarmPermissions(activeFarmId || null);
 
   // 2. Fetch Zones of active farm
   const fetchZones = useCallback(
@@ -384,13 +387,15 @@ function CercosHubContent() {
               potrero (Nivel 2).
             </p>
           </div>
-          <Link
-            href={`/zonas?farmId=${activeFarmId}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Crear Zona en este Campo</span>
-          </Link>
+          {canEdit && (
+            <Link
+              href={`/zonas?farmId=${activeFarmId}`}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs shadow-xs transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Crear Zona en este Campo</span>
+            </Link>
+          )}
         </div>
       ) : activeTab === 'rotation' && activeZone ? (
         <ZoneRotationView
@@ -398,6 +403,7 @@ function CercosHubContent() {
           geofences={geofences}
           animals={animals}
           onRefreshGeofences={refetchGeofences}
+          readOnly={!canEdit}
         />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -442,7 +448,8 @@ function CercosHubContent() {
                 farmPolygon={farmPolygon}
                 geofences={geofences}
                 newPoints={newPoints}
-                onChangePoints={setNewPoints}
+                onChangePoints={canEdit ? setNewPoints : undefined}
+                interactive={canEdit}
                 onAddPoint={(p, msg) => {
                   setNewPoints((prev) => [...prev, p]);
                   if (msg) toast.info(msg);
@@ -556,7 +563,7 @@ function CercosHubContent() {
                             </td>
 
                             <td className="py-4 pl-4 text-right">
-                              {fence.active && (
+                              {canEdit && fence.active && (
                                 <button
                                   type="button"
                                   onClick={() => handleDeactivate(fence.id, fence.name)}
@@ -578,162 +585,177 @@ function CercosHubContent() {
             </div>
           </div>
 
-          {/* Right Panel: Creation Form */}
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-5 sticky top-6">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                  <Zap className="w-4 h-4" />
-                  <span>Nuevo Cerco Virtual</span>
+          {/* Right Panel: Creation Form (VIEWER: aviso de solo lectura) */}
+          {!canEdit ? (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-3 sticky top-6">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  <ShieldCheck className="w-4 h-4 text-zinc-400" />
+                  <span>Modo Solo Lectura</span>
                 </div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white mt-1">
-                  Crear Cerco en {activeZone?.name}
-                </h3>
+                <p className="text-xs text-zinc-500 leading-relaxed">
+                  Podés consultar los cercos eléctricos de esta zona y su hacienda asignada. Para crear o desactivar
+                  cercos, comunicate con el administrador o un operador del campo.
+                </p>
               </div>
-
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
-                    Nombre del Cerco *
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Parcela A - Pastoreo Rotativo"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    required
-                  />
-                </div>
-
-                {/* Drawn Vertices Preview Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs uppercase tracking-wider text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-cyan-600" />
-                      Vértices ({newPoints.length})
-                    </span>
-                    {newPoints.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewPoints([]);
-                          setSelectedVertexIndex(null);
-                        }}
-                        className="text-red-500 hover:text-red-600 text-xs font-semibold cursor-pointer"
-                      >
-                        Reiniciar
-                      </button>
-                    )}
-                  </div>
-
-                  {newPoints.length === 0 ? (
-                    <div className="text-xs text-zinc-400 italic bg-white/60 dark:bg-zinc-900/60 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                      Hacé clics sobre el mapa dentro del área verde para trazar los vértices del cerco.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-zinc-500">Superficie estimada:</span>
-                        <strong className="font-mono text-cyan-600 dark:text-cyan-400 text-sm">
-                          {drawnFenceAreaHa} Ha
-                        </strong>
-                      </div>
-                      <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                        {newPoints.map((pt, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex justify-between items-center text-[11px] p-1.5 rounded border transition-colors ${
-                              selectedVertexIndex === idx
-                                ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 font-bold text-amber-900 dark:text-amber-200'
-                                : 'bg-white dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800 text-zinc-500'
-                            }`}
-                          >
-                            <span>
-                              #{idx + 1}: [{pt[0].toFixed(5)}, {pt[1].toFixed(5)}]
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewPoints((prev) => prev.filter((_, i) => i !== idx));
-                                if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
-                              }}
-                              className="text-zinc-400 hover:text-red-500 ml-2 cursor-pointer"
-                              title="Eliminar este vértice"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Animal Assignment Selector */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-cyan-500" />
-                      <span>Asignar Hacienda ({selectedAnimalIds.length})</span>
-                    </label>
-                    {animals.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleSelectAllAnimals}
-                        className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
-                      >
-                        {selectedAnimalIds.length === animals.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                      </button>
-                    )}
-                  </div>
-
-                  {animals.length === 0 ? (
-                    <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
-                      No hay animales registrados en esta zona. Podés crear el cerco ahora y asignar animales después.
-                    </div>
-                  ) : (
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                      {animals.map((a) => {
-                        const isSelected = selectedAnimalIds.includes(a.id);
-                        return (
-                          <div
-                            key={a.id}
-                            onClick={() => toggleAnimal(a.id)}
-                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
-                              isSelected
-                                ? 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-900 dark:text-cyan-200 font-semibold'
-                                : 'hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border border-transparent'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                              <span className="truncate">
-                                {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}
-                              </span>
-                              {a.breed && <span className="text-[10px] text-zinc-400">({a.breed})</span>}
-                            </div>
-                            <span className="text-[10px] font-mono text-zinc-400">
-                              {a.collarId ? '⚡ Collar vinculado' : 'Sin collar'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting || newPoints.length < 3 || !name.trim()}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>{submitting ? 'Activando cerco...' : 'Activar Cerco Virtual'}</span>
-                </button>
-              </form>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-5 sticky top-6">
+                <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                    <Zap className="w-4 h-4" />
+                    <span>Nuevo Cerco Virtual</span>
+                  </div>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white mt-1">
+                    Crear Cerco en {activeZone?.name}
+                  </h3>
+                </div>
+
+                <form onSubmit={handleCreate} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
+                      Nombre del Cerco *
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Ej: Parcela A - Pastoreo Rotativo"
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      required
+                    />
+                  </div>
+
+                  {/* Drawn Vertices Preview Card */}
+                  <div className="bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs uppercase tracking-wider text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-cyan-600" />
+                        Vértices ({newPoints.length})
+                      </span>
+                      {newPoints.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewPoints([]);
+                            setSelectedVertexIndex(null);
+                          }}
+                          className="text-red-500 hover:text-red-600 text-xs font-semibold cursor-pointer"
+                        >
+                          Reiniciar
+                        </button>
+                      )}
+                    </div>
+
+                    {newPoints.length === 0 ? (
+                      <div className="text-xs text-zinc-400 italic bg-white/60 dark:bg-zinc-900/60 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
+                        Hacé clics sobre el mapa dentro del área verde para trazar los vértices del cerco.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-500">Superficie estimada:</span>
+                          <strong className="font-mono text-cyan-600 dark:text-cyan-400 text-sm">
+                            {drawnFenceAreaHa} Ha
+                          </strong>
+                        </div>
+                        <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
+                          {newPoints.map((pt, idx) => (
+                            <div
+                              key={idx}
+                              className={`flex justify-between items-center text-[11px] p-1.5 rounded border transition-colors ${
+                                selectedVertexIndex === idx
+                                  ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 font-bold text-amber-900 dark:text-amber-200'
+                                  : 'bg-white dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800 text-zinc-500'
+                              }`}
+                            >
+                              <span>
+                                #{idx + 1}: [{pt[0].toFixed(5)}, {pt[1].toFixed(5)}]
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewPoints((prev) => prev.filter((_, i) => i !== idx));
+                                  if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
+                                }}
+                                className="text-zinc-400 hover:text-red-500 ml-2 cursor-pointer"
+                                title="Eliminar este vértice"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Animal Assignment Selector */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                        <Radio className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Asignar Hacienda ({selectedAnimalIds.length})</span>
+                      </label>
+                      {animals.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleSelectAllAnimals}
+                          className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                        >
+                          {selectedAnimalIds.length === animals.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                        </button>
+                      )}
+                    </div>
+
+                    {animals.length === 0 ? (
+                      <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+                        No hay animales registrados en esta zona. Podés crear el cerco ahora y asignar animales después.
+                      </div>
+                    ) : (
+                      <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                        {animals.map((a) => {
+                          const isSelected = selectedAnimalIds.includes(a.id);
+                          return (
+                            <div
+                              key={a.id}
+                              onClick={() => toggleAnimal(a.id)}
+                              className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-900 dark:text-cyan-200 font-semibold'
+                                  : 'hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
+                                <span className="truncate">
+                                  {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}
+                                </span>
+                                {a.breed && <span className="text-[10px] text-zinc-400">({a.breed})</span>}
+                              </div>
+                              <span className="text-[10px] font-mono text-zinc-400">
+                                {a.collarId ? '⚡ Collar vinculado' : 'Sin collar'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting || newPoints.length < 3 || !name.trim()}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>{submitting ? 'Activando cerco...' : 'Activar Cerco Virtual'}</span>
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

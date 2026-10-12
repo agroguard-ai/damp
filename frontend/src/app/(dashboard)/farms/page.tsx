@@ -8,6 +8,7 @@ import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
@@ -49,6 +50,7 @@ function formatRenspa(input: string): string {
 
 export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
+  const { role: lowestFarmRole } = useFarmPermissions();
   const { toast } = useToast();
 
   const {
@@ -95,8 +97,10 @@ export default function FarmsPage() {
     if (!user) return false;
     // SuperAdmin without emulation has no tenant farm creation capability
     if (user.globalRole === 'SUPER_ADMIN' && !emulatedUser) return false;
-    return true;
-  }, [user, emulatedUser]);
+    // Operadores y lectores no crean establecimientos (el backend también lo rechaza):
+    // solo administradores de granja o productores que todavía no tienen ninguna.
+    return lowestFarmRole === null || lowestFarmRole === 'ADMIN';
+  }, [user, emulatedUser, lowestFarmRole]);
 
   // Filtered farms list
   const filteredFarms = useMemo(() => {
@@ -465,15 +469,17 @@ export default function FarmsPage() {
                             <Layers className="w-4 h-4" />
                           </Link>
 
-                          {/* Botón Usuarios / Equipo */}
-                          <Link
-                            href={`/farms/${farm.id}/users`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
-                            title="Gestionar personal y accesos a este campo"
-                          >
-                            <Users className="w-4 h-4" />
-                            <span className="hidden lg:inline">Personal</span>
-                          </Link>
+                          {/* Botón Usuarios / Equipo: solo el administrador de la granja gestiona el personal */}
+                          {isAdmin && (
+                            <Link
+                              href={`/farms/${farm.id}/users`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
+                              title="Gestionar personal y accesos a este campo"
+                            >
+                              <Users className="w-4 h-4" />
+                              <span className="hidden lg:inline">Personal</span>
+                            </Link>
+                          )}
 
                           {/* Acciones exclusivas de Administrador / Productor */}
                           {isAdmin && (

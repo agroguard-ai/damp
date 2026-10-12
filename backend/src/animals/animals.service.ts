@@ -47,7 +47,7 @@ export class AnimalsService {
       throw new ForbiddenException('No tenés acceso a este establecimiento');
     }
 
-    return { farm, isAdmin, isOwner };
+    return { farm, isAdmin, isOwner, canWrite: isAdmin || userRole === 'OPERATOR' };
   }
 
   async create(createAnimalDto: CreateAnimalDto, userId: string) {
@@ -553,8 +553,14 @@ export class AnimalsService {
       throw new BadRequestException('El establecimiento de origen y destino deben ser distintos.');
     }
 
-    await this.checkFarmAccess(sourceFarmId, userId);
-    await this.checkFarmAccess(targetFarmId, userId);
+    // El guard solo puede validar una granja; acá se exige rol de escritura en origen y destino.
+    const [source, target] = await Promise.all([
+      this.checkFarmAccess(sourceFarmId, userId),
+      this.checkFarmAccess(targetFarmId, userId),
+    ]);
+    if (!source.canWrite || !target.canWrite) {
+      throw new ForbiddenException('Se requiere rol de administrador u operador en ambos establecimientos.');
+    }
 
     const animals = await this.prisma.animal.findMany({
       where: { id: { in: animalIds }, farmId: sourceFarmId },

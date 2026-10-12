@@ -8,6 +8,15 @@ import { UpdateFarmUserDto } from './dto/update-farm-user.dto';
 export class FarmUsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Busca el rol por nombre; el DTO ya restringe el nombre a FARM_ROLES, así que crearlo si falta el seed es seguro. */
+  private getRole(name: string) {
+    return this.prisma.role.upsert({
+      where: { name },
+      create: { name },
+      update: {},
+    });
+  }
+
   async findAllInFarm(farmId: string) {
     const farm = await this.prisma.farm.findUnique({
       where: { id: farmId },
@@ -105,18 +114,7 @@ export class FarmUsersService {
       }
     }
 
-    // Dynamic role lookup / creation if standard seed hasn't run yet
-    let role = await this.prisma.role.findUnique({
-      where: { name: roleNameUpper },
-    });
-
-    if (!role) {
-      role = await this.prisma.role.create({
-        data: {
-          name: roleNameUpper,
-        },
-      });
-    }
+    const role = await this.getRole(roleNameUpper);
 
     return this.prisma.farmUser.upsert({
       where: {
@@ -157,6 +155,7 @@ export class FarmUsersService {
           userId,
         },
       },
+      include: { role: true },
     });
 
     if (!existing || !existing.isActive) {
@@ -164,6 +163,14 @@ export class FarmUsersService {
     }
 
     const roleNameUpper = dto.roleName.toUpperCase();
+
+    // Regla de negocio: la granja nunca puede quedar sin administrador (nadie podría volver a
+    // gestionar sus usuarios). Mismo criterio que removeSubUser.
+    if (existing.role.name === 'ADMIN' && roleNameUpper !== 'ADMIN') {
+      throw new BadRequestException(
+        'No se puede cambiar el rol del administrador de la granja: el establecimiento quedaría sin administrador.'
+      );
+    }
 
     // Regla de negocio: cada granja posee un único rol administrador
     if (roleNameUpper === 'ADMIN') {
@@ -183,17 +190,7 @@ export class FarmUsersService {
       }
     }
 
-    let role = await this.prisma.role.findUnique({
-      where: { name: roleNameUpper },
-    });
-
-    if (!role) {
-      role = await this.prisma.role.create({
-        data: {
-          name: roleNameUpper,
-        },
-      });
-    }
+    const role = await this.getRole(roleNameUpper);
 
     return this.prisma.farmUser.update({
       where: {

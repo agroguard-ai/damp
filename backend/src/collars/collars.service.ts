@@ -4,6 +4,7 @@ import { CollarStatus, GlobalRole, Prisma } from '@generated/prisma';
 import { CreateCollarDto } from './dto/create-collar.dto';
 import { UpdateCollarDto } from './dto/update-collar.dto';
 import { JwtPayload } from '@/auth/current-user.decorator';
+import { FARM_WRITE_ROLES } from '@/auth/farm-roles';
 
 @Injectable()
 export class CollarsService {
@@ -38,6 +39,15 @@ export class CollarsService {
       select: { id: true },
     });
     return userFarms.map((f) => f.id);
+  }
+
+  /** Granjas donde el usuario puede modificar datos (ADMIN u OPERATOR); un VIEWER no puede tocar collares. */
+  private async getUserWritableFarmIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.farmUser.findMany({
+      where: { userId, isActive: true, role: { name: { in: [...FARM_WRITE_ROLES] } } },
+      select: { farmId: true },
+    });
+    return memberships.map((m) => m.farmId);
   }
 
   async create(dto: CreateCollarDto) {
@@ -243,7 +253,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes permisos para modificar el estado de este collar');
@@ -272,7 +282,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes permisos para archivar este collar');
@@ -319,7 +329,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes acceso a este collar');
