@@ -11,7 +11,7 @@ export class AdminUsersService {
 
   async findAll(query?: PaginationQueryDto) {
     const page = Math.max(1, Number(query?.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 10));
+    const limit = Math.max(1, Math.min(1000, Number(query?.limit) || 10));
     const skip = (page - 1) * limit;
 
     const [users, totalItems] = await Promise.all([
@@ -182,7 +182,7 @@ export class AdminUsersService {
 
   async findAllFarms(query?: PaginationQueryDto) {
     const page = Math.max(1, Number(query?.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(query?.limit) || 10));
+    const limit = Math.max(1, Math.min(1000, Number(query?.limit) || 10));
     const skip = (page - 1) * limit;
 
     const [farms, totalItems] = await Promise.all([
