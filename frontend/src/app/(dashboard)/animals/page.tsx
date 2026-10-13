@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import BreedSelect from '@/components/animals/BreedSelect';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
@@ -163,7 +164,6 @@ function AnimalsContent() {
 
   const [addAnimalForm, setAddAnimalForm] = useState({
     tag: '',
-    breed: '',
     weightKg: '',
     ageMonths: '12',
     collarId: '',
@@ -194,7 +194,6 @@ function AnimalsContent() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editAnimalForm, setEditAnimalForm] = useState({
     tag: '',
-    breed: '',
     weightKg: '',
     ageMonths: '',
     animalTypeId: '',
@@ -270,7 +269,7 @@ function AnimalsContent() {
       await createAnimal({
         farmId: activeFarmId,
         tag: addAnimalForm.tag,
-        breed: addAnimalForm.breed,
+        breed: animalTypes.find((t) => t.id === addAnimalForm.animalTypeId)?.name ?? '',
         weightKg: Number(addAnimalForm.weightKg),
         ageMonths: Number(addAnimalForm.ageMonths),
         collarId: addAnimalForm.collarId ? Number(addAnimalForm.collarId) : undefined,
@@ -280,7 +279,6 @@ function AnimalsContent() {
       setIsAddModalOpen(false);
       setAddAnimalForm({
         tag: '',
-        breed: '',
         weightKg: '',
         ageMonths: '12',
         collarId: '',
@@ -304,7 +302,6 @@ function AnimalsContent() {
 
     setEditAnimalForm({
       tag: animal.tag || '',
-      breed: animal.breed || '',
       weightKg: animal.weightKg ? String(animal.weightKg) : '',
       ageMonths: calculatedMonths,
       animalTypeId: animal.animalTypeId || '',
@@ -318,7 +315,7 @@ function AnimalsContent() {
     try {
       await updateAnimal(editAnimal.id, {
         tag: editAnimalForm.tag.trim(),
-        breed: editAnimalForm.breed.trim(),
+        breed: animalTypes.find((t) => t.id === editAnimalForm.animalTypeId)?.name ?? editAnimal.breed,
         weightKg: parseFloat(editAnimalForm.weightKg),
         ...(editAnimalForm.ageMonths ? { ageMonths: parseInt(editAnimalForm.ageMonths, 10) } : {}),
         animalTypeId: editAnimalForm.animalTypeId || null,
@@ -524,17 +521,7 @@ function AnimalsContent() {
               </Button>
             )}
             {canEdit && (
-              <Button
-                variant="success"
-                size="md"
-                icon={CirclePlus}
-                onClick={() => {
-                  if (animalTypes.length > 0 && !addAnimalForm.animalTypeId) {
-                    setAddAnimalForm((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
-                  }
-                  setIsAddModalOpen(true);
-                }}
-              >
+              <Button variant="success" size="md" icon={CirclePlus} onClick={() => setIsAddModalOpen(true)}>
                 Añadir Animal
               </Button>
             )}
@@ -1250,7 +1237,7 @@ function AnimalsContent() {
               </div>
             )}
             <form onSubmit={handleAddAnimalSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                     Caravana / Identificador (Tag)
@@ -1264,18 +1251,15 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Raza</label>
-                  <input
-                    required
-                    type="text"
-                    value={addAnimalForm.breed}
-                    onChange={(e) => setAddAnimalForm({ ...addAnimalForm, breed: e.target.value })}
-                    placeholder="Ej: Aberdeen Angus"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                  />
-                </div>
               </div>
+              <BreedSelect
+                animalTypes={animalTypes}
+                value={addAnimalForm.animalTypeId}
+                onChange={(animalTypeId) => setAddAnimalForm((prev) => ({ ...prev, animalTypeId }))}
+                required
+                labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
+                selectClassName="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Peso (Kg)</label>
@@ -1300,25 +1284,6 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Tipo de Animal</label>
-                <select
-                  value={addAnimalForm.animalTypeId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, animalTypeId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="" disabled>
-                    Seleccionar tipo...
-                  </option>
-                  {animalTypes
-                    .filter((t) => t.isActive !== false)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.species})
-                      </option>
-                    ))}
-                </select>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
@@ -1390,7 +1355,7 @@ function AnimalsContent() {
             )}
 
             <form onSubmit={handleEditAnimalSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                     Caravana / Identificador (Tag)
@@ -1404,18 +1369,16 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Raza</label>
-                  <input
-                    required
-                    type="text"
-                    value={editAnimalForm.breed}
-                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, breed: e.target.value })}
-                    placeholder="Ej: Aberdeen Angus"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                  />
-                </div>
               </div>
+              <BreedSelect
+                animalTypes={animalTypes}
+                value={editAnimalForm.animalTypeId}
+                onChange={(animalTypeId) => setEditAnimalForm((prev) => ({ ...prev, animalTypeId }))}
+                keepTypeId={editAnimal.animalTypeId}
+                required
+                labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
+                selectClassName="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
@@ -1442,24 +1405,6 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Tipo de Animal</label>
-                <select
-                  value={editAnimalForm.animalTypeId}
-                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, animalTypeId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin tipo específico</option>
-                  {animalTypes
-                    .filter((t) => t.isActive !== false || t.id === editAnimal.animalTypeId)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.species})
-                      </option>
-                    ))}
-                </select>
               </div>
 
               <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/50 rounded-xl p-3 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-start gap-2">
