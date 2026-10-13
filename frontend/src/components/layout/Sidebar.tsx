@@ -12,7 +12,6 @@ import {
   Map,
   Zap,
   ClipboardList,
-  MapPin,
   Tags,
   Radio,
   Router,
@@ -164,12 +163,6 @@ export default function Sidebar() {
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
-                href="/geolocalizacion"
-                label="Geolocalización"
-                logo={<MapPin className="opacity-70" />}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarLink
                 href="/alertas"
                 label="Alertas"
                 logo={<Bell className="opacity-70" />}
@@ -191,7 +184,6 @@ export default function Sidebar() {
             <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
             <SidebarLink href="/cercos" label="Cercos" logo={<Zap />} isCollapsed={isCollapsed} />
             <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
-            <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
             {/* Collares: solo collares contratados */}
             <SidebarLink href="/collares" label="Collares" logo={<Radio />} isCollapsed={isCollapsed} />
             {/* Gateways: solo de este campo */}

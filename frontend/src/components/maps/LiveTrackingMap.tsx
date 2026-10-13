@@ -130,6 +130,8 @@ export interface LiveTrackingMapProps {
   heatmapPoints?: HeatmapPoint[] | null;
   showHeatmap?: boolean;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
+  /** Clases de altura del contenedor (por defecto 550px). */
+  heightClassName?: string;
 }
 
 function parsePolygon(raw: unknown): [number, number][] {
@@ -543,6 +545,7 @@ export default function LiveTrackingMap({
   heatmapPoints,
   showHeatmap = false,
   onSelectAnimalForTrajectory,
+  heightClassName = 'h-137.5',
 }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
@@ -555,7 +558,7 @@ export default function LiveTrackingMap({
   return (
     <div
       ref={containerRef}
-      className="w-full h-137.5 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
+      className={`w-full ${heightClassName} rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group`}
     >
       <MapActionControls
         targetRef={containerRef}

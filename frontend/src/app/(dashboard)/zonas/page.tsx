@@ -20,13 +20,36 @@ import { EmulationRequiredState } from '@/components/roles/EmulationRequiredStat
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { parsePolygon } from '@/lib/geo/spatial';
 import { suggestNextName } from '@/lib/suggestName';
-import { Tractor, Layers, Zap, Trash2, ArrowRight, ArrowLeft, AlertCircle, Edit3, X, Plus, Eye } from 'lucide-react';
+import {
+  Tractor,
+  Layers,
+  Zap,
+  Trash2,
+  ArrowRight,
+  ArrowLeft,
+  AlertCircle,
+  Edit3,
+  X,
+  Plus,
+  Eye,
+  Activity,
+  Flame,
+} from 'lucide-react';
 import type { Zone } from '@/types';
 import { animalsApi } from '@/lib/api/animals';
 
 // Load Leaflet map with SSR disabled to prevent server compilation crash
 const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
 const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
+const HerdMapView = dynamic(() => import('@/components/zones/HerdMapView'), { ssr: false });
+
+type MapView = 'zones' | 'live' | 'heatmap';
+
+const MAP_VIEWS: { value: MapView; label: string; icon: typeof Layers; active: string }[] = [
+  { value: 'zones', label: 'Potreros', icon: Layers, active: 'text-green-700 dark:text-green-400' },
+  { value: 'live', label: 'Hacienda en vivo', icon: Activity, active: 'text-green-700 dark:text-green-400' },
+  { value: 'heatmap', label: 'Mapa de calor', icon: Flame, active: 'text-orange-600 dark:text-orange-400' },
+];
 
 type ZoneModalState = { mode: 'create' } | { mode: 'edit'; zone: Zone } | null;
 
@@ -49,6 +72,7 @@ function ZonasPageContent() {
   const [selectedFarm, setSelectedFarm] = useState<string>('');
   const activeFarmId = selectedFarm || farmIdFromUrl || farms[0]?.id || '';
 
+  const [mapView, setMapView] = useState<MapView>(searchParams?.get('vista') === 'hacienda' ? 'live' : 'zones');
   const [zoneModal, setZoneModal] = useState<ZoneModalState>(null);
   const [zonePasture, setZonePasture] = useState('');
   const [animalsModalZone, setAnimalsModalZone] = useState<Zone | null>(null);
@@ -232,18 +256,40 @@ function ZonasPageContent() {
       ) : (
         <>
           {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
-            <ZoneMap
-              zones={zones}
-              newPoints={[]}
-              onAddPoint={() => {}}
-              interactive={false}
-              center={mapCenter}
-              farmPolygon={farmPolygon}
-              boundaryType="farm"
-              onSelectZone={canManageActiveFarm ? (z) => openEditModal(z as unknown as Zone) : undefined}
-              heightClassName="h-[55vh] min-h-96"
-            />
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs space-y-2">
+            <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit max-w-full overflow-x-auto">
+              {MAP_VIEWS.map(({ value, label, icon: ViewIcon, active }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMapView(value)}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    mapView === value
+                      ? `bg-white dark:bg-zinc-900 shadow-xs ${active}`
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                  }`}
+                >
+                  <ViewIcon className="w-3.5 h-3.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {mapView === 'zones' ? (
+              <ZoneMap
+                zones={zones}
+                newPoints={[]}
+                onAddPoint={() => {}}
+                interactive={false}
+                center={mapCenter}
+                farmPolygon={farmPolygon}
+                boundaryType="farm"
+                onSelectZone={canManageActiveFarm ? (z) => openEditModal(z as unknown as Zone) : undefined}
+                heightClassName="h-[55vh] min-h-96"
+              />
+            ) : (
+              <HerdMapView farmId={activeFarmId} zones={zones} mode={mapView} />
+            )}
           </div>
 
           {/* Listado de Zonas */}
