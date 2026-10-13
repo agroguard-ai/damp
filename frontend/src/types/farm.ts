@@ -19,7 +19,7 @@ export interface Farm {
   }>;
   _count?: {
     animals: number;
-    zones: number;
+    geofences: number;
     farmUsers: number;
   };
 }

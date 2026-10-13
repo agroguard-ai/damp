@@ -109,10 +109,9 @@ export default function DashboardCharts({ data }: { data: FarmDashboard }) {
         <h3 className="font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider pb-3 mb-1 border-b border-zinc-100 dark:border-zinc-800">
           Resumen del establecimiento
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 pt-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3">
           <KpiTile label="Animales activos" value={data.totalAnimals} />
           <KpiTile label="Collares asignados" value={data.assignedCollars} />
-          <KpiTile label="Zonas" value={data.totalZones} />
           <KpiTile label="Cercos activos" value={data.activeGeofences} />
           <KpiTile label="Alertas sin resolver" value={data.unresolvedAlerts} />
         </div>

@@ -2,10 +2,10 @@ import { apiFetch } from './client';
 import type { Geofence, CreateGeofencePayload } from '@/types';
 
 export const geofencesApi = {
-  /** GET /api/geofences?zoneId=xxx — returns all geofences for a given zone */
-  getByZone: (zoneId: string): Promise<Geofence[]> => apiFetch<Geofence[]>(`/api/geofences?zoneId=${zoneId}`),
+  /** GET /api/geofences?farmId=xxx — returns all geofences for a given farm */
+  getByFarm: (farmId: string): Promise<Geofence[]> => apiFetch<Geofence[]>(`/api/geofences?farmId=${farmId}`),
 
-  /** POST /api/geofences — creates a new geofence within a zone */
+  /** POST /api/geofences — creates a new geofence within a farm */
   create: (data: CreateGeofencePayload): Promise<Geofence> =>
     apiFetch<Geofence>('/api/geofences', {
       method: 'POST',

@@ -515,7 +515,7 @@ export default function PolygonDrawerMap({
           )}
           <MapRecenter center={center} zoom={zoom} />
 
-          {/* Render existing polygons (e.g. established farm boundary or surrounding zones) */}
+          {/* Render existing polygons (e.g. established farm boundary or existing fences) */}
           {existingPolygons.map((poly) => (
             <Polygon
               key={poly.id}

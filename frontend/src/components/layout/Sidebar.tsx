@@ -9,7 +9,6 @@ import {
   Menu,
   LayoutDashboard,
   Tractor,
-  Map,
   Zap,
   ClipboardList,
   Tags,
@@ -145,12 +144,6 @@ export default function Sidebar() {
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
-                href="/zonas"
-                label="Zonas"
-                logo={<Map className="opacity-70" />}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarLink
                 href="/cercos"
                 label="Cercos"
                 logo={<Zap className="opacity-70" />}
@@ -181,7 +174,6 @@ export default function Sidebar() {
           <div className="space-y-1.5">
             <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
             <SidebarLink href="/farms" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
-            <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
             <SidebarLink href="/cercos" label="Cercos" logo={<Zap />} isCollapsed={isCollapsed} />
             <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
             {/* Collares: solo collares contratados */}

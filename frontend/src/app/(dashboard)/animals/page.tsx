@@ -14,7 +14,6 @@ import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalTypesApi } from '@/lib/api/animal-types';
-import { zonesApi } from '@/lib/api/zones';
 import { collarsApi } from '@/lib/api/collars';
 import { geofencesApi } from '@/lib/api/geofences';
 import { medicalEventsApi } from '@/lib/api/medical-events';
@@ -24,7 +23,6 @@ import {
   CirclePlus,
   Search,
   Filter,
-  Layers,
   Radio,
   Zap,
   Lock,
@@ -41,7 +39,7 @@ import {
 function AnimalsContent() {
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
-  const urlZoneId = searchParams.get('zoneId') || '';
+  const urlGeofenceId = searchParams.get('geofenceId') || '';
   const urlFarmId = searchParams.get('farmId') || '';
 
   const { user, emulatedUser } = useAuth();
@@ -69,18 +67,12 @@ function AnimalsContent() {
   const canCreateFarm = farmPerms.role === null || farmPerms.role === 'ADMIN';
   const activeFarm = farms.find((f) => f.id === activeFarmId);
 
-  const fetchZones = useCallback(
-    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+  const fetchGeofences = useCallback(
+    () => (activeFarmId ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
     [activeFarmId]
   );
-  const { data: farmZones = [] } = useApi(fetchZones, [activeFarmId]);
-
-  const fetchGeofences = useCallback(async () => {
-    if (farmZones.length === 0) return [];
-    const results = await Promise.all(farmZones.map((z) => geofencesApi.getByZone(z.id)));
-    return results.flat();
-  }, [farmZones]);
-  const { data: farmGeofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [farmZones]);
+  const { data: farmGeofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [activeFarmId]);
+  const activeFarmGeofences = useMemo(() => farmGeofences.filter((g) => g.active), [farmGeofences]);
 
   const { data: collars = [], refetch: refetchCollars } = useApi(collarsApi.getAll);
   const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
@@ -90,7 +82,7 @@ function AnimalsContent() {
   const [filters, setFilters] = useState({
     animalType: '',
     healthStatus: '',
-    zoneId: urlZoneId || '',
+    geofenceId: urlGeofenceId || '',
     status: 'ACTIVE',
     hasActiveAlert: false,
     hasCollar: '',
@@ -102,8 +94,8 @@ function AnimalsContent() {
   }, [urlSearch]);
 
   useEffect(() => {
-    if (urlZoneId) setFilters((prev) => ({ ...prev, zoneId: urlZoneId }));
-  }, [urlZoneId]);
+    if (urlGeofenceId) setFilters((prev) => ({ ...prev, geofenceId: urlGeofenceId }));
+  }, [urlGeofenceId]);
 
   const fetchAnimals = useCallback(
     () =>
@@ -112,7 +104,7 @@ function AnimalsContent() {
             farmId: activeFarmId,
             ...(filters.animalType && { animalType: filters.animalType }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
-            ...(filters.zoneId && { zoneId: filters.zoneId }),
+            ...(filters.geofenceId && { geofenceId: filters.geofenceId }),
             ...(filters.hasActiveAlert && { hasActiveAlert: 'true' }),
             ...(filters.hasCollar && { hasCollar: filters.hasCollar }),
             status: filters.status,
@@ -158,15 +150,13 @@ function AnimalsContent() {
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isBulkZoneModalOpen, setIsBulkZoneModalOpen] = useState(false);
+  const [isBulkGeofenceModalOpen, setIsBulkGeofenceModalOpen] = useState(false);
   const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
-  const [singleZoneAnimal, setSingleZoneAnimal] = useState<Animal | null>(null);
   const [singleCollarAnimal, setSingleCollarAnimal] = useState<Animal | null>(null);
   const [singleGeofenceAnimal, setSingleGeofenceAnimal] = useState<Animal | null>(null);
   const [medicalHistoryAnimalId, setMedicalHistoryAnimalId] = useState<string | null>(null);
 
   // Form states for modals
-  const [targetZoneId, setTargetZoneId] = useState<string>('');
   const [targetFarmId, setTargetFarmId] = useState<string>('');
   const [targetCollarId, setTargetCollarId] = useState<string>('');
   const [targetGeofenceId, setTargetGeofenceId] = useState<string>('');
@@ -178,7 +168,6 @@ function AnimalsContent() {
     ageMonths: '12',
     collarId: '',
     animalTypeId: '',
-    zoneId: '',
   });
 
   // Mutations
@@ -189,9 +178,8 @@ function AnimalsContent() {
     error: modalError,
     reset: resetModal,
   } = useMutation(animalsApi.create);
-  const { mutate: bulkAssignZone, loading: bulkAssigning } = useMutation(animalsApi.bulkAssignZone);
+  const { mutate: bulkAssignGeofence, loading: bulkAssigning } = useMutation(animalsApi.bulkAssignGeofence);
   const { mutate: bulkTransferFarm, loading: bulkTransferring } = useMutation(animalsApi.bulkTransferFarm);
-  const { mutate: updateAnimalZone, loading: updatingZone } = useMutation(animalsApi.updateZone);
   const { mutate: updateAnimalCollar, loading: updatingCollar } = useMutation(animalsApi.updateCollar);
   const { mutate: updateAnimalGeofence, loading: updatingGeofence } = useMutation(animalsApi.updateGeofence);
   const {
@@ -210,7 +198,6 @@ function AnimalsContent() {
     weightKg: '',
     ageMonths: '',
     animalTypeId: '',
-    zoneId: '',
   });
 
   // Medical events
@@ -260,7 +247,7 @@ function AnimalsContent() {
     const ok = await confirm({
       title: `Archivar animal como ${reason === 'SOLD' ? 'Vendido' : 'Muerto'}`,
       description:
-        'Se desvinculará de inmediato su collar activo (quedando disponible para otra cabeza) y saldrá de cualquier cerco o potrero. El historial médico se conservará.',
+        'Se desvinculará de inmediato su collar activo (quedando disponible para otra cabeza) y saldrá de su cerco. El historial médico se conservará.',
       confirmLabel: 'Archivar y Liberar Recursos',
       danger: true,
     });
@@ -288,7 +275,6 @@ function AnimalsContent() {
         ageMonths: Number(addAnimalForm.ageMonths),
         collarId: addAnimalForm.collarId ? Number(addAnimalForm.collarId) : undefined,
         animalTypeId: addAnimalForm.animalTypeId || undefined,
-        zoneId: addAnimalForm.zoneId || undefined,
       });
       toast.success('Animal registrado exitosamente');
       setIsAddModalOpen(false);
@@ -299,7 +285,6 @@ function AnimalsContent() {
         ageMonths: '12',
         collarId: '',
         animalTypeId: '',
-        zoneId: '',
       });
       refetchAnimals();
       refetchCollars();
@@ -323,7 +308,6 @@ function AnimalsContent() {
       weightKg: animal.weightKg ? String(animal.weightKg) : '',
       ageMonths: calculatedMonths,
       animalTypeId: animal.animalTypeId || '',
-      zoneId: animal.zoneId || '',
     });
     setIsEditModalOpen(true);
   };
@@ -338,7 +322,6 @@ function AnimalsContent() {
         weightKg: parseFloat(editAnimalForm.weightKg),
         ...(editAnimalForm.ageMonths ? { ageMonths: parseInt(editAnimalForm.ageMonths, 10) } : {}),
         animalTypeId: editAnimalForm.animalTypeId || null,
-        zoneId: editAnimalForm.zoneId || null,
       });
       toast.success(`Animal ${editAnimalForm.tag.trim() || editAnimal.id} actualizado exitosamente`);
       setIsEditModalOpen(false);
@@ -349,21 +332,21 @@ function AnimalsContent() {
     }
   };
 
-  const handleBulkAssignZone = async () => {
+  const handleBulkAssignGeofence = async () => {
     if (selectedIds.length === 0 || !activeFarmId) return;
     try {
-      const res = await bulkAssignZone({
+      const res = await bulkAssignGeofence({
         farmId: activeFarmId,
         animalIds: selectedIds,
-        zoneId: targetZoneId || null,
+        geofenceId: targetGeofenceId || null,
       });
-      toast.success(res?.message || 'Potrero actualizado correctamente');
-      setIsBulkZoneModalOpen(false);
+      toast.success(res?.message || 'Cerco actualizado correctamente');
+      setIsBulkGeofenceModalOpen(false);
       setSelectedIds([]);
       refetchAnimals();
       refetchGeofences();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al reasignar potrero');
+      toast.error(err instanceof Error ? err.message : 'Error al asignar el cerco');
     }
   };
 
@@ -373,7 +356,7 @@ function AnimalsContent() {
     const ok = await confirm({
       title: `Transferir ${selectedIds.length} animales a "${targetFarm?.name || 'otro campo'}"`,
       description:
-        'Los animales pasarán al nuevo establecimiento a campo abierto (sin potrero asignado) y se cerrarán sus cercos virtuales actuales. Los collares asignados continuarán con ellos.',
+        'Los animales pasarán al nuevo establecimiento sin cerco asignado (se cierran sus cercos virtuales actuales). Los collares asignados continuarán con ellos.',
       confirmLabel: 'Confirmar Traslado',
       danger: false,
     });
@@ -393,21 +376,6 @@ function AnimalsContent() {
       refetchGeofences();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al transferir animales');
-    }
-  };
-
-  const handleSingleUpdateZone = async () => {
-    if (!singleZoneAnimal) return;
-    try {
-      await updateAnimalZone(singleZoneAnimal.id, {
-        zoneId: targetZoneId || null,
-      });
-      toast.success('Potrero asignado correctamente');
-      setSingleZoneAnimal(null);
-      refetchAnimals();
-      refetchGeofences();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al actualizar zona');
     }
   };
 
@@ -545,7 +513,7 @@ function AnimalsContent() {
             Gestión y Asignación de Hacienda
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Control de inventario ganadero, asignación masiva de potreros y vinculación de collares y cercos virtuales.
+            Control de inventario ganadero, vinculación de collares y asignación a cercos virtuales.
           </p>
         </div>
         {farms.length > 0 && (
@@ -625,18 +593,16 @@ function AnimalsContent() {
             {/* Granular Filters Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Potrero / Zona
-                </label>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Cerco</label>
                 <select
-                  value={filters.zoneId}
-                  onChange={(e) => setFilters({ ...filters, zoneId: e.target.value })}
+                  value={filters.geofenceId}
+                  onChange={(e) => setFilters({ ...filters, geofenceId: e.target.value })}
                   className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
                 >
-                  <option value="">Todas las zonas</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name}
+                  <option value="">Todos los cercos</option>
+                  {activeFarmGeofences.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
                     </option>
                   ))}
                 </select>
@@ -736,13 +702,13 @@ function AnimalsContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    setTargetZoneId('');
-                    setIsBulkZoneModalOpen(true);
+                    setTargetGeofenceId('');
+                    setIsBulkGeofenceModalOpen(true);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Mover a Potrero / Zona...</span>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Asignar a cerco...</span>
                 </button>
 
                 {farms.length > 1 && (
@@ -797,9 +763,8 @@ function AnimalsContent() {
                       <th className="py-3.5 px-3">Caravana (Tag) / Especie</th>
                       <th className="py-3.5 px-3">Estado / Salud</th>
                       <th className="py-3.5 px-3">Peso & Edad</th>
-                      <th className="py-3.5 px-3">Potrero (Zona)</th>
                       <th className="py-3.5 px-3">Collar IoT</th>
-                      <th className="py-3.5 px-3">Cerco Virtual Eléctrico</th>
+                      <th className="py-3.5 px-3">Cerco</th>
                       <th className="py-3.5 pr-4 pl-2 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -862,38 +827,6 @@ function AnimalsContent() {
                             <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1.5">
                               {animal.birthDate ? `• ${animal.birthDate.slice(0, 10)}` : ''}
                             </span>
-                          </td>
-
-                          {/* Zone */}
-                          <td className="py-3 px-3">
-                            {animal.zone ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSingleZoneAnimal(animal);
-                                  setTargetZoneId(animal.zoneId || '');
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
-                                title={canEdit ? 'Clic para cambiar de potrero' : undefined}
-                                disabled={!canEdit}
-                              >
-                                <Layers className="w-3 h-3" />
-                                <span>{animal.zone.name}</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSingleZoneAnimal(animal);
-                                  setTargetZoneId('');
-                                }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title={canEdit ? 'Clic para asignar potrero' : undefined}
-                                disabled={!canEdit}
-                              >
-                                <span>Campo abierto</span>
-                              </button>
-                            )}
                           </td>
 
                           {/* Collar IoT */}
@@ -1031,17 +964,17 @@ function AnimalsContent() {
         </>
       )}
 
-      {/* Modal: Bulk Assign Zone */}
-      {isBulkZoneModalOpen && (
+      {/* Modal: Bulk Assign Geofence */}
+      {isBulkGeofenceModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Mover Hacienda a Potrero / Zona</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Reasignar {selectedIds.length} cabezas seleccionadas</p>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Asignar hacienda a un cerco</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">{selectedIds.length} cabezas seleccionadas</p>
               </div>
               <button
-                onClick={() => setIsBulkZoneModalOpen(false)}
+                onClick={() => setIsBulkGeofenceModalOpen(false)}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1049,39 +982,36 @@ function AnimalsContent() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  Potrero de Destino
-                </label>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Cerco de destino</label>
                 <select
-                  value={targetZoneId}
-                  onChange={(e) => setTargetZoneId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
+                  value={targetGeofenceId}
+                  onChange={(e) => setTargetGeofenceId(e.target.value)}
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 text-sm cursor-pointer font-medium"
                 >
-                  <option value="">Campo abierto / Sin potrero específico</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
+                  <option value="">Sin cerco (liberar)</option>
+                  {activeFarmGeofences.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name} {g.pastureType ? `(${g.pastureType})` : ''}
                     </option>
                   ))}
                 </select>
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Nota: Si un animal estaba asignado a un cerco virtual que no corresponde a este potrero, el cerco se
-                  cerrará automáticamente.
+                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba.
                 </p>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button type="button" onClick={() => setIsBulkZoneModalOpen(false)} variant="outline" size="md">
+                <Button type="button" onClick={() => setIsBulkGeofenceModalOpen(false)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
                   type="button"
-                  onClick={handleBulkAssignZone}
+                  onClick={handleBulkAssignGeofence}
                   disabled={bulkAssigning}
                   variant="success"
                   size="md"
                 >
-                  {bulkAssigning ? 'Reasignando...' : 'Aplicar a Selección'}
+                  {bulkAssigning ? 'Asignando...' : 'Aplicar a selección'}
                 </Button>
               </div>
             </div>
@@ -1130,9 +1060,8 @@ function AnimalsContent() {
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Al transferir al nuevo campo, los animales quedarán en <strong>campo abierto</strong> (sin potrero
-                  asignado) y se cerrarán sus cercos virtuales anteriores. Los collares asignados continuarán con cada
-                  cabeza.
+                  Al transferir al nuevo campo, los animales quedarán <strong>sin cerco asignado</strong> (se cierran
+                  sus cercos virtuales anteriores). Los collares asignados continuarán con cada cabeza.
                 </span>
               </div>
 
@@ -1148,58 +1077,6 @@ function AnimalsContent() {
                   size="md"
                 >
                   {bulkTransferring ? 'Transfiriendo...' : 'Confirmar Traslado'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Single Animal Zone Update */}
-      {singleZoneAnimal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Asignar Potrero / Zona</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Animal: {singleZoneAnimal.tag || singleZoneAnimal.id}</p>
-              </div>
-              <button
-                onClick={() => setSingleZoneAnimal(null)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Potrero</label>
-                <select
-                  value={targetZoneId}
-                  onChange={(e) => setTargetZoneId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Campo abierto / Sin potrero</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <Button type="button" onClick={() => setSingleZoneAnimal(null)} variant="outline" size="md">
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSingleUpdateZone}
-                  disabled={updatingZone}
-                  variant="success"
-                  size="md"
-                >
-                  {updatingZone ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -1316,20 +1193,15 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
                   >
                     <option value="">Sin cerco virtual (liberar)</option>
-                    {farmGeofences
-                      .filter(
-                        (g) => g.active && (!singleGeofenceAnimal.zoneId || g.zoneId === singleGeofenceAnimal.zoneId)
-                      )
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          ⚡ {g.name} ({farmZones.find((z) => z.id === g.zoneId)?.name || g.zone?.name || 'Zona'})
-                        </option>
-                      ))}
+                    {activeFarmGeofences.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        ⚡ {g.name} {g.pastureType ? `(${g.pastureType})` : ''}
+                      </option>
+                    ))}
                   </select>
-                  {farmGeofences.length === 0 && (
+                  {activeFarmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos
-                      Eléctricos.
+                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos.
                     </span>
                   )}
                 </div>
@@ -1446,23 +1318,6 @@ function AnimalsContent() {
                         {t.name} ({t.species})
                       </option>
                     ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                  Potrero / Zona (Opcional)
-                </label>
-                <select
-                  value={addAnimalForm.zoneId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, zoneId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin asignar / Campo abierto</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1">
@@ -1604,22 +1459,6 @@ function AnimalsContent() {
                         {t.name} ({t.species})
                       </option>
                     ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Potrero / Zona</label>
-                <select
-                  value={editAnimalForm.zoneId}
-                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, zoneId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin asignar / Campo abierto</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
                 </select>
               </div>
 

@@ -6,7 +6,6 @@ import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
-import { zonesApi } from '@/lib/api/zones';
 import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
@@ -19,7 +18,6 @@ import {
   Check,
   AlertTriangle,
   Building2,
-  MapPin,
   Trash2,
   Edit3,
   X,
@@ -99,10 +97,8 @@ export default function GatewaysPage() {
   // Mutations
   const { mutate: createGateway, loading: creating } = useMutation(gatewaysApi.create);
   const { mutate: updateGateway, loading: updating } = useMutation(
-    (params: {
-      id: string;
-      data: { name?: string; apiKey?: string; farmId?: string | null; zoneId?: string | null };
-    }) => gatewaysApi.update(params.id, params.data)
+    (params: { id: string; data: { name?: string; apiKey?: string; farmId?: string | null } }) =>
+      gatewaysApi.update(params.id, params.data)
   );
   const { mutate: deleteGateway } = useMutation(gatewaysApi.delete);
 
@@ -114,8 +110,6 @@ export default function GatewaysPage() {
   const [createAssignMode, setCreateAssignMode] = useState<'STOCK' | 'ASSIGN'>('STOCK');
   const [createUserId, setCreateUserId] = useState('');
   const [createFarmId, setCreateFarmId] = useState('');
-  const [createZoneId, setCreateZoneId] = useState('');
-  const [createFarmZones, setCreateFarmZones] = useState<Array<{ id: string; name: string }>>([]);
 
   // Modal: Edit / Reassign Gateway state
   const [editingGateway, setEditingGateway] = useState<Gateway | null>(null);
@@ -125,8 +119,6 @@ export default function GatewaysPage() {
   const [editAssignMode, setEditAssignMode] = useState<'STOCK' | 'ASSIGN'>('STOCK');
   const [editUserId, setEditUserId] = useState('');
   const [editFarmId, setEditFarmId] = useState('');
-  const [editZoneId, setEditZoneId] = useState('');
-  const [editFarmZones, setEditFarmZones] = useState<Array<{ id: string; name: string }>>([]);
 
   // Modal: Hardware Setup & Credentials guide
   const [setupModalGateway, setSetupModalGateway] = useState<{
@@ -202,42 +194,6 @@ export default function GatewaysPage() {
     void loadData();
   }, [isSuperAdmin]);
 
-  // Load zones for Create Modal when createFarmId changes
-  useEffect(() => {
-    async function loadCreateZones() {
-      if (!createFarmId) {
-        setCreateFarmZones([]);
-        setCreateZoneId('');
-        return;
-      }
-      try {
-        const zones = await zonesApi.getByFarm(createFarmId);
-        setCreateFarmZones(zones.map((z) => ({ id: z.id, name: z.name })));
-      } catch {
-        setCreateFarmZones([]);
-      }
-    }
-    void loadCreateZones();
-  }, [createFarmId]);
-
-  // Load zones for Edit Modal when editFarmId changes
-  useEffect(() => {
-    async function loadEditZones() {
-      if (!editFarmId) {
-        setEditFarmZones([]);
-        setEditZoneId('');
-        return;
-      }
-      try {
-        const zones = await zonesApi.getByFarm(editFarmId);
-        setEditFarmZones(zones.map((z) => ({ id: z.id, name: z.name })));
-      } catch {
-        setEditFarmZones([]);
-      }
-    }
-    void loadEditZones();
-  }, [editFarmId]);
-
   // Open Create Modal handler
   const handleOpenCreateModal = () => {
     setCreateName('');
@@ -246,7 +202,6 @@ export default function GatewaysPage() {
     setCreateAssignMode('STOCK');
     setCreateUserId('');
     setCreateFarmId('');
-    setCreateZoneId('');
     setIsCreateModalOpen(true);
   };
 
@@ -263,12 +218,10 @@ export default function GatewaysPage() {
       const ownerId = farm?.userId || g.farm?.userId || farm?.user?.id || '';
       setEditUserId(ownerId);
       setEditFarmId(g.farmId);
-      setEditZoneId(g.zoneId || '');
     } else {
       setEditAssignMode('STOCK');
       setEditUserId('');
       setEditFarmId('');
-      setEditZoneId('');
     }
 
     // If apiKey wasn't loaded in g, fetch it in background
@@ -294,14 +247,12 @@ export default function GatewaysPage() {
     }
 
     const farmIdToAssign = createAssignMode === 'ASSIGN' && createFarmId ? createFarmId : undefined;
-    const zoneIdToAssign = createAssignMode === 'ASSIGN' && createZoneId ? createZoneId : undefined;
 
     try {
       const created = await createGateway({
         name: createName.trim(),
         apiKey: createApiKey.trim() || undefined,
         farmId: farmIdToAssign,
-        zoneId: zoneIdToAssign,
       });
 
       if (!created) return;
@@ -335,7 +286,6 @@ export default function GatewaysPage() {
     }
 
     const farmIdToAssign = editAssignMode === 'ASSIGN' && editFarmId ? editFarmId : null;
-    const zoneIdToAssign = editAssignMode === 'ASSIGN' && editZoneId ? editZoneId : null;
 
     try {
       const updated = await updateGateway({
@@ -344,7 +294,6 @@ export default function GatewaysPage() {
           name: editName.trim(),
           apiKey: editApiKey.trim() || undefined,
           farmId: farmIdToAssign,
-          zoneId: zoneIdToAssign,
         },
       });
 
@@ -489,13 +438,12 @@ export default function GatewaysPage() {
         const q = searchQuery.toLowerCase().trim();
         const matchName = g.name.toLowerCase().includes(q);
         const matchFarm = g.farm?.name?.toLowerCase().includes(q);
-        const matchZone = g.zone?.name?.toLowerCase().includes(q);
         const farmObj = allFarms.find((f) => f.id === g.farmId);
         const matchOwnerName = (g.farm?.user?.name || farmObj?.user?.name || '').toLowerCase().includes(q);
         const matchOwnerEmail = (g.farm?.user?.email || farmObj?.user?.email || '').toLowerCase().includes(q);
         const matchApiKey = (g.apiKey || revealedKeys[g.id] || '').toLowerCase().includes(q);
 
-        return matchName || matchFarm || matchZone || matchOwnerName || matchOwnerEmail || matchApiKey;
+        return matchName || matchFarm || matchOwnerName || matchOwnerEmail || matchApiKey;
       }
 
       return true;
@@ -771,13 +719,6 @@ export default function GatewaysPage() {
                         Stock Libre Central (Sin asignar)
                       </span>
                     )}
-
-                    {g.zone?.name && (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 font-medium">
-                        <MapPin className="w-3 h-3" />
-                        Zona: {g.zone.name}
-                      </span>
-                    )}
                   </div>
 
                   {/* API Key Box */}
@@ -979,7 +920,6 @@ export default function GatewaysPage() {
                       setCreateAssignMode('STOCK');
                       setCreateUserId('');
                       setCreateFarmId('');
-                      setCreateZoneId('');
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       createAssignMode === 'STOCK'
@@ -1029,7 +969,6 @@ export default function GatewaysPage() {
                         onChange={(e) => {
                           setCreateUserId(e.target.value);
                           setCreateFarmId('');
-                          setCreateZoneId('');
                         }}
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                       >
@@ -1077,27 +1016,6 @@ export default function GatewaysPage() {
                         </select>
                       )}
                     </div>
-
-                    {/* Selector de Zona del Campo (Opcional) */}
-                    {createFarmId && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
-                          3. Zona del Campo (Opcional)
-                        </label>
-                        <select
-                          value={createZoneId}
-                          onChange={(e) => setCreateZoneId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Sin zona asignada (Todo el campo)</option>
-                          {createFarmZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1223,7 +1141,6 @@ export default function GatewaysPage() {
                       setEditAssignMode('STOCK');
                       setEditUserId('');
                       setEditFarmId('');
-                      setEditZoneId('');
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       editAssignMode === 'STOCK'
@@ -1267,7 +1184,6 @@ export default function GatewaysPage() {
                         onChange={(e) => {
                           setEditUserId(e.target.value);
                           setEditFarmId('');
-                          setEditZoneId('');
                         }}
                         className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                       >
@@ -1312,26 +1228,6 @@ export default function GatewaysPage() {
                         </select>
                       )}
                     </div>
-
-                    {editFarmId && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
-                          3. Zona del Campo (Opcional)
-                        </label>
-                        <select
-                          value={editZoneId}
-                          onChange={(e) => setEditZoneId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Sin zona asignada (Todo el campo)</option>
-                          {editFarmZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

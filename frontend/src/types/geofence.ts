@@ -1,9 +1,8 @@
-import type { Zone } from './zone';
-
 export interface Geofence {
   id: string;
-  zoneId: string;
+  farmId: string;
   name: string;
+  pastureType?: string | null;
   polygonCoordinates: [number, number][] | null;
   active: boolean;
   activatedAt?: string | null;
@@ -11,7 +10,6 @@ export interface Geofence {
   createdAt?: string;
   updatedAt?: string;
   animalGeofences?: AnimalGeofence[];
-  zone?: Zone | null;
 }
 
 export interface AnimalGeofence {
@@ -25,8 +23,9 @@ export interface AnimalGeofence {
 }
 
 export interface CreateGeofencePayload {
-  zoneId: string;
+  farmId: string;
   name: string;
+  pastureType?: string;
   polygonCoordinates: [number, number][];
   animalIds: string[];
 }

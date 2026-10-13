@@ -1,10 +1,9 @@
 import type { Geofence } from './geofence';
-import type { Zone } from './zone';
 
-export type ZoneRotationStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
+export type RotationStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'CANCELLED';
 export type RotationStepStatus = 'PENDING' | 'ACTIVE' | 'COMPLETED';
 
-export interface ZoneRotationStep {
+export interface RotationStep {
   id: string;
   rotationPlanId: string;
   geofenceId: string;
@@ -16,11 +15,11 @@ export interface ZoneRotationStep {
   geofence: Geofence;
 }
 
-export interface ZoneRotationPlan {
+export interface RotationPlan {
   id: string;
-  zoneId: string;
+  farmId: string;
   name: string;
-  status: ZoneRotationStatus;
+  status: RotationStatus;
   frequencyHours: number;
   currentStepIndex: number;
   totalSteps: number;
@@ -31,8 +30,7 @@ export interface ZoneRotationPlan {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  steps: ZoneRotationStep[];
-  zone?: Zone;
+  steps: RotationStep[];
 }
 
 export interface RotationHeatmapPoint {
@@ -40,7 +38,7 @@ export interface RotationHeatmapPoint {
   longitude: number;
 }
 
-export interface ZoneRotationTransitionInfo {
+export interface RotationTransitionInfo {
   isTransitioning: boolean;
   fromGeofenceName?: string;
   toGeofenceName?: string;
@@ -51,21 +49,21 @@ export interface ZoneRotationTransitionInfo {
   stepIntervalMinutes: number;
 }
 
-export interface ZoneRotationResponse {
-  plan: ZoneRotationPlan | null;
+export interface RotationResponse {
+  plan: RotationPlan | null;
   fromGeofence: Geofence | null;
   currentGeofence: Geofence | null;
   nextGeofence: Geofence | null;
   activeTransitionPolygon?: [number, number][] | null;
-  transition?: ZoneRotationTransitionInfo | null;
+  transition?: RotationTransitionInfo | null;
   timeRemainingMinutes: number;
-  totalAnimalsInZone: number;
+  totalAnimals: number;
   animalsWithCollarCount: number;
   heatmapPoints: RotationHeatmapPoint[];
   message?: string;
 }
 
-export interface CreateZoneRotationPayload {
+export interface CreateRotationPayload {
   name?: string;
   frequencyHours: number;
   geofenceIds: string[];

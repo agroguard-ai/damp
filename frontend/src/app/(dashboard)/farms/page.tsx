@@ -20,7 +20,7 @@ import {
   Plus,
   Edit3,
   Trash2,
-  Layers,
+  Zap,
   Users,
   MapPin,
   Ruler,
@@ -358,13 +358,13 @@ export default function FarmsPage() {
                             <Ruler className="w-4 h-4" />
                           </button>
 
-                          {/* Botón Zonas */}
+                          {/* Botón Cercos */}
                           <Link
-                            href={`/zonas?farmId=${farm.id}`}
-                            className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 rounded-lg transition-colors cursor-pointer"
-                            title="Gestionar potreros y zonas internas"
+                            href={`/cercos?farmId=${farm.id}`}
+                            className="p-1.5 text-zinc-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Gestionar los cercos del campo"
                           >
-                            <Layers className="w-4 h-4" />
+                            <Zap className="w-4 h-4" />
                           </Link>
 
                           {/* Botón Usuarios / Equipo: solo el administrador de la granja gestiona el personal */}
@@ -700,9 +700,9 @@ export default function FarmsPage() {
                     </strong>
                   </div>
                   <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900 text-center">
-                    <span className="text-[11px] text-zinc-500 block">Zonas y potreros</span>
+                    <span className="text-[11px] text-zinc-500 block">Cercos</span>
                     <strong className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {deletingTargetFarm._count?.zones ?? 0}
+                      {deletingTargetFarm._count?.geofences ?? 0}
                     </strong>
                   </div>
                 </div>
@@ -710,7 +710,7 @@ export default function FarmsPage() {
                 <p className="text-[11px] text-zinc-700 dark:text-zinc-300">Al confirmar la baja:</p>
                 <ul className="list-disc list-inside text-[11px] space-y-1 text-zinc-700 dark:text-zinc-300">
                   <li>
-                    Se eliminarán todas las <strong>zonas y cercos virtuales</strong> del campo.
+                    Se eliminarán todos los <strong>cercos virtuales</strong> del campo.
                   </li>
                   <li>
                     Los collares asignados al campo serán <strong>liberados</strong> para su reutilización.

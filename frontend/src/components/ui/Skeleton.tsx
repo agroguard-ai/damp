@@ -6,7 +6,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-zinc-200 dark:bg-zinc-800 rounded ${className}`} />;
 }
 
-/** Tarjeta tipo animal/zona/gateway — header + un par de filas de datos. */
+/** Tarjeta tipo animal/cerco/gateway — header + un par de filas de datos. */
 export function SkeletonCard() {
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">

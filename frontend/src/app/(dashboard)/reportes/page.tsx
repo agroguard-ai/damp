@@ -160,7 +160,7 @@ export default function ReportesPage() {
 
             <ReportCard
               title="Resumen del Rodeo"
-              description="PDF con totales: animales, collares asignados, zonas y cercos activos, alertas sin resolver."
+              description="PDF con totales: animales, collares asignados, cercos activos y alertas sin resolver."
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/summary`}

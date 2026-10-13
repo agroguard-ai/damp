@@ -7,7 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import MapActionControls from './controls/MapActionControls';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
-import type { Geofence, Zone, AnimalLocation } from '@/types';
+import type { Geofence, AnimalLocation } from '@/types';
 
 // Ícono para animales pastando
 const createAnimalGrazingIcon = (tag: string) => {
@@ -61,11 +61,11 @@ function parsePolygon(raw: unknown): [number, number][] {
 }
 
 function MapAutoBounds({
-  zoneCoords,
+  farmCoords,
   fenceCoords,
   recenterTick,
 }: {
-  zoneCoords: [number, number][];
+  farmCoords: [number, number][];
   fenceCoords: [number, number][];
   recenterTick: number;
 }) {
@@ -79,12 +79,12 @@ function MapAutoBounds({
 
     if (didInitialFit.current && !manualRecenter) return;
 
-    const coords = fenceCoords.length > 0 ? fenceCoords : zoneCoords;
+    const coords = fenceCoords.length > 0 ? fenceCoords : farmCoords;
     if (coords.length > 0) {
       map.fitBounds(coords, { padding: [40, 40] });
       didInitialFit.current = true;
     }
-  }, [zoneCoords, fenceCoords, map, recenterTick]);
+  }, [farmCoords, fenceCoords, map, recenterTick]);
 
   return null;
 }
@@ -101,8 +101,9 @@ export interface GrazingAnimal {
   } | null;
 }
 
-export interface ZoneRotationMapProps {
-  zone: Zone;
+export interface RotationMapProps {
+  /** Campo donde corre la rotación (se dibuja su perímetro como referencia). */
+  farm: { name: string | null; polygonCoordinates?: unknown };
   fromGeofence?: Geofence | null;
   currentGeofence?: Geofence | null;
   nextGeofence?: Geofence | null;
@@ -119,8 +120,8 @@ export interface ZoneRotationMapProps {
   showHeatmap?: boolean;
 }
 
-export default function ZoneRotationMap({
-  zone,
+export default function RotationMap({
+  farm,
   fromGeofence,
   currentGeofence,
   nextGeofence,
@@ -130,7 +131,7 @@ export default function ZoneRotationMap({
   animals = [],
   heatmapPoints = [],
   showHeatmap = false,
-}: ZoneRotationMapProps) {
+}: RotationMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [recenterTick, setRecenterTick] = useState(0);
@@ -139,7 +140,7 @@ export default function ZoneRotationMap({
 
   const activeProvider = MAP_PROVIDERS[currentLayer];
 
-  const zoneCoords = useMemo(() => parsePolygon(zone?.polygonCoordinates), [zone]);
+  const farmCoords = useMemo(() => parsePolygon(farm?.polygonCoordinates), [farm]);
   const fromCoords = useMemo(() => parsePolygon(fromGeofence?.polygonCoordinates), [fromGeofence]);
   const currentCoords = useMemo(() => parsePolygon(currentGeofence?.polygonCoordinates), [currentGeofence]);
   const nextCoords = useMemo(() => parsePolygon(nextGeofence?.polygonCoordinates), [nextGeofence]);
@@ -230,10 +231,10 @@ export default function ZoneRotationMap({
           />
         )}
 
-        {/* 1. Potrero completo (Zone boundary) */}
-        {zoneCoords.length > 0 && (
+        {/* 1. Perímetro del campo */}
+        {farmCoords.length > 0 && (
           <Polygon
-            positions={zoneCoords}
+            positions={farmCoords}
             pathOptions={{
               color: '#16a34a',
               fillColor: '#22c55e',
@@ -243,14 +244,14 @@ export default function ZoneRotationMap({
           >
             <Popup>
               <div className="p-1.5 text-xs text-zinc-900">
-                <p className="font-bold text-green-700">🌱 Potrero: {zone.name}</p>
-                <p className="text-[11px] text-zinc-600">Perímetro general del lote.</p>
+                <p className="font-bold text-green-700">🌱 Campo: {farm.name ?? 'Sin nombre'}</p>
+                <p className="text-[11px] text-zinc-600">Perímetro general del establecimiento.</p>
               </div>
             </Popup>
           </Polygon>
         )}
 
-        {/* 2. Otros cercos de la zona (inactivos / secundarios) */}
+        {/* 2. Otros cercos del campo (inactivos / secundarios) */}
         {allGeofences.map((gf) => {
           if (gf.id === fromGeofence?.id || gf.id === currentGeofence?.id || gf.id === nextGeofence?.id) {
             return null;
@@ -444,7 +445,7 @@ export default function ZoneRotationMap({
           );
         })}
 
-        <MapAutoBounds zoneCoords={zoneCoords} fenceCoords={fenceCoords} recenterTick={recenterTick} />
+        <MapAutoBounds farmCoords={farmCoords} fenceCoords={fenceCoords} recenterTick={recenterTick} />
       </MapContainer>
     </div>
   );

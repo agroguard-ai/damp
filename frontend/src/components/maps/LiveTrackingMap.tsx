@@ -91,12 +91,6 @@ const createTrajectoryEndpointIcon = (type: 'start' | 'end') => {
   });
 };
 
-interface Zone {
-  id: string;
-  name: string;
-  polygonCoordinates: unknown;
-}
-
 interface AnimalLocation {
   id: string;
   tag: string | null;
@@ -105,7 +99,7 @@ interface AnimalLocation {
   status: string;
   hasActiveAlert?: boolean;
   animalType: { name: string; species: string } | null;
-  zone: { name: string } | null;
+  geofence?: { name: string } | null;
   latestReading: {
     latitude: number;
     longitude: number;
@@ -122,7 +116,8 @@ interface Geofence {
 }
 
 export interface LiveTrackingMapProps {
-  zones: Zone[];
+  /** Perímetro del campo (se dibuja como referencia y para encuadrar el mapa). */
+  farmPolygon?: [number, number][];
   geofences: Geofence[];
   animals: AnimalLocation[];
   trajectory?: TrajectoryPoint[] | null;
@@ -145,13 +140,13 @@ function parsePolygon(raw: unknown): [number, number][] {
 }
 
 function MapAutoBounds({
-  zones,
+  farmPolygon,
   geofences,
   animals,
   trajectory,
   recenterTick,
 }: {
-  zones: Zone[];
+  farmPolygon: [number, number][];
   geofences: Geofence[];
   animals: AnimalLocation[];
   trajectory?: TrajectoryPoint[] | null;
@@ -179,7 +174,7 @@ function MapAutoBounds({
     if (didInitialFit.current && !manualRecenter) return;
 
     const coords: [number, number][] = [];
-    zones.forEach((zone) => coords.push(...parsePolygon(zone.polygonCoordinates)));
+    coords.push(...farmPolygon);
     geofences.forEach((geofence) => coords.push(...parsePolygon(geofence.polygonCoordinates)));
 
     animals.forEach((animal) => {
@@ -192,7 +187,7 @@ function MapAutoBounds({
       map.fitBounds(coords, { padding: [40, 40] });
       didInitialFit.current = true;
     }
-  }, [zones, geofences, animals, trajectory, map, recenterTick]);
+  }, [farmPolygon, geofences, animals, trajectory, map, recenterTick]);
 
   return null;
 }
@@ -313,8 +308,8 @@ function ClusteredAnimalMarkers({
                       <span className="font-semibold text-zinc-800">🌡️ {temperature.toFixed(1)} °C</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-zinc-500">Zona actual:</span>
-                      <span className="font-semibold text-zinc-800">{animal.zone?.name || 'Campo Abierto'}</span>
+                      <span className="text-zinc-500">Cerco actual:</span>
+                      <span className="font-semibold text-zinc-800">{animal.geofence?.name || 'Sin cerco'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Última señal:</span>
@@ -537,7 +532,7 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
 }
 
 export default function LiveTrackingMap({
-  zones,
+  farmPolygon = [],
   geofences,
   animals,
   trajectory,
@@ -595,18 +590,13 @@ export default function LiveTrackingMap({
           />
         )}
 
-        {/* Límite del potrero (Zone) */}
-        {zones.map((zone) => {
-          const coords = parsePolygon(zone.polygonCoordinates);
-          if (coords.length === 0) return null;
-          return (
-            <Polygon
-              key={zone.id}
-              positions={coords}
-              pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }}
-            />
-          );
-        })}
+        {/* Perímetro del campo */}
+        {farmPolygon.length >= 3 && (
+          <Polygon
+            positions={farmPolygon}
+            pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.06, weight: 2, interactive: false }}
+          />
+        )}
 
         {/* Cerco virtual (Geofence) */}
         {geofences.map((geofence) => {
@@ -646,7 +636,7 @@ export default function LiveTrackingMap({
         )}
 
         <MapAutoBounds
-          zones={zones}
+          farmPolygon={farmPolygon}
           geofences={geofences}
           animals={animals}
           trajectory={trajectory}

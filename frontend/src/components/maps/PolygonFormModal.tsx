@@ -6,9 +6,9 @@ import { X, Undo2, RotateCcw, MousePointerClick, AlertCircle, CheckCircle2 } fro
 import { useToast } from '@/context/ToastContext';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
-import type { ZoneMapProps } from './ZoneMap';
+import type { FenceMapProps } from './FenceMap';
 
-const ZoneMap = dynamic(() => import('./ZoneMap'), { ssr: false });
+const FenceMap = dynamic(() => import('./FenceMap'), { ssr: false });
 
 const MIN_POINTS = 3;
 
@@ -27,10 +27,7 @@ const ACCENTS = {
   },
 } as const;
 
-export type PolygonMapContext = Pick<
-  ZoneMapProps,
-  'zones' | 'geofences' | 'farmPolygon' | 'zonePolygon' | 'boundaryType' | 'boundaryLabel' | 'center' | 'selectedZoneId'
->;
+export type PolygonMapContext = Pick<FenceMapProps, 'geofences' | 'farmPolygon' | 'boundaryLabel' | 'center'>;
 
 export interface PolygonFormModalProps {
   title: string;
@@ -52,7 +49,7 @@ export interface PolygonFormModalProps {
 }
 
 /**
- * Modal de alta/edición de un polígono (zona o cerco): mapa para dibujar a la
+ * Modal de alta/edición de un polígono (cerco): mapa para dibujar a la
  * izquierda y datos a la derecha. Se monta condicionalmente, así que su estado
  * arranca limpio en cada apertura.
  */
@@ -82,12 +79,11 @@ export default function PolygonFormModal({
   const areaHa = useMemo(() => calculatePolygonAreaHa(points), [points]);
   const missingPoints = Math.max(0, MIN_POINTS - points.length);
 
-  // Mismo criterio que ZoneMap para decidir qué polígono actúa como límite.
-  const { boundaryType = 'farm', zonePolygon = [], farmPolygon = [], boundaryLabel } = mapContext;
-  const boundaryPolygon = boundaryType === 'zone' && zonePolygon.length >= 3 ? zonePolygon : farmPolygon;
+  // El perímetro del campo es el límite, igual que en FenceMap.
+  const { farmPolygon: boundaryPolygon = [], boundaryLabel = 'del campo' } = mapContext;
 
   const handleUndo = () => {
-    // ZoneMap escucha Ctrl+Z a nivel window y mantiene su propio historial.
+    // FenceMap escucha Ctrl+Z a nivel window y mantiene su propio historial.
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
   };
 
@@ -104,7 +100,7 @@ export default function PolygonFormModal({
       const containment = isPolygonInsideBoundary(points as LatLngTuple[], boundaryPolygon as LatLngTuple[]);
       if (!containment.isInside) {
         setError(
-          `Hay ${containment.outsideCount} punto(s) fuera de los límites ${boundaryLabel ?? ''}. Movelos hacia adentro.`
+          `Hay ${containment.outsideCount} punto(s) fuera de los límites ${boundaryLabel}. Movelos hacia adentro.`
         );
         return;
       }
@@ -155,7 +151,7 @@ export default function PolygonFormModal({
         >
           {/* Mapa */}
           <div className="p-3 lg:p-4">
-            <ZoneMap
+            <FenceMap
               {...mapContext}
               heightClassName="h-[45vh] lg:h-[64vh]"
               newPoints={points}

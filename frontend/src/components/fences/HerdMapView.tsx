@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { RotateCcw, MapPin, X, AlertTriangle, Layers } from 'lucide-react';
+import { RotateCcw, MapPin, X, AlertTriangle, Zap } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { animalsApi } from '@/lib/api/animals';
-import { geofencesApi } from '@/lib/api/geofences';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { Zone } from '@/types';
+import type { Geofence } from '@/types';
 
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
@@ -37,7 +36,8 @@ export type HerdMapMode = 'live' | 'heatmap';
 
 interface HerdMapViewProps {
   farmId: string;
-  zones: Zone[];
+  farmPolygon: [number, number][];
+  geofences: Geofence[];
   mode: HerdMapMode;
 }
 
@@ -45,17 +45,11 @@ interface HerdMapViewProps {
  * Mapa de la hacienda del campo: posición en vivo de cada animal (con
  * recorrido histórico al tocar uno) o mapa de calor de uso del campo.
  */
-export default function HerdMapView({ farmId, zones, mode }: HerdMapViewProps) {
-  const [filterZoneId, setFilterZoneId] = useState('');
+export default function HerdMapView({ farmId, farmPolygon, geofences, mode }: HerdMapViewProps) {
+  const [filterGeofenceId, setFilterGeofenceId] = useState('');
   const [trajectoryAnimalId, setTrajectoryAnimalId] = useState<string | null>(null);
   const [trajectoryDays, setTrajectoryDays] = useState<number>(7);
   const [heatmapDays, setHeatmapDays] = useState<number>(7);
-
-  const fetchGeofences = useCallback(async () => {
-    const results = await Promise.all(zones.map((zone) => geofencesApi.getByZone(zone.id)));
-    return results.flat();
-  }, [zones]);
-  const { data: geofences = [] } = useApi(fetchGeofences, [zones]);
 
   // Se guarda la hora de la consulta para calcular qué señales están desactualizadas
   const fetchLocations = useCallback(async () => {
@@ -93,8 +87,8 @@ export default function HerdMapView({ farmId, zones, mode }: HerdMapViewProps) {
   const { data: heatmap, loading: loadingHeatmap } = useApi(fetchHeatmap, [mode, farmId, heatmapDays]);
 
   const visibleAnimals = useMemo(
-    () => (filterZoneId ? animals.filter((a) => a.zone?.id === filterZoneId) : animals),
-    [animals, filterZoneId]
+    () => (filterGeofenceId ? animals.filter((a) => a.geofence?.id === filterGeofenceId) : animals),
+    [animals, filterGeofenceId]
   );
 
   const herdStatus = useMemo(() => {
@@ -142,15 +136,15 @@ export default function HerdMapView({ farmId, zones, mode }: HerdMapViewProps) {
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {zones.length > 1 && (
+            {geofences.length > 1 && (
               <Select
                 size="sm"
                 className="w-44"
-                value={filterZoneId}
-                onChange={setFilterZoneId}
+                value={filterGeofenceId}
+                onChange={setFilterGeofenceId}
                 options={[
-                  { value: '', label: 'Todas las zonas' },
-                  ...zones.map((z) => ({ value: z.id, label: z.name, icon: Layers })),
+                  { value: '', label: 'Todos los cercos' },
+                  ...geofences.map((g) => ({ value: g.id, label: g.name, icon: Zap })),
                 ]}
               />
             )}
@@ -250,7 +244,7 @@ export default function HerdMapView({ farmId, zones, mode }: HerdMapViewProps) {
         <Skeleton className="w-full h-[55vh] min-h-96" />
       ) : (
         <LiveTrackingMap
-          zones={zones}
+          farmPolygon={farmPolygon}
           geofences={geofences}
           animals={mode === 'live' ? visibleAnimals : []}
           trajectory={mode === 'live' ? trajectoryPoints : null}

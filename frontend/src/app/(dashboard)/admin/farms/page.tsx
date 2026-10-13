@@ -31,7 +31,7 @@ interface FarmAdminRecord {
   }>;
   _count: {
     animals: number;
-    zones: number;
+    geofences: number;
     gateways: number;
     farmUsers: number;
   };
@@ -162,8 +162,8 @@ export default function AdminFarmsPage() {
                     <span className="text-[10px] text-zinc-500">Animales</span>
                   </div>
                   <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-lg">
-                    <span className="block font-bold text-zinc-900 dark:text-white">{f._count.zones}</span>
-                    <span className="text-[10px] text-zinc-500">Zonas</span>
+                    <span className="block font-bold text-zinc-900 dark:text-white">{f._count.geofences}</span>
+                    <span className="text-[10px] text-zinc-500">Cercos</span>
                   </div>
                   <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-lg">
                     <span className="block font-bold text-zinc-900 dark:text-white">{f._count.farmUsers}</span>

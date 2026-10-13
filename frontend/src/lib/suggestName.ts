@@ -1,5 +1,5 @@
 /**
- * Sugiere el próximo nombre secuencial ("Zona 4", "Cerco 2") a partir de los
+ * Sugiere el próximo nombre secuencial ("Cerco 2", "Campo 3") a partir de los
  * nombres existentes. Usa el mayor número encontrado + 1, así no se repite un
  * número aunque se haya borrado algún elemento intermedio.
  */

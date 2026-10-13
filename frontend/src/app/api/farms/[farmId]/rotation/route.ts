@@ -1,17 +1,17 @@
 import { type NextRequest } from 'next/server';
 import { proxyRequest } from '@/lib/proxy';
 
-type RouteContext = { params: Promise<{ id: string }> };
+type RouteContext = { params: Promise<{ farmId: string }> };
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {
-  const { id } = await params;
-  return proxyRequest(`/zones/${id}/rotation`);
+  const { farmId } = await params;
+  return proxyRequest(`/farms/${farmId}/rotation`);
 }
 
 export async function POST(request: NextRequest, { params }: RouteContext) {
-  const { id } = await params;
+  const { farmId } = await params;
   const body = await request.text();
-  return proxyRequest(`/zones/${id}/rotation`, {
+  return proxyRequest(`/farms/${farmId}/rotation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
-  const { id } = await params;
-  return proxyRequest(`/zones/${id}/rotation`, {
+  const { farmId } = await params;
+  return proxyRequest(`/farms/${farmId}/rotation`, {
     method: 'DELETE',
   });
 }

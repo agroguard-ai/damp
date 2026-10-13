@@ -151,8 +151,6 @@ export interface BoundaryPointValidationResult {
   isValid: boolean;
 }
 
-export type ZonePointValidationResult = BoundaryPointValidationResult;
-
 /**
  * Generic point-in-boundary validator with edge clamping/snapping.
  * When clampInfinite is true (default), points clicked or dragged outside the boundary
@@ -238,18 +236,6 @@ export function isPolygonInsideBoundary(
     isInside: outsideCount === 0,
     outsideCount,
   };
-}
-
-/**
- * Enforces boundary containment and snap-to-edge logic for zone point creation.
- * Maintained for backward compatibility.
- */
-export function validateAndSnapZonePoint(
-  clickedPoint: LatLngTuple,
-  farmPolygon: LatLngTuple[],
-  snapThresholdMeters: number = 20
-): ZonePointValidationResult {
-  return validatePointInBoundary(clickedPoint, farmPolygon, 'del establecimiento', snapThresholdMeters);
 }
 
 /**

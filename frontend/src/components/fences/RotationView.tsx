@@ -18,18 +18,18 @@ import {
   Plus,
   ArrowRight,
 } from 'lucide-react';
-import { zoneRotationsApi } from '@/lib/api/zone-rotations';
+import { rotationsApi } from '@/lib/api/rotations';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
-import type { Zone, Geofence, Animal, ZoneRotationResponse } from '@/types';
+import type { Farm, Geofence, Animal, RotationResponse } from '@/types';
 
 // Load map dynamically to prevent SSR errors
-const ZoneRotationMap = dynamic(() => import('@/components/maps/ZoneRotationMap'), {
+const RotationMap = dynamic(() => import('@/components/maps/RotationMap'), {
   ssr: false,
 });
 
-interface ZoneRotationViewProps {
-  zone: Zone;
+interface RotationViewProps {
+  farm: Pick<Farm, 'id' | 'name' | 'polygonCoordinates'>;
   geofences: Geofence[];
   animals: Animal[];
   onRefreshGeofences?: () => void;
@@ -37,18 +37,18 @@ interface ZoneRotationViewProps {
   readOnly?: boolean;
 }
 
-export default function ZoneRotationView({
-  zone,
+export default function RotationView({
+  farm,
   geofences,
   animals,
   onRefreshGeofences,
   readOnly = false,
-}: ZoneRotationViewProps) {
+}: RotationViewProps) {
   const { toast } = useToast();
   const confirm = useConfirm();
 
   const [loading, setLoading] = useState<boolean>(true);
-  const [rotationData, setRotationData] = useState<ZoneRotationResponse | null>(null);
+  const [rotationData, setRotationData] = useState<RotationResponse | null>(null);
   const [showHeatmap, setShowHeatmap] = useState<boolean>(false);
 
   // Form State for creating a new rotation plan
@@ -63,20 +63,20 @@ export default function ZoneRotationView({
   const [showPostponeModal, setShowPostponeModal] = useState<boolean>(false);
   const [postponeHours, setPostponeHours] = useState<number>(1);
 
-  // Load rotation status for this zone
+  // Load rotation status for this farm
   const loadRotation = useCallback(async () => {
-    if (!zone?.id) return;
+    if (!farm?.id) return;
     setLoading(true);
     try {
-      const data = await zoneRotationsApi.getRotation(zone.id);
+      const data = await rotationsApi.getRotation(farm.id);
       setRotationData(data);
     } catch (err) {
-      console.error('Error fetching zone rotation:', err);
+      console.error('Error fetching rotation:', err);
       setRotationData(null);
     } finally {
       setLoading(false);
     }
-  }, [zone?.id]);
+  }, [farm?.id]);
 
   useEffect(() => {
     loadRotation();
@@ -121,7 +121,7 @@ export default function ZoneRotationView({
 
     // Precondición 1: Animales asignados
     if (!hasAnimals) {
-      const msg = 'La zona no posee animales asignados. Asigne hacienda antes de iniciar la rotación.';
+      const msg = 'El campo no tiene animales. Cargá hacienda antes de iniciar la rotación.';
       setFormError(msg);
       toast.warning(msg);
       return;
@@ -129,8 +129,7 @@ export default function ZoneRotationView({
 
     // Precondición 2 / Camino Alternativo 1: Mínimo dos perímetros
     if (selectedGeofenceIds.length < 2) {
-      const msg =
-        'Se necesitan al menos dos perímetros dentro de la zona para poder configurar una rotación de pastoreo.';
+      const msg = 'Se necesitan al menos dos cercos en el campo para poder configurar una rotación de pastoreo.';
       setFormError(msg);
       toast.warning(msg);
       return;
@@ -139,8 +138,8 @@ export default function ZoneRotationView({
     setFormError(null);
     setSubmitting(true);
     try {
-      await zoneRotationsApi.createRotation(zone.id, {
-        name: planName.trim() || `Rotación de Pastoreo - ${zone.name}`,
+      await rotationsApi.createRotation(farm.id, {
+        name: planName.trim() || `Rotación de Pastoreo - ${farm.name ?? 'Campo'}`,
         frequencyHours,
         geofenceIds: selectedGeofenceIds,
         autoRotate,
@@ -172,7 +171,7 @@ export default function ZoneRotationView({
     if (!ok) return;
 
     try {
-      const res = await zoneRotationsApi.advanceRotation(zone.id);
+      const res = await rotationsApi.advanceRotation(farm.id);
       toast.success(res.message || 'Rotación avanzada exitosamente.');
       await loadRotation();
       onRefreshGeofences?.();
@@ -184,7 +183,7 @@ export default function ZoneRotationView({
   // Camino Alternativo 2: Posponer rotación manualmente
   const handlePostponeRotation = async () => {
     try {
-      const res = await zoneRotationsApi.postponeRotation(zone.id, {
+      const res = await rotationsApi.postponeRotation(farm.id, {
         hours: postponeHours,
       });
       toast.success(res.message);
@@ -200,10 +199,10 @@ export default function ZoneRotationView({
     const isPaused = rotationData?.plan?.status === 'PAUSED';
     try {
       if (isPaused) {
-        await zoneRotationsApi.resumeRotation(zone.id);
+        await rotationsApi.resumeRotation(farm.id);
         toast.success('Rotación de pastoreo reanudada.');
       } else {
-        await zoneRotationsApi.pauseRotation(zone.id);
+        await rotationsApi.pauseRotation(farm.id);
         toast.info('Rotación de pastoreo pausada.');
       }
       await loadRotation();
@@ -217,14 +216,14 @@ export default function ZoneRotationView({
     const ok = await confirm({
       title: 'Finalizar Plan de Rotación',
       description:
-        '¿Deseás dar por terminado el ciclo de rotación actual en este potrero? Los animales conservarán su cerco actual pero no rotarán automáticamente.',
+        '¿Deseás dar por terminado el ciclo de rotación actual en este campo? Los animales conservarán su cerco actual pero no rotarán automáticamente.',
       confirmLabel: 'Finalizar ciclo',
       danger: true,
     });
     if (!ok) return;
 
     try {
-      await zoneRotationsApi.cancelRotation(zone.id);
+      await rotationsApi.cancelRotation(farm.id);
       toast.success('Plan de rotación finalizado.');
       await loadRotation();
       onRefreshGeofences?.();
@@ -245,8 +244,7 @@ export default function ZoneRotationView({
       weightKg: a.weightKg,
       status: a.status,
       animalType: a.animalType ? { name: a.animalType.name, species: a.animalType.species } : null,
-      zone: a.zone ? { name: a.zone.name } : null,
-      latestReading: null, // Will render collar icon based on zone
+      latestReading: null,
     }));
   }, [animals]);
 
@@ -257,16 +255,16 @@ export default function ZoneRotationView({
         <div className="bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/40 rounded-2xl p-4 flex items-start gap-3 text-amber-900 dark:text-amber-200 text-xs">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-bold text-sm">Precondición no cumplida: Sin hacienda en la zona</p>
+            <p className="font-bold text-sm">Precondición no cumplida: el campo no tiene hacienda</p>
             <p>
-              El potrero <b>{zone.name}</b> no posee animales asignados. Para implementar pastoreo rotativo, es
-              necesario que la hacienda esté asignada a este potrero.
+              El campo <b>{farm.name}</b> no tiene animales cargados. Para implementar pastoreo rotativo primero tenés
+              que dar de alta la hacienda.
             </p>
             <Link
               href={`/animals`}
               className="text-amber-700 dark:text-amber-400 font-semibold underline inline-flex items-center gap-1 mt-1"
             >
-              <span>Ir a gestión de animales para asignar a esta zona</span>
+              <span>Ir a gestión de hacienda</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
@@ -279,9 +277,9 @@ export default function ZoneRotationView({
           <div className="space-y-1">
             <p className="font-bold text-sm">Se necesitan al menos dos cercos virtuales</p>
             <p>
-              Actualmente este potrero tiene <b>{geofences.length}</b> cerco(s) delimitado(s). Para establecer una
+              Actualmente este campo tiene <b>{geofences.length}</b> cerco(s) delimitado(s). Para establecer una
               secuencia de rotación incremental, necesitás dibujar al menos dos cercos eléctricos en la pestaña
-              &ldquo;Cercos Eléctricos&rdquo;.
+              &ldquo;Cercos&rdquo;.
             </p>
           </div>
         </div>
@@ -290,7 +288,7 @@ export default function ZoneRotationView({
       {loading ? (
         <div className="py-20 text-center text-xs text-zinc-400 flex flex-col items-center gap-2">
           <div className="w-7 h-7 border-3 border-orange-500/20 border-t-orange-500 rounded-full animate-spin"></div>
-          <span>Consultando estado de rotación del potrero...</span>
+          <span>Consultando estado de la rotación...</span>
         </div>
       ) : isPlanActiveOrPaused ? (
         /* ============================================================ */
@@ -341,8 +339,8 @@ export default function ZoneRotationView({
               </div>
 
               {/* Map displaying From, Current, Next geofences & Hotspots */}
-              <ZoneRotationMap
-                zone={zone}
+              <RotationMap
+                farm={farm}
                 fromGeofence={rotationData?.fromGeofence}
                 currentGeofence={rotationData?.currentGeofence}
                 nextGeofence={rotationData?.nextGeofence}
@@ -613,7 +611,7 @@ export default function ZoneRotationView({
           <div className="max-w-2xl space-y-1">
             <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
               <RotateCw className="w-5 h-5 text-orange-500" />
-              <span>Configurar Rotación de Perímetros en {zone.name}</span>
+              <span>Configurar Rotación de Perímetros en {farm.name}</span>
             </h3>
             <p className="text-xs text-zinc-500">
               Definí una secuencia de cercos virtuales que roten automáticamente según una frecuencia establecida,
@@ -630,7 +628,7 @@ export default function ZoneRotationView({
 
           {readOnly ? (
             <p className="text-xs text-zinc-500 italic">
-              Esta zona no tiene una rotación activa. Tu rol es de solo lectura: la configuración la realiza el
+              Este campo no tiene una rotación activa. Tu rol es de solo lectura: la configuración la realiza el
               administrador o un operador del campo.
             </p>
           ) : (
@@ -645,7 +643,7 @@ export default function ZoneRotationView({
                     type="text"
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
-                    placeholder={`Ej: Rotación Invierno - ${zone.name}`}
+                    placeholder={`Ej: Rotación Invierno - ${farm.name ?? 'Campo'}`}
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500"
                   />
                 </div>
@@ -683,7 +681,7 @@ export default function ZoneRotationView({
                 </div>
 
                 {geofences.length === 0 ? (
-                  <p className="text-xs text-zinc-400 italic">No hay cercos creados en esta zona.</p>
+                  <p className="text-xs text-zinc-400 italic">No hay cercos creados en este campo.</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {geofences.map((gf) => {

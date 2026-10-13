@@ -133,9 +133,9 @@ export default function NewFarmPage() {
 
       toast.success('Establecimiento registrado con éxito');
       // Item 3.1.4 del análisis UX/UI: redirigir directo a alta de animal era un salto abrupto
-      // — sin zonas ni cercos todavía, no hay dónde asignar el animal. El paso lógico siguiente
-      // es delimitar zonas/lotes.
-      router.push(farm ? `/zonas?farmId=${farm.id}` : '/zonas');
+      // — sin cercos todavía, no hay dónde contener al animal. El paso lógico siguiente
+      // es dibujar los cercos del campo.
+      router.push(farm ? `/cercos?farmId=${farm.id}` : '/cercos');
     } catch {
       // Error handled by mutation state
     }
