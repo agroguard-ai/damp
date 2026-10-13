@@ -251,3 +251,17 @@ export function validateAndSnapZonePoint(
 ): ZonePointValidationResult {
   return validatePointInBoundary(clickedPoint, farmPolygon, 'del establecimiento', snapThresholdMeters);
 }
+
+/**
+ * Normaliza las coordenadas de un polígono tal como llegan de la API
+ * (array o string JSON). Devuelve [] si el valor es inválido.
+ */
+export function parsePolygon(raw: unknown): LatLngTuple[] {
+  if (!raw) return [];
+  try {
+    const coords = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(coords) ? (coords as LatLngTuple[]) : [];
+  } catch {
+    return [];
+  }
+}

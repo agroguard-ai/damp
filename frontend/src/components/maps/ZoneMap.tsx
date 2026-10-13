@@ -58,6 +58,8 @@ export interface ZoneMapProps {
   onSelectVertex?: (idx: number | null) => void;
   onSelectZone?: (zone: ZoneItem) => void;
   selectedZoneId?: string | null;
+  /** Clases de altura del contenedor (por defecto 450px). */
+  heightClassName?: string;
 }
 
 function MapAutoBounds({
@@ -187,6 +189,7 @@ export default function ZoneMap({
   onSelectVertex: controlledOnSelectVertex,
   onSelectZone,
   selectedZoneId,
+  heightClassName = 'h-112.5',
 }: ZoneMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
@@ -374,7 +377,7 @@ export default function ZoneMap({
   };
 
   return (
-    <div ref={containerRef} className="w-full h-112.5 rounded-2xl overflow-hidden relative z-10 group">
+    <div ref={containerRef} className={`w-full ${heightClassName} rounded-2xl overflow-hidden relative z-10 group`}>
       {/* In-Map Action Controls */}
       <MapActionControls
         targetRef={containerRef}
@@ -666,13 +669,9 @@ export default function ZoneMap({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span>Hacé clic para añadir al final</span>
+              <span>Clic para agregar otro punto</span>
               <span className="text-zinc-500">•</span>
-              <span className="text-amber-300 font-medium">Clic en un punto para insertar al lado</span>
-              <span className="text-zinc-500">•</span>
-              <span className="text-cyan-300 font-medium">Arrastrá para corregir</span>
-              <span className="text-zinc-500 hidden sm:inline">•</span>
-              <span className="text-zinc-400 hidden sm:inline">Ctrl+Z para deshacer</span>
+              <span className="text-cyan-300 font-medium">Arrastrá un punto para corregirlo</span>
             </div>
           )}
         </div>
