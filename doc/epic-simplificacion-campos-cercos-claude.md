@@ -69,6 +69,10 @@ El análisis del uso del campo se movió a la pantalla **Campos**: cada fila tie
 
 En **Cercos** se quitó la vista "Mapa de calor": el mapa queda solo con los cercos y la capa opcional de animales. El "Ver recorrido" del popup de un animal abre la misma ventana de Recorridos con ese animal ya elegido. El mapa de calor de **Pastoreo rotativo** se mantiene, porque es específico del período de la rotación.
 
+### 1.8 Pastoreo rotativo oculto en la interfaz
+
+La pestaña "Pastoreo rotativo" de Cercos queda **oculta** detrás del flag `FEATURES.grazingRotation` (`frontend/src/lib/features.ts`, en `false`). No se borró nada: el backend (`rotations`, `/farms/:farmId/rotation`), `RotationView` y `RotationMap` siguen implementados. Para retomarlo alcanza con poner el flag en `true`.
+
 ## 2. Cómo probarlo
 
 ```bash
@@ -84,7 +88,7 @@ En la app:
 2. "Nuevo cerco" → el nombre viene sugerido ("Cerco 1"), se puede cargar pastura, y no deja guardar puntos fuera del perímetro del campo.
    "Editar" en un cerco abre el mismo modal con el polígono cargado para ajustarlo.
 3. En **Hacienda**, seleccionar varios animales con collar → "Asignar a cerco".
-4. Pestaña "Pastoreo rotativo" con al menos 2 cercos y animales en el campo.
+4. (Oculto por ahora) Pastoreo rotativo: con `FEATURES.grazingRotation = true`, pestaña en Cercos con al menos 2 cercos y animales en el campo.
 
 `scripts/bootstrap-simulation.js` ya no crea zona; si no se pasa `CENTER_LAT`/`CENTER_LNG`, centra el cerco de prueba en el perímetro del campo.
 

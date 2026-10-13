@@ -16,6 +16,7 @@ import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { parsePolygon } from '@/lib/geo/spatial';
 import { suggestNextName } from '@/lib/suggestName';
+import { FEATURES } from '@/lib/features';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
@@ -45,7 +46,7 @@ function CercosContent() {
 
   const farmIdFromUrl = searchParams?.get('farmId') ?? '';
   const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
-    searchParams?.get('tab') === 'rotation' ? 'rotation' : 'fences'
+    FEATURES.grazingRotation && searchParams?.get('tab') === 'rotation' ? 'rotation' : 'fences'
   );
 
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
@@ -223,35 +224,37 @@ function CercosContent() {
         </div>
       </div>
 
-      {/* Cercos vs Pastoreo rotativo (CU012) */}
-      <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveTab('fences')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'fences'
-              ? 'bg-white dark:bg-zinc-900 text-cyan-700 dark:text-cyan-400 shadow-xs'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-          }`}
-        >
-          <Zap className="w-3.5 h-3.5" />
-          <span>Cercos ({geofences.length})</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('rotation')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'rotation'
-              ? 'bg-white dark:bg-zinc-900 text-orange-600 dark:text-orange-400 shadow-xs'
-              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-          }`}
-        >
-          <RotateCw className="w-3.5 h-3.5" />
-          <span>Pastoreo rotativo</span>
-        </button>
-      </div>
+      {/* Cercos vs Pastoreo rotativo (CU012) — oculto hasta habilitar FEATURES.grazingRotation */}
+      {FEATURES.grazingRotation && (
+        <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab('fences')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'fences'
+                ? 'bg-white dark:bg-zinc-900 text-cyan-700 dark:text-cyan-400 shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Cercos ({geofences.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('rotation')}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'rotation'
+                ? 'bg-white dark:bg-zinc-900 text-orange-600 dark:text-orange-400 shadow-xs'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Pastoreo rotativo</span>
+          </button>
+        </div>
+      )}
 
-      {activeTab === 'rotation' && activeFarm ? (
+      {FEATURES.grazingRotation && activeTab === 'rotation' && activeFarm ? (
         <RotationView
           farm={activeFarm}
           geofences={geofences}
