@@ -7,6 +7,13 @@
 
 > **Aviso sobre versiones anteriores de este doc**: la primera versión describía como "Completado" una integración (`iot.service.ts` → `ml-service` → alertas `HEALTH`) que en realidad **fue eliminada del código el 14/07/2026**, 5 días después de escrita, y nunca se restauró — quedó como aspiración documentada, no como código real. La versión del 17/08/2026 dejó el modelo entrenado pero todavía sin conectar. Esta versión (25/08/2026) sí describe una integración end-to-end verificada.
 
+> **Actualización 13/10/2026**: cómo el backend le arma los datos al modelo cambió. Ya no se mandan "las últimas
+> 48 lecturas": se mandan **48 bloques de 30 min en hora local** con los metros recorridos por bloque, se predice
+> una vez por bloque y en segundo plano. También hay un simulador de escenarios y una vista de las predicciones en
+> el front. Lo que se dice abajo sobre la ventana de 48 lecturas, la llamada en cada lectura y la cantidad de tests
+> quedó desactualizado. Ver [epic-ia-prediccion-salud-claude.md](epic-ia-prediccion-salud-claude.md). El modelo,
+> sus features y sus métricas siguen igual.
+
 ## 1. Qué existe ahora (25/08/2026)
 
 ### 1.1 Modelo LSTM multitarea (`damp-ml-api`)
