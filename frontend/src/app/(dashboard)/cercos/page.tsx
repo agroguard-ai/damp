@@ -20,20 +20,14 @@ import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Flame, Edit3 } from 'lucide-react';
+import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3 } from 'lucide-react';
 import type { Geofence } from '@/types';
 
 const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
 const FarmMapView = dynamic(() => import('@/components/fences/FarmMapView'), { ssr: false });
 const RotationView = dynamic(() => import('@/components/fences/RotationView'), { ssr: false });
 
-type MapView = 'fences' | 'heatmap';
 type FenceModalState = { mode: 'create' } | { mode: 'edit'; fence: Geofence } | null;
-
-const MAP_VIEWS: { value: MapView; label: string; icon: typeof Zap; active: string }[] = [
-  { value: 'fences', label: 'Cercos', icon: Zap, active: 'text-cyan-700 dark:text-cyan-400' },
-  { value: 'heatmap', label: 'Mapa de calor', icon: Flame, active: 'text-orange-600 dark:text-orange-400' },
-];
 
 export default function CercosPage() {
   return (
@@ -53,7 +47,6 @@ function CercosContent() {
   const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
     searchParams?.get('tab') === 'rotation' ? 'rotation' : 'fences'
   );
-  const [mapView, setMapView] = useState<MapView>('fences');
 
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
 
@@ -269,26 +262,8 @@ function CercosContent() {
       ) : (
         <>
           {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs space-y-2">
-            <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit max-w-full overflow-x-auto">
-              {MAP_VIEWS.map(({ value, label, icon: ViewIcon, active }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMapView(value)}
-                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    mapView === value
-                      ? `bg-white dark:bg-zinc-900 shadow-xs ${active}`
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
-                >
-                  <ViewIcon className="w-3.5 h-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <FarmMapView farmId={activeFarmId} farmPolygon={farmPolygon} geofences={geofences} mode={mapView} />
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
+            {activeFarm && <FarmMapView farm={activeFarm} geofences={geofences} />}
           </div>
 
           {/* Listado de Cercos */}

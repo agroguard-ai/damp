@@ -10,9 +10,9 @@ import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
 import type { TrajectoryPoint, HeatmapPoint } from '@/types';
 
-const createTrajectoryEndpointIcon = (type: 'start' | 'end') => {
+const createTrajectoryEndpointIcon = (type: 'start' | 'end', color: string) => {
   const isStart = type === 'start';
-  const bg = isStart ? '#16a34a' : '#2563eb';
+  const bg = isStart ? '#16a34a' : color;
   const icon = isStart ? '🟢' : '🏁';
   return new L.DivIcon({
     className: 'trajectory-endpoint-icon',
@@ -45,6 +45,13 @@ interface Geofence {
   polygonCoordinates: unknown;
 }
 
+export interface MapTrajectory {
+  id: string;
+  name: string;
+  color: string;
+  points: TrajectoryPoint[];
+}
+
 export interface LiveTrackingMapProps {
   /** Perímetro del campo (se dibuja como referencia y para encuadrar el mapa). */
   farmPolygon?: [number, number][];
@@ -55,8 +62,8 @@ export interface LiveTrackingMapProps {
   animalsReferenceTime?: number;
   /** Botón "Animales" de los controles del mapa. */
   animalsToggle?: AnimalsToggleControl;
-  trajectory?: TrajectoryPoint[] | null;
-  trajectoryAnimalName?: string | null;
+  /** Recorridos a dibujar (uno por animal, cada uno con su color). */
+  trajectories?: MapTrajectory[];
   heatmapPoints?: HeatmapPoint[] | null;
   showHeatmap?: boolean;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
@@ -78,31 +85,34 @@ function MapAutoBounds({
   farmPolygon,
   geofences,
   animals,
-  trajectory,
+  trajectories,
   recenterTick,
 }: {
   farmPolygon: [number, number][];
   geofences: Geofence[];
   animals: MapAnimal[];
-  trajectory?: TrajectoryPoint[] | null;
+  trajectories: MapTrajectory[];
   recenterTick: number;
 }) {
   const map = useMap();
   const didInitialFit = useRef(false);
   const lastRecenterTick = useRef(recenterTick);
-  const prevTrajectoryLen = useRef(trajectory?.length ?? 0);
+  const trajectoryKey = trajectories.map((t) => `${t.id}:${t.points.length}`).join('|');
+  const prevTrajectoryKey = useRef(trajectoryKey);
 
   useEffect(() => {
     const manualRecenter = recenterTick !== lastRecenterTick.current;
     lastRecenterTick.current = recenterTick;
 
-    const trajectoryChanged = (trajectory?.length ?? 0) !== prevTrajectoryLen.current;
-    prevTrajectoryLen.current = trajectory?.length ?? 0;
+    const trajectoryChanged = trajectoryKey !== prevTrajectoryKey.current;
+    prevTrajectoryKey.current = trajectoryKey;
 
-    // Si hay un recorrido activo recién cargado o el usuario pide recentrarlo
-    if (trajectory && trajectory.length > 0 && (trajectoryChanged || manualRecenter)) {
-      const coords: [number, number][] = trajectory.map((p) => [p.latitude, p.longitude]);
-      map.fitBounds(coords, { padding: [50, 50] });
+    // Si hay recorridos recién cargados o el usuario pide recentrar, se encuadran todos
+    const trajectoryCoords: [number, number][] = trajectories.flatMap((t) =>
+      t.points.map((p) => [p.latitude, p.longitude] as [number, number])
+    );
+    if (trajectoryCoords.length > 0 && (trajectoryChanged || manualRecenter)) {
+      map.fitBounds(trajectoryCoords, { padding: [50, 50] });
       return;
     }
 
@@ -122,7 +132,7 @@ function MapAutoBounds({
       map.fitBounds(coords, { padding: [40, 40] });
       didInitialFit.current = true;
     }
-  }, [farmPolygon, geofences, animals, trajectory, map, recenterTick]);
+  }, [farmPolygon, geofences, animals, trajectories, trajectoryKey, map, recenterTick]);
 
   return null;
 }
@@ -201,7 +211,15 @@ function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
   );
 }
 
-function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; animalName?: string | null }) {
+function TrajectoryLayer({
+  points,
+  animalName,
+  color,
+}: {
+  points: TrajectoryPoint[];
+  animalName: string;
+  color: string;
+}) {
   if (!points || points.length === 0) return null;
 
   const positions: [number, number][] = points.map((p) => [p.latitude, p.longitude]);
@@ -217,20 +235,23 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
       <Polyline
         positions={positions}
         pathOptions={{
-          color: '#2563eb',
+          color,
           weight: 4,
           opacity: 0.85,
         }}
       />
 
       {/* Start Point */}
-      <Marker position={[startPoint.latitude, startPoint.longitude]} icon={createTrajectoryEndpointIcon('start')}>
+      <Marker
+        position={[startPoint.latitude, startPoint.longitude]}
+        icon={createTrajectoryEndpointIcon('start', color)}
+      >
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
             <span className="inline-block bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
               🟢 Punto de Partida
             </span>
-            <h4 className="font-bold">{animalName || 'Animal'}</h4>
+            <h4 className="font-bold">{animalName}</h4>
             <p className="text-zinc-600">Fecha: {new Date(startPoint.timestamp).toLocaleString()}</p>
             <p className="text-zinc-600">Temp: {startPoint.temperature.toFixed(1)} °C</p>
           </div>
@@ -244,15 +265,17 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
           center={[pt.latitude, pt.longitude]}
           radius={4}
           pathOptions={{
-            color: '#1d4ed8',
-            fillColor: '#60a5fa',
+            color,
+            fillColor: color,
             fillOpacity: 0.9,
             weight: 1.5,
           }}
         >
           <Popup>
             <div className="p-1.5 text-xs text-zinc-900">
-              <p className="font-semibold text-blue-600">Punto intermedio</p>
+              <p className="font-semibold" style={{ color }}>
+                {animalName} · punto intermedio
+              </p>
               <p className="text-[11px] text-zinc-600">Hora: {new Date(pt.timestamp).toLocaleString()}</p>
               <p className="text-[11px] text-zinc-600">Temp: {pt.temperature.toFixed(1)} °C</p>
             </div>
@@ -262,13 +285,13 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
 
       {/* End Point */}
       {points.length > 1 && (
-        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end')}>
+        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end', color)}>
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
               <span className="inline-block bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
                 🏁 Fin / Posición más reciente
               </span>
-              <h4 className="font-bold">{animalName || 'Animal'}</h4>
+              <h4 className="font-bold">{animalName}</h4>
               <p className="text-zinc-600">Fecha: {new Date(endPoint.timestamp).toLocaleString()}</p>
               <p className="text-zinc-600">Temp: {endPoint.temperature.toFixed(1)} °C</p>
             </div>
@@ -285,8 +308,7 @@ export default function LiveTrackingMap({
   animals,
   animalsReferenceTime = 0,
   animalsToggle,
-  trajectory,
-  trajectoryAnimalName,
+  trajectories = [],
   heatmapPoints,
   showHeatmap = false,
   onSelectAnimalForTrajectory,
@@ -377,12 +399,12 @@ export default function LiveTrackingMap({
         {showHeatmap && heatmapPoints && heatmapPoints.length > 0 && <HeatmapLayer points={heatmapPoints} />}
 
         {/* Capa de recorrido histórico si está cargada */}
-        {trajectory && trajectory.length > 0 && (
-          <TrajectoryLayer points={trajectory} animalName={trajectoryAnimalName} />
-        )}
+        {trajectories.map((t) => (
+          <TrajectoryLayer key={t.id} points={t.points} animalName={t.name} color={t.color} />
+        ))}
 
         {/* Marcadores de animales (ocultos o mostrados según contexto) */}
-        {(!trajectory || trajectory.length === 0) && (
+        {trajectories.length === 0 && (
           <AnimalMarkersLayer
             animals={animals}
             referenceTime={animalsReferenceTime}
@@ -394,7 +416,7 @@ export default function LiveTrackingMap({
           farmPolygon={farmPolygon}
           geofences={geofences}
           animals={animals}
-          trajectory={trajectory}
+          trajectories={trajectories}
           recenterTick={recenterTick}
         />
       </MapContainer>

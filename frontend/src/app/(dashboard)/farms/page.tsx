@@ -30,9 +30,13 @@ import {
   Save,
   AlertTriangle,
   Check,
+  Flame,
+  Route,
 } from 'lucide-react';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
+const HeatmapModal = dynamic(() => import('@/components/farms/HeatmapModal'), { ssr: false });
+const TrajectoriesModal = dynamic(() => import('@/components/farms/TrajectoriesModal'), { ssr: false });
 
 export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
@@ -49,6 +53,10 @@ export default function FarmsPage() {
   const { mutate: deleteFarm, loading: deletingFarm } = useMutation(farmsApi.delete);
 
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Mapas de análisis: calor de uso y recorridos de la hacienda
+  const [heatmapFarm, setHeatmapFarm] = useState<Farm | null>(null);
+  const [trajectoriesFarm, setTrajectoriesFarm] = useState<Farm | null>(null);
 
   // Rigid Perimeter Map Modal State
   const [perimeterModalFarm, setPerimeterModalFarm] = useState<Farm | null>(null);
@@ -366,6 +374,26 @@ export default function FarmsPage() {
                           >
                             <Zap className="w-4 h-4" />
                           </Link>
+
+                          {/* Botón Mapa de calor */}
+                          <button
+                            type="button"
+                            onClick={() => setHeatmapFarm(farm)}
+                            className="p-1.5 text-zinc-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Ver mapa de calor: dónde pasó más tiempo la hacienda"
+                          >
+                            <Flame className="w-4 h-4" />
+                          </button>
+
+                          {/* Botón Recorridos */}
+                          <button
+                            type="button"
+                            onClick={() => setTrajectoriesFarm(farm)}
+                            className="p-1.5 text-zinc-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Ver recorridos de los animales"
+                          >
+                            <Route className="w-4 h-4" />
+                          </button>
 
                           {/* Botón Usuarios / Equipo: solo el administrador de la granja gestiona el personal */}
                           {isAdmin && (
@@ -756,6 +784,9 @@ export default function FarmsPage() {
           </div>
         </div>
       )}
+
+      {heatmapFarm && <HeatmapModal farm={heatmapFarm} onClose={() => setHeatmapFarm(null)} />}
+      {trajectoriesFarm && <TrajectoriesModal farm={trajectoriesFarm} onClose={() => setTrajectoriesFarm(null)} />}
     </div>
   );
 }

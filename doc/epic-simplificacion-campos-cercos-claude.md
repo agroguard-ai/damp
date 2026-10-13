@@ -60,6 +60,15 @@ Todos los mapas asociados a un campo (Cercos, Mapa de calor, el modal de crear/e
 - Los marcadores se movieron a `components/maps/AnimalMarkersLayer.tsx` para reusarlos en todos los mapas.
 - De paso se arregló `RotationMap`, que nunca mostraba animales (recibía la hacienda sin posición).
 
+### 1.7 Mapa de calor y recorridos desde Campos
+
+El análisis del uso del campo se movió a la pantalla **Campos**: cada fila tiene dos botones nuevos.
+
+- 🔥 **Mapa de calor** (`components/farms/HeatmapModal.tsx`): ventana con el perímetro y los cercos de fondo, ventana de 7 / 15 / 30 días y leyenda de intensidad.
+- 📍 **Recorridos** (`components/farms/TrajectoriesModal.tsx`): lista de animales del campo con buscador; se eligen **hasta 5** y un período (Hoy / 7 / 30 días). Cada recorrido se dibuja con su color. Es un request por animal (la API de recorrido es individual); si uno falla no rompe el resto.
+
+En **Cercos** se quitó la vista "Mapa de calor": el mapa queda solo con los cercos y la capa opcional de animales. El "Ver recorrido" del popup de un animal abre la misma ventana de Recorridos con ese animal ya elegido. El mapa de calor de **Pastoreo rotativo** se mantiene, porque es específico del período de la rotación.
+
 ## 2. Cómo probarlo
 
 ```bash
