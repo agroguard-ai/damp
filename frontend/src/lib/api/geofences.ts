@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { Geofence, CreateGeofencePayload } from '@/types';
+import type { Geofence, CreateGeofencePayload, UpdateGeofencePayload } from '@/types';
 
 export const geofencesApi = {
   /** GET /api/geofences?farmId=xxx — returns all geofences for a given farm */
@@ -9,6 +9,13 @@ export const geofencesApi = {
   create: (data: CreateGeofencePayload): Promise<Geofence> =>
     apiFetch<Geofence>('/api/geofences', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** PATCH /api/geofences/[id] — edits name, pasture and/or polygon of a geofence */
+  update: ({ id, ...data }: { id: string } & UpdateGeofencePayload): Promise<Geofence> =>
+    apiFetch<Geofence>(`/api/geofences/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 

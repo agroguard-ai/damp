@@ -129,4 +129,60 @@ describe('GeofencesService', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('update', () => {
+    const farm = { id: 'farm-1', name: 'Estancia A', userId: 'user-1', polygonCoordinates: farmPolygon };
+    const insidePolygon: [number, number][] = [
+      [-34.55, -58.55],
+      [-34.55, -58.45],
+      [-34.45, -58.45],
+    ];
+
+    it('actualiza nombre y pastura sin tocar el polígono ni los collares', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', farm });
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', animalGeofences: [] });
+
+      await service.update('geo-1', { name: ' Cerco Sur ', pastureType: '' }, 'user-1');
+
+      expect(prisma.geofence.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { name: 'Cerco Sur', pastureType: null } })
+      );
+      expect(prisma.collar.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('al cambiar el polígono marca los collares de sus animales como pendientes', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', farm });
+      prisma.geofence.update.mockResolvedValue({
+        id: 'geo-1',
+        animalGeofences: [{ animalId: 'a-1' }, { animalId: 'a-2' }],
+      });
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10 }, { collarId: 11 }]);
+
+      await service.update('geo-1', { polygonCoordinates: insidePolygon }, 'user-1');
+
+      expect(prisma.collar.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: [10, 11] } },
+        data: { fenceNotificationPending: true },
+      });
+    });
+
+    it('rechaza un polígono con vértices fuera del perímetro del campo', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', farm });
+
+      await expect(
+        service.update(
+          'geo-1',
+          {
+            polygonCoordinates: [
+              [-34.55, -58.55],
+              [-34.55, -58.45],
+              [-35.0, -58.45],
+            ],
+          },
+          'user-1'
+        )
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.geofence.update).not.toHaveBeenCalled();
+    });
+  });
 });

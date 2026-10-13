@@ -29,3 +29,9 @@ export interface CreateGeofencePayload {
   polygonCoordinates: [number, number][];
   animalIds: string[];
 }
+
+export interface UpdateGeofencePayload {
+  name?: string;
+  pastureType?: string | null;
+  polygonCoordinates?: [number, number][];
+}

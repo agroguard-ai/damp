@@ -33,6 +33,7 @@ Ahora la jerarquía es **Campo → Cerco**. Si un establecimiento grande necesit
 | `/zones/:zoneId/rotation/*` | `/farms/:farmId/rotation/*` (módulo nuevo `rotations`) |
 | `POST /animals/bulk/zone` | `POST /animals/bulk/geofence` (asigna o quita varios animales de un cerco; exige collar activo) |
 | `PATCH /animals/:id/zone` | Eliminado (ya existía `PATCH /animals/:id/geofence`) |
+| — (no se podían editar cercos) | `PATCH /geofences/:id`: edita nombre, pastura y/o polígono (validado contra el campo). Si cambia el polígono, los collares de sus animales quedan pendientes de recibir el cerco nuevo. |
 | `GET /animals?zoneId=` | `GET /animals?geofenceId=` |
 | `GET /animals/locations` devolvía `zone` | Devuelve `geofence` (cerco actual del animal) |
 
@@ -64,6 +65,7 @@ pnpm test
 En la app:
 1. Crear un campo con perímetro → debería redirigir a **Cercos**.
 2. "Nuevo cerco" → el nombre viene sugerido ("Cerco 1"), se puede cargar pastura, y no deja guardar puntos fuera del perímetro del campo.
+   "Editar" en un cerco abre el mismo modal con el polígono cargado para ajustarlo.
 3. En **Hacienda**, seleccionar varios animales con collar → "Asignar a cerco".
 4. Pestaña "Pastoreo rotativo" con al menos 2 cercos y animales en el campo.
 
@@ -71,7 +73,6 @@ En la app:
 
 ## 3. Pendientes
 
-- **Editar un cerco**: la API solo permite crear y desactivar cercos, no modificarlos (ni el polígono ni la pastura).
 - **Rotación por campo con varios rodeos**: hoy rotan *todos* los animales activos del campo. Si un campo tiene rodeos separados que no deben rotar juntos, habría que guardar en el plan qué animales participan.
 - **Paso "vincular Gateway" del alta de campo**: estaba bloqueado porque un gateway necesitaba una zona; ese bloqueo ya no existe, se puede retomar.
 - Los epics anteriores (`epic-6-7`, `epic-4`, `epic-3`, etc.) siguen mencionando zonas: son registro histórico y no se reescribieron.

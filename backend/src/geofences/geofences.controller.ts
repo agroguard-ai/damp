@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { GeofencesService } from './geofences.service';
 import { CreateGeofenceDto } from './dto/create-geofence.dto';
+import { UpdateGeofenceDto } from './dto/update-geofence.dto';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
@@ -25,6 +26,13 @@ export class GeofencesController {
       throw new BadRequestException('farmId query parameter is required');
     }
     return this.geofencesService.findAllByFarm(farmId, userId);
+  }
+
+  @Patch(':id')
+  @ResolveFarmIdFrom('geofence')
+  @RequireFarmRole('ADMIN', 'OPERATOR')
+  update(@Param('id') id: string, @Body() dto: UpdateGeofenceDto, @CurrentUser('sub') userId: string) {
+    return this.geofencesService.update(id, dto, userId);
   }
 
   @Patch(':id/deactivate')
