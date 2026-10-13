@@ -24,8 +24,4 @@ export class CreateAnimalDto {
   @IsUUID()
   @IsOptional()
   animalTypeId?: string;
-
-  @IsUUID()
-  @IsOptional()
-  zoneId?: string;
 }

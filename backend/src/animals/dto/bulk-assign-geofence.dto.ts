@@ -1,6 +1,6 @@
 import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
 
-export class BulkAssignZoneDto {
+export class BulkAssignGeofenceDto {
   @IsUUID()
   farmId: string;
 
@@ -10,5 +10,5 @@ export class BulkAssignZoneDto {
 
   @IsUUID()
   @IsOptional()
-  zoneId?: string | null;
+  geofenceId?: string | null;
 }

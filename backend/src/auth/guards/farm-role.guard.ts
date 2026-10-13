@@ -29,17 +29,10 @@ type FarmIdResolver = (prisma: PrismaClient, resourceId: string) => Promise<stri
 const FARM_ID_RESOLVERS: Record<FarmIdResource, FarmIdResolver> = {
   animal: async (prisma, id) =>
     (await prisma.animal.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  zone: async (prisma, id) =>
-    (await prisma.zone.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
   gateway: async (prisma, id) =>
     (await prisma.gateway.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  geofence: async (prisma, id) => {
-    const geofence = await prisma.geofence.findUnique({
-      where: { id },
-      select: { zone: { select: { farmId: true } } },
-    });
-    return geofence?.zone.farmId ?? null;
-  },
+  geofence: async (prisma, id) =>
+    (await prisma.geofence.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
   alert: async (prisma, id) => {
     const alert = await prisma.alert.findUnique({ where: { id }, select: { animal: { select: { farmId: true } } } });
     return alert?.animal.farmId ?? null;
@@ -151,7 +144,9 @@ export class FarmRoleGuard implements CanActivate {
     // Cascada de suspensión: si el dueño de la granja está suspendido,
     // se inhabilita el acceso para todos los miembros de esa granja
     if (farmUser.farm?.user && !farmUser.farm.user.isActive) {
-      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
+      throw new ForbiddenException(
+        'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'
+      );
     }
 
     request.farmUser = farmUser;

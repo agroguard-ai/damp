@@ -1,10 +1,9 @@
-import { ZoneRotationsService } from './zone-rotations.service';
+import { RotationsService } from './rotations.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 function makePrismaMock() {
   return {
     farm: { findUnique: jest.fn() },
-    zone: { findUnique: jest.fn() },
     animal: { findMany: jest.fn() },
     collar: { updateMany: jest.fn() },
     geofence: {
@@ -12,7 +11,7 @@ function makePrismaMock() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-    zoneRotationPlan: {
+    rotationPlan: {
       create: jest.fn(),
       findFirst: jest.fn(),
       findUnique: jest.fn(),
@@ -20,7 +19,7 @@ function makePrismaMock() {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-    zoneRotationStep: {
+    rotationStep: {
       update: jest.fn(),
     },
     animalGeofence: {
@@ -34,14 +33,14 @@ function makePrismaMock() {
   };
 }
 
-describe('ZoneRotationsService (CU012)', () => {
+describe('RotationsService (CU012)', () => {
   let prisma: ReturnType<typeof makePrismaMock>;
-  let service: ZoneRotationsService;
+  let service: RotationsService;
 
   beforeEach(() => {
     prisma = makePrismaMock();
     prisma.$transaction = jest.fn(async (cb) => cb(prisma));
-    service = new ZoneRotationsService(prisma as any);
+    service = new RotationsService(prisma as any);
   });
 
   afterEach(() => {
@@ -49,13 +48,7 @@ describe('ZoneRotationsService (CU012)', () => {
   });
 
   describe('createRotation', () => {
-    it('falla con BadRequestException si no hay animales asignados a la zona (Precondición)', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        name: 'Potrero Norte',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
+    it('falla con BadRequestException si no hay animales en el campo (Precondición)', async () => {
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
@@ -65,7 +58,7 @@ describe('ZoneRotationsService (CU012)', () => {
 
       await expect(
         service.createRotation(
-          'zone-1',
+          'farm-1',
           {
             frequencyHours: 24,
             geofenceIds: ['geo-1', 'geo-2'],
@@ -76,24 +69,18 @@ describe('ZoneRotationsService (CU012)', () => {
     });
 
     it('falla con BadRequestException si se define un solo perímetro (Camino Alternativo 1)', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        name: 'Potrero Norte',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
         isActive: true,
       });
       prisma.animal.findMany.mockResolvedValue([
-        { id: 'animal-1', zoneId: 'zone-1', animalCollars: [{ collarId: 10 }] },
+        { id: 'animal-1', farmId: 'farm-1', animalCollars: [{ collarId: 10 }] },
       ]);
 
       await expect(
         service.createRotation(
-          'zone-1',
+          'farm-1',
           {
             frequencyHours: 24,
             geofenceIds: ['geo-1'], // Solo 1 perímetro
@@ -104,29 +91,23 @@ describe('ZoneRotationsService (CU012)', () => {
     });
 
     it('crea el plan de rotación y activa el paso 0 asignando los animales con collar', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        name: 'Potrero Norte',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
         isActive: true,
       });
       prisma.animal.findMany.mockResolvedValue([
-        { id: 'animal-1', zoneId: 'zone-1', animalCollars: [{ collarId: 10 }] },
-        { id: 'animal-2', zoneId: 'zone-1', animalCollars: [{ collarId: 11 }] },
+        { id: 'animal-1', farmId: 'farm-1', animalCollars: [{ collarId: 10 }] },
+        { id: 'animal-2', farmId: 'farm-1', animalCollars: [{ collarId: 11 }] },
       ]);
       prisma.geofence.findMany.mockResolvedValue([
-        { id: 'geo-1', zoneId: 'zone-1', name: 'Cerco A' },
-        { id: 'geo-2', zoneId: 'zone-1', name: 'Cerco B' },
+        { id: 'geo-1', farmId: 'farm-1', name: 'Cerco A' },
+        { id: 'geo-2', farmId: 'farm-1', name: 'Cerco B' },
       ]);
 
       const mockPlan = {
         id: 'plan-1',
-        zoneId: 'zone-1',
+        farmId: 'farm-1',
         status: 'ACTIVE',
         frequencyHours: 12,
         currentStepIndex: 0,
@@ -136,10 +117,10 @@ describe('ZoneRotationsService (CU012)', () => {
           { id: 'step-2', geofenceId: 'geo-2', orderIndex: 1, status: 'PENDING' },
         ],
       };
-      prisma.zoneRotationPlan.create.mockResolvedValue(mockPlan);
+      prisma.rotationPlan.create.mockResolvedValue(mockPlan);
 
       const result = await service.createRotation(
-        'zone-1',
+        'farm-1',
         {
           name: 'Rotación Verano',
           frequencyHours: 12,
@@ -168,11 +149,6 @@ describe('ZoneRotationsService (CU012)', () => {
 
   describe('advanceRotation (Camino Alternativo 2: adelantar manualmente)', () => {
     it('avanza al siguiente cerco sin romper el calendario y actualiza la asignación de animales', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
@@ -181,7 +157,7 @@ describe('ZoneRotationsService (CU012)', () => {
 
       const currentPlan = {
         id: 'plan-1',
-        zoneId: 'zone-1',
+        farmId: 'farm-1',
         status: 'ACTIVE',
         frequencyHours: 24,
         currentStepIndex: 0,
@@ -190,29 +166,26 @@ describe('ZoneRotationsService (CU012)', () => {
           { id: 'step-1', geofenceId: 'geo-1', orderIndex: 0, status: 'ACTIVE' },
           { id: 'step-2', geofenceId: 'geo-2', orderIndex: 1, status: 'PENDING' },
         ],
-        zone: { id: 'zone-1' },
       };
 
-      prisma.zoneRotationPlan.findFirst.mockResolvedValue(currentPlan);
-      prisma.zoneRotationPlan.findUnique.mockResolvedValue(currentPlan);
-      prisma.animal.findMany.mockResolvedValue([
-        { id: 'a1', zoneId: 'zone-1', animalCollars: [{ collarId: 10 }] },
-      ]);
-      prisma.zoneRotationPlan.update.mockResolvedValue({
+      prisma.rotationPlan.findFirst.mockResolvedValue(currentPlan);
+      prisma.rotationPlan.findUnique.mockResolvedValue(currentPlan);
+      prisma.animal.findMany.mockResolvedValue([{ id: 'a1', farmId: 'farm-1', animalCollars: [{ collarId: 10 }] }]);
+      prisma.rotationPlan.update.mockResolvedValue({
         ...currentPlan,
         currentStepIndex: 1,
       });
 
-      const res = await service.advanceRotation('zone-1', 'user-1');
+      const res = await service.advanceRotation('farm-1', 'user-1');
 
       expect(res).toBeDefined();
-      expect(prisma.zoneRotationStep.update).toHaveBeenCalledWith(
+      expect(prisma.rotationStep.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'step-1' },
           data: expect.objectContaining({ status: 'COMPLETED' }),
         })
       );
-      expect(prisma.zoneRotationStep.update).toHaveBeenCalledWith(
+      expect(prisma.rotationStep.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'step-2' },
           data: expect.objectContaining({ status: 'ACTIVE' }),
@@ -223,11 +196,6 @@ describe('ZoneRotationsService (CU012)', () => {
 
   describe('postponeRotation (Camino Alternativo 2: posponer manualmente)', () => {
     it('pospone la próxima rotación por las horas indicadas', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
@@ -236,20 +204,20 @@ describe('ZoneRotationsService (CU012)', () => {
 
       const now = new Date();
       const currentNext = new Date(now.getTime() + 5 * 3600 * 1000);
-      prisma.zoneRotationPlan.findFirst.mockResolvedValue({
+      prisma.rotationPlan.findFirst.mockResolvedValue({
         id: 'plan-1',
-        zoneId: 'zone-1',
+        farmId: 'farm-1',
         status: 'ACTIVE',
         nextRotationAt: currentNext,
       });
-      prisma.zoneRotationPlan.update.mockImplementation(({ data }) =>
+      prisma.rotationPlan.update.mockImplementation(({ data }) =>
         Promise.resolve({ nextRotationAt: data.nextRotationAt })
       );
 
-      const res = await service.postponeRotation('zone-1', { hours: 3 }, 'user-1');
+      const res = await service.postponeRotation('farm-1', { hours: 3 }, 'user-1');
 
       expect(res.message).toContain('3 hora(s)');
-      expect(prisma.zoneRotationPlan.update).toHaveBeenCalledWith(
+      expect(prisma.rotationPlan.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'plan-1' },
           data: expect.objectContaining({
@@ -261,30 +229,20 @@ describe('ZoneRotationsService (CU012)', () => {
   });
 
   describe('getRotation', () => {
-    it('retorna plan null si la zona no tiene rotaciones configuradas', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
+    it('retorna plan null si el campo no tiene rotaciones configuradas', async () => {
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
         isActive: true,
       });
-      prisma.zoneRotationPlan.findFirst.mockResolvedValue(null);
+      prisma.rotationPlan.findFirst.mockResolvedValue(null);
 
-      const result = await service.getRotation('zone-1', 'user-1');
+      const result = await service.getRotation('farm-1', 'user-1');
 
       expect(result.plan).toBeNull();
     });
 
     it('retorna estado con fromGeofence, currentGeofence y nextGeofence', async () => {
-      prisma.zone.findUnique.mockResolvedValue({
-        id: 'zone-1',
-        farmId: 'farm-1',
-        farm: { id: 'farm-1', userId: 'user-1' },
-      });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
@@ -295,9 +253,9 @@ describe('ZoneRotationsService (CU012)', () => {
       const geoB = { id: 'geo-2', name: 'Cerco 2' };
       const geoC = { id: 'geo-3', name: 'Cerco 3' };
 
-      prisma.zoneRotationPlan.findFirst.mockResolvedValue({
+      prisma.rotationPlan.findFirst.mockResolvedValue({
         id: 'plan-1',
-        zoneId: 'zone-1',
+        farmId: 'farm-1',
         status: 'ACTIVE',
         currentStepIndex: 1, // En el paso 1 (Cerco 2)
         totalSteps: 3,
@@ -318,11 +276,9 @@ describe('ZoneRotationsService (CU012)', () => {
           animalCollars: [{ collarId: 101 }],
         },
       ]);
-      prisma.telemetryReading.findMany.mockResolvedValue([
-        { latitude: -34.5, longitude: -58.5 },
-      ]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ latitude: -34.5, longitude: -58.5 }]);
 
-      const result = await service.getRotation('zone-1', 'user-1');
+      const result = await service.getRotation('farm-1', 'user-1');
 
       expect(result.fromGeofence).toEqual(geoA); // Desde dónde partió
       expect(result.currentGeofence).toEqual(geoB); // Dónde está ahora
@@ -350,9 +306,9 @@ describe('ZoneRotationsService (CU012)', () => {
       const lastRotatedAt = new Date(Date.now() - 15 * 60 * 1000);
       const nextRotationAt = new Date(Date.now() + 45 * 60 * 1000);
 
-      prisma.zoneRotationPlan.findFirst.mockResolvedValue({
+      prisma.rotationPlan.findFirst.mockResolvedValue({
         id: 'plan-rot',
-        zoneId: 'zone-1',
+        farmId: 'farm-1',
         status: 'ACTIVE',
         frequencyHours: 1, // 60 min -> 12 pasos de 5 min
         lastRotatedAt,
@@ -371,7 +327,7 @@ describe('ZoneRotationsService (CU012)', () => {
         ],
       });
 
-      const result = await service.resolveActiveCoordinatesForAnimal('animal-1', 'zone-1');
+      const result = await service.resolveActiveCoordinatesForAnimal('animal-1', 'farm-1');
 
       expect(result).not.toBeNull();
       expect(result?.polygon).toBeDefined();

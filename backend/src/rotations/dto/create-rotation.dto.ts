@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsInt, Min, IsArray, ArrayMinSize, IsBoolean } from 'class-validator';
 
-export class CreateZoneRotationDto {
+export class CreateRotationDto {
   @IsOptional()
   @IsString()
   name?: string;
@@ -11,7 +11,7 @@ export class CreateZoneRotationDto {
 
   @IsArray({ message: 'Debe especificar una lista de cercos virtuales.' })
   @ArrayMinSize(2, {
-    message: 'Se requieren al menos dos cercos virtuales dentro de la zona para poder configurar una rotación de pastoreo.',
+    message: 'Se requieren al menos dos cercos virtuales en el campo para poder configurar una rotación de pastoreo.',
   })
   @IsString({ each: true })
   geofenceIds: string[];

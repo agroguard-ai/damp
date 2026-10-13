@@ -8,12 +8,12 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { CreateZoneRotationDto } from './dto/create-zone-rotation.dto';
+import { CreateRotationDto } from './dto/create-rotation.dto';
 import { PostponeRotationDto } from './dto/postpone-rotation.dto';
 
 @Injectable()
-export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(ZoneRotationsService.name);
+export class RotationsService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RotationsService.name);
   private autoRotateInterval: NodeJS.Timeout | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
@@ -63,55 +63,41 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
     return { farm, isAdmin, isOwner };
   }
 
-  private async getZoneWithAccess(zoneId: string, userId: string, requireAdmin: boolean = false) {
-    const zone = await this.prisma.zone.findUnique({
-      where: { id: zoneId },
-      include: { farm: true },
-    });
-
-    if (!zone) {
-      throw new NotFoundException(`La zona con ID ${zoneId} no existe.`);
-    }
-
-    await this.checkFarmAccess(zone.farmId, userId, requireAdmin);
-    return zone;
-  }
-
   /**
-   * Crea e inicia un plan de rotación de perímetros dentro de una zona (CU012).
+   * Crea e inicia un plan de rotación de perímetros dentro de un campo (CU012).
    */
-  async createRotation(zoneId: string, dto: CreateZoneRotationDto, userId: string) {
-    const zone = await this.getZoneWithAccess(zoneId, userId, false);
+  async createRotation(farmId: string, dto: CreateRotationDto, userId: string) {
+    const { farm } = await this.checkFarmAccess(farmId, userId, false);
 
-    // Precondición 1: Debe haber animales asignados a la zona
-    const animalsInZone = await this.prisma.animal.findMany({
-      where: { zoneId, isArchived: false },
+    // Precondición 1: Debe haber animales activos en el campo
+    const animalsInFarm = await this.prisma.animal.findMany({
+      where: { farmId, isArchived: false },
       include: {
         animalCollars: { where: { endAt: null } },
       },
     });
 
-    if (animalsInZone.length === 0) {
+    if (animalsInFarm.length === 0) {
       throw new BadRequestException(
-        'Debe existir al menos un animal asignado a la zona para poder iniciar una rotación de perímetros.'
+        'Debe existir al menos un animal en el campo para poder iniciar una rotación de perímetros.'
       );
     }
 
     // Precondición 2 / Camino Alternativo 1: Mínimo 2 perímetros
     if (!dto.geofenceIds || dto.geofenceIds.length < 2) {
       throw new BadRequestException(
-        'Se requieren al menos dos cercos virtuales dentro de la zona para poder configurar una rotación de pastoreo.'
+        'Se requieren al menos dos cercos virtuales en el campo para poder configurar una rotación de pastoreo.'
       );
     }
 
-    // Verificar que los cercos pertenezcan a la zona
+    // Verificar que los cercos pertenezcan al campo
     const geofences = await this.prisma.geofence.findMany({
-      where: { id: { in: dto.geofenceIds }, zoneId },
+      where: { id: { in: dto.geofenceIds }, farmId },
     });
 
     if (geofences.length !== dto.geofenceIds.length) {
       throw new BadRequestException(
-        'Uno o más cercos virtuales especificados no existen o no pertenecen a esta zona.'
+        'Uno o más cercos virtuales especificados no existen o no pertenecen a este campo.'
       );
     }
 
@@ -119,17 +105,17 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
     const nextRotation = new Date(now.getTime() + dto.frequencyHours * 3600 * 1000);
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Cancelar cualquier plan de rotación previo que esté activo en esta zona
-      await tx.zoneRotationPlan.updateMany({
-        where: { zoneId, status: 'ACTIVE' },
+      // 1. Cancelar cualquier plan de rotación previo que esté activo en este campo
+      await tx.rotationPlan.updateMany({
+        where: { farmId, status: 'ACTIVE' },
         data: { status: 'CANCELLED', completedAt: now },
       });
 
       // 2. Crear el nuevo plan con sus pasos ordenados
-      const plan = await tx.zoneRotationPlan.create({
+      const plan = await tx.rotationPlan.create({
         data: {
-          zoneId,
-          name: dto.name?.trim() || `Rotación de Pastoreo - ${zone.name}`,
+          farmId,
+          name: dto.name?.trim() || `Rotación de Pastoreo - ${farm.name ?? 'Campo'}`,
           status: 'ACTIVE',
           frequencyHours: dto.frequencyHours,
           currentStepIndex: 0,
@@ -170,8 +156,8 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
         });
       }
 
-      // 4. Asignar los animales de la zona que poseen collar activo al cerco inicial
-      const animalsWithCollar = animalsInZone.filter((a) => a.animalCollars.length > 0);
+      // 4. Asignar los animales del campo que poseen collar activo al cerco inicial
+      const animalsWithCollar = animalsInFarm.filter((a) => a.animalCollars.length > 0);
       const animalIds = animalsWithCollar.map((a) => a.id);
 
       if (animalIds.length > 0) {
@@ -196,21 +182,21 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Obtiene el estado actual de la rotación de la zona, incluyendo:
+   * Obtiene el estado actual de la rotación del campo, incluyendo:
    * - Cerco de partida (fromGeofence)
    * - Cerco actual activo (currentGeofence)
    * - Próximo cerco programado (nextGeofence)
    * - Tiempo restante hasta el próximo cambio
    * - Lecturas de telemetría de los animales para evaluar puntos calientes (heatmap)
    */
-  async getRotation(zoneId: string, userId: string) {
-    const zone = await this.getZoneWithAccess(zoneId, userId, false);
+  async getRotation(farmId: string, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
     // Revisar y ejecutar rotación automática si correspondiera
-    await this.checkAndPerformAutoRotation(zoneId);
+    await this.checkAndPerformAutoRotation(farmId);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId },
       orderBy: { createdAt: 'desc' },
       include: {
         steps: {
@@ -223,23 +209,21 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
     if (!plan) {
       return {
         plan: null,
-        message: 'No hay planes de rotación configurados para esta zona.',
+        message: 'No hay planes de rotación configurados para este campo.',
       };
     }
 
     const now = Date.now();
     const nextTime = new Date(plan.nextRotationAt).getTime();
-    const timeRemainingMinutes =
-      plan.status === 'ACTIVE' ? Math.max(0, Math.round((nextTime - now) / 60000)) : 0;
+    const timeRemainingMinutes = plan.status === 'ACTIVE' ? Math.max(0, Math.round((nextTime - now) / 60000)) : 0;
 
     const fromStep = plan.currentStepIndex > 0 ? plan.steps[plan.currentStepIndex - 1] : null;
     const currentStep = plan.steps[plan.currentStepIndex] || null;
-    const nextStep =
-      plan.currentStepIndex + 1 < plan.steps.length ? plan.steps[plan.currentStepIndex + 1] : null;
+    const nextStep = plan.currentStepIndex + 1 < plan.steps.length ? plan.steps[plan.currentStepIndex + 1] : null;
 
-    // Animales activos en la zona
-    const animalsInZone = await this.prisma.animal.findMany({
-      where: { zoneId, isArchived: false },
+    // Animales activos en el campo
+    const animalsInFarm = await this.prisma.animal.findMany({
+      where: { farmId, isArchived: false },
       select: {
         id: true,
         tag: true,
@@ -251,7 +235,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
       },
     });
 
-    const collarIds = animalsInZone.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+    const collarIds = animalsInFarm.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
 
     // Lecturas telemétricas para puntos calientes acumulados durante la rotación
     let heatmapPoints: { latitude: number; longitude: number }[] = [];
@@ -302,10 +286,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
           const elapsedMinutes = elapsedMs / (60 * 1000);
           const totalMinutes = plan.frequencyHours * 60;
           const total5MinSteps = Math.max(1, Math.round(totalMinutes / stepIntervalMinutes));
-          const current5MinStep = Math.min(
-            total5MinSteps,
-            Math.floor(elapsedMinutes / stepIntervalMinutes)
-          );
+          const current5MinStep = Math.min(total5MinSteps, Math.floor(elapsedMinutes / stepIntervalMinutes));
           const fraction = Math.min(1, Math.max(0, current5MinStep / total5MinSteps));
           const progressPercent = Math.min(100, Math.round(fraction * 100));
 
@@ -331,7 +312,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
       activeTransitionPolygon,
       transition,
       timeRemainingMinutes,
-      totalAnimalsInZone: animalsInZone.length,
+      totalAnimals: animalsInFarm.length,
       animalsWithCollarCount: collarIds.length,
       heatmapPoints,
     };
@@ -340,18 +321,18 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Camino Alternativo 2: Adelanta manualmente la rotación al siguiente cerco sin romper el calendario.
    */
-  async advanceRotation(zoneId: string, userId: string) {
-    await this.getZoneWithAccess(zoneId, userId, false);
+  async advanceRotation(farmId: string, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId, status: 'ACTIVE' },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId, status: 'ACTIVE' },
       include: {
         steps: { orderBy: { orderIndex: 'asc' } },
       },
     });
 
     if (!plan) {
-      throw new BadRequestException('No hay un plan de rotación activo para esta zona.');
+      throw new BadRequestException('No hay un plan de rotación activo para este campo.');
     }
 
     return this.executeStepAdvance(plan.id);
@@ -360,22 +341,22 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Camino Alternativo 2: Pospone manualmente la rotación (+X horas) sin romper el calendario definido.
    */
-  async postponeRotation(zoneId: string, dto: PostponeRotationDto, userId: string) {
-    await this.getZoneWithAccess(zoneId, userId, false);
+  async postponeRotation(farmId: string, dto: PostponeRotationDto, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId, status: 'ACTIVE' },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId, status: 'ACTIVE' },
     });
 
     if (!plan) {
-      throw new BadRequestException('No hay un plan de rotación activo para esta zona.');
+      throw new BadRequestException('No hay un plan de rotación activo para este campo.');
     }
 
     const hours = dto.hours ?? 1;
     const currentNext = new Date(plan.nextRotationAt);
     const newNext = new Date(currentNext.getTime() + hours * 3600 * 1000);
 
-    const updated = await this.prisma.zoneRotationPlan.update({
+    const updated = await this.prisma.rotationPlan.update({
       where: { id: plan.id },
       data: { nextRotationAt: newNext },
     });
@@ -389,18 +370,18 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Pausa la rotación automática.
    */
-  async pauseRotation(zoneId: string, userId: string) {
-    await this.getZoneWithAccess(zoneId, userId, false);
+  async pauseRotation(farmId: string, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId, status: 'ACTIVE' },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId, status: 'ACTIVE' },
     });
 
     if (!plan) {
-      throw new BadRequestException('No hay un plan de rotación activo para esta zona.');
+      throw new BadRequestException('No hay un plan de rotación activo para este campo.');
     }
 
-    const updated = await this.prisma.zoneRotationPlan.update({
+    const updated = await this.prisma.rotationPlan.update({
       where: { id: plan.id },
       data: { status: 'PAUSED' },
     });
@@ -414,21 +395,21 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Reanuda un plan de rotación pausado.
    */
-  async resumeRotation(zoneId: string, userId: string) {
-    await this.getZoneWithAccess(zoneId, userId, false);
+  async resumeRotation(farmId: string, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId, status: 'PAUSED' },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId, status: 'PAUSED' },
     });
 
     if (!plan) {
-      throw new BadRequestException('No hay un plan de rotación pausado para esta zona.');
+      throw new BadRequestException('No hay un plan de rotación pausado para este campo.');
     }
 
     const now = new Date();
     const nextRotation = new Date(now.getTime() + plan.frequencyHours * 3600 * 1000);
 
-    const updated = await this.prisma.zoneRotationPlan.update({
+    const updated = await this.prisma.rotationPlan.update({
       where: { id: plan.id },
       data: {
         status: 'ACTIVE',
@@ -445,18 +426,18 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   /**
    * Cancela o finaliza un plan de rotación.
    */
-  async cancelRotation(zoneId: string, userId: string) {
-    await this.getZoneWithAccess(zoneId, userId, false);
+  async cancelRotation(farmId: string, userId: string) {
+    await this.checkFarmAccess(farmId, userId, false);
 
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
-      where: { zoneId, status: { in: ['ACTIVE', 'PAUSED'] } },
+    const plan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId, status: { in: ['ACTIVE', 'PAUSED'] } },
     });
 
     if (!plan) {
-      throw new BadRequestException('No hay un plan de rotación activo o pausado para esta zona.');
+      throw new BadRequestException('No hay un plan de rotación activo o pausado para este campo.');
     }
 
-    const updated = await this.prisma.zoneRotationPlan.update({
+    const updated = await this.prisma.rotationPlan.update({
       where: { id: plan.id },
       data: {
         status: 'CANCELLED',
@@ -474,11 +455,10 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
    * Ejecuta el avance interno de un paso de rotación (tanto automático como manual).
    */
   private async executeStepAdvance(planId: string) {
-    const plan = await this.prisma.zoneRotationPlan.findUnique({
+    const plan = await this.prisma.rotationPlan.findUnique({
       where: { id: planId },
       include: {
         steps: { orderBy: { orderIndex: 'asc' } },
-        zone: true,
       },
     });
 
@@ -493,7 +473,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
     return this.prisma.$transaction(async (tx) => {
       // 1. Cerrar paso actual
       if (currentStep) {
-        await tx.zoneRotationStep.update({
+        await tx.rotationStep.update({
           where: { id: currentStep.id },
           data: { status: 'COMPLETED', completedAt: now },
         });
@@ -507,7 +487,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
 
       if (isCompleted) {
         // La rotación completó todos los perímetros del ciclo
-        await tx.zoneRotationPlan.update({
+        await tx.rotationPlan.update({
           where: { id: plan.id },
           data: {
             status: 'COMPLETED',
@@ -524,7 +504,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
 
       // 2. Activar siguiente paso
       const nextStep = plan.steps[nextIndex];
-      await tx.zoneRotationStep.update({
+      await tx.rotationStep.update({
         where: { id: nextStep.id },
         data: { status: 'ACTIVE', activatedAt: now },
       });
@@ -535,15 +515,13 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
         data: { active: true, activatedAt: now, deactivatedAt: null },
       });
 
-      // 3. Reasignar animales de la zona al nuevo cerco activo
-      const animalsInZone = await tx.animal.findMany({
-        where: { zoneId: plan.zoneId, isArchived: false },
+      // 3. Reasignar animales del campo al nuevo cerco activo
+      const animalsInFarm = await tx.animal.findMany({
+        where: { farmId: plan.farmId, isArchived: false },
         include: { animalCollars: { where: { endAt: null } } },
       });
 
-      const animalIds = animalsInZone
-        .filter((a) => a.animalCollars.length > 0)
-        .map((a) => a.id);
+      const animalIds = animalsInFarm.filter((a) => a.animalCollars.length > 0).map((a) => a.id);
 
       if (animalIds.length > 0) {
         // Cerrar cercos virtuales previos
@@ -561,8 +539,8 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
           })),
         });
 
-        // Marcar todos los collares de los animales de la zona como pendientes de recibir el nuevo cerco
-        const collarIds = animalsInZone.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+        // Marcar todos los collares de los animales del campo como pendientes de recibir el nuevo cerco
+        const collarIds = animalsInFarm.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
         if (collarIds.length > 0) {
           await tx.collar.updateMany({
             where: { id: { in: collarIds } },
@@ -573,7 +551,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
 
       // 4. Actualizar plan con nuevo índice y próxima fecha
       const nextRotation = new Date(now.getTime() + plan.frequencyHours * 3600 * 1000);
-      const updatedPlan = await tx.zoneRotationPlan.update({
+      const updatedPlan = await tx.rotationPlan.update({
         where: { id: plan.id },
         data: {
           currentStepIndex: nextIndex,
@@ -593,12 +571,12 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Chequea si corresponde rotar automáticamente la zona.
+   * Chequea si corresponde rotar automáticamente el campo.
    */
-  private async checkAndPerformAutoRotation(zoneId: string) {
-    const plan = await this.prisma.zoneRotationPlan.findFirst({
+  private async checkAndPerformAutoRotation(farmId: string) {
+    const plan = await this.prisma.rotationPlan.findFirst({
       where: {
-        zoneId,
+        farmId,
         status: 'ACTIVE',
         autoRotate: true,
         nextRotationAt: { lte: new Date() },
@@ -614,19 +592,19 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
    * Chequea todos los planes activos del sistema para la tarea en segundo plano.
    */
   private async checkAllActiveRotations() {
-    const plansDue = await this.prisma.zoneRotationPlan.findMany({
+    const plansDue = await this.prisma.rotationPlan.findMany({
       where: {
         status: 'ACTIVE',
         autoRotate: true,
         nextRotationAt: { lte: new Date() },
       },
-      select: { id: true, zoneId: true },
+      select: { id: true, farmId: true },
     });
 
     for (const plan of plansDue) {
       try {
         await this.executeStepAdvance(plan.id);
-        this.logger.log(`Rotación automática ejecutada para plan ${plan.id} en zona ${plan.zoneId}`);
+        this.logger.log(`Rotación automática ejecutada para plan ${plan.id} en campo ${plan.farmId}`);
       } catch (err) {
         this.logger.error(`Error al ejecutar rotación automática en plan ${plan.id}:`, err);
       }
@@ -635,14 +613,14 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Resuelve las coordenadas del cerco virtual activo para un animal.
-   * Si la zona del animal tiene un plan de rotación activo (CU012):
+   * Si el campo del animal tiene un plan de rotación activo (CU012):
    * - Verifica si corresponde rotar automáticamente o calcular las coordenadas de rotación incremental hora a hora.
    * - Devuelve las coordenadas actualizadas para que el gateway las transmita en el downlink al collar.
    * Si no hay rotación, devuelve el cerco virtual estándar asignado al animal en AnimalGeofence.
    */
   async resolveActiveCoordinatesForAnimal(
     animalId: string,
-    zoneId?: string | null
+    farmId?: string | null
   ): Promise<{
     polygon: [number, number][];
     geofenceName: string;
@@ -657,9 +635,9 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
       stepIntervalMinutes: number;
     };
   } | null> {
-    if (zoneId) {
-      const activePlan = await this.prisma.zoneRotationPlan.findFirst({
-        where: { zoneId, status: 'ACTIVE' },
+    if (farmId) {
+      const activePlan = await this.prisma.rotationPlan.findFirst({
+        where: { farmId, status: 'ACTIVE' },
         include: {
           steps: {
             include: { geofence: true },
@@ -675,7 +653,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
         if (activePlan.autoRotate && activePlan.nextRotationAt && now >= activePlan.nextRotationAt) {
           await this.executeStepAdvance(activePlan.id);
           // Recargar el plan actualizado
-          return this.resolveActiveCoordinatesForAnimal(animalId, zoneId);
+          return this.resolveActiveCoordinatesForAnimal(animalId, farmId);
         }
 
         const currentStep = activePlan.steps[activePlan.currentStepIndex];
@@ -716,10 +694,7 @@ export class ZoneRotationsService implements OnModuleInit, OnModuleDestroy {
             const elapsedMinutes = elapsedMs / (60 * 1000);
             const totalMinutes = activePlan.frequencyHours * 60;
             const total5MinSteps = Math.max(1, Math.round(totalMinutes / stepIntervalMinutes));
-            const current5MinStep = Math.min(
-              total5MinSteps,
-              Math.floor(elapsedMinutes / stepIntervalMinutes)
-            );
+            const current5MinStep = Math.min(total5MinSteps, Math.floor(elapsedMinutes / stepIntervalMinutes));
 
             // Fracción calculada para la ventana de ~5 minutos actual (devolución gradual para la telemetría)
             const fraction = Math.min(1, Math.max(0, current5MinStep / total5MinSteps));

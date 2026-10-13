@@ -120,7 +120,11 @@ export class ReportsService {
     await this.getOwnedFarm(farmId, userId);
     const animals = await this.prisma.animal.findMany({
       where: { farmId },
-      include: { animalType: true, zone: true, animalCollars: { where: { endAt: null }, include: { collar: true } } },
+      include: {
+        animalType: true,
+        animalCollars: { where: { endAt: null }, include: { collar: true } },
+        animalGeofences: { where: { endAt: null }, include: { geofence: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -131,7 +135,7 @@ export class ReportsService {
       { header: 'Tipo', key: 'type', width: 18 },
       { header: 'Raza', key: 'breed', width: 18 },
       { header: 'Peso (Kg)', key: 'weight', width: 12 },
-      { header: 'Zona', key: 'zone', width: 20 },
+      { header: 'Cerco', key: 'geofence', width: 20 },
       { header: 'Collar', key: 'collar', width: 16 },
       { header: 'Estado', key: 'status', width: 14 },
       { header: 'Fecha Alta', key: 'createdAt', width: 16 },
@@ -142,7 +146,7 @@ export class ReportsService {
         type: a.animalType?.name ?? '',
         breed: a.breed,
         weight: a.weightKg,
-        zone: a.zone?.name ?? 'Sin asignar',
+        geofence: a.animalGeofences[0]?.geofence.name ?? 'Sin asignar',
         collar: a.animalCollars[0]?.collar.identifier ?? 'Sin collar',
         status: a.status,
         createdAt: a.createdAt.toLocaleDateString(),
@@ -262,8 +266,7 @@ export class ReportsService {
     const falsePositives = alerts.filter((a) => a.isFalsePositive);
     const mlFalsePositives = mlAlerts.filter((a) => a.isFalsePositive);
     const mlTruePositives = Math.max(0, mlAlerts.length - mlFalsePositives.length);
-    const fieldPrecisionPct =
-      mlAlerts.length > 0 ? ((mlTruePositives / mlAlerts.length) * 100).toFixed(1) : '100.0';
+    const fieldPrecisionPct = mlAlerts.length > 0 ? ((mlTruePositives / mlAlerts.length) * 100).toFixed(1) : '100.0';
 
     if (format === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
@@ -349,9 +352,10 @@ export class ReportsService {
         const tag = a.animal.tag ?? `Animal ${a.animal.id.slice(0, 8)}`;
         const originTag = isMl ? '🤖 IA PREDICTIVA' : `⚡ ${a.type}`;
 
-        doc.fontSize(11).fillColor('#0f172a').text(
-          `${new Date(a.createdAt).toLocaleString()} — [${originTag}] ${tag}`
-        );
+        doc
+          .fontSize(11)
+          .fillColor('#0f172a')
+          .text(`${new Date(a.createdAt).toLocaleString()} — [${originTag}] ${tag}`);
 
         doc.fontSize(10).fillColor('#334155').text(a.message);
 
@@ -379,11 +383,10 @@ export class ReportsService {
   async farmSummaryPdf(farmId: string, userId: string): Promise<Buffer> {
     const farm = await this.getOwnedFarm(farmId, userId);
 
-    const [totalAnimals, assignedCollars, totalZones, activeGeofences, unresolvedAlerts] = await Promise.all([
+    const [totalAnimals, assignedCollars, activeGeofences, unresolvedAlerts] = await Promise.all([
       this.prisma.animal.count({ where: { farmId, isArchived: false } }),
       this.prisma.animalCollar.count({ where: { endAt: null, animal: { farmId } } }),
-      this.prisma.zone.count({ where: { farmId } }),
-      this.prisma.geofence.count({ where: { active: true, zone: { farmId } } }),
+      this.prisma.geofence.count({ where: { active: true, farmId } }),
       this.prisma.alert.count({ where: { isResolved: false, animal: { farmId } } }),
     ]);
 
@@ -395,8 +398,6 @@ export class ReportsService {
     doc.text(`Total de animales activos: ${totalAnimals}`);
     doc.moveDown(0.4);
     doc.text(`Collares actualmente asignados: ${assignedCollars}`);
-    doc.moveDown(0.4);
-    doc.text(`Zonas del establecimiento: ${totalZones}`);
     doc.moveDown(0.4);
     doc.text(`Cercos virtuales activos: ${activeGeofences}`);
     doc.moveDown(0.4);
@@ -411,15 +412,13 @@ export class ReportsService {
   async farmDashboard(farmId: string, userId: string) {
     await this.getOwnedFarm(farmId, userId);
 
-    const [totalAnimals, assignedCollars, totalZones, activeGeofences, unresolvedAlerts, alertsByType] =
-      await Promise.all([
-        this.prisma.animal.count({ where: { farmId, isArchived: false } }),
-        this.prisma.animalCollar.count({ where: { endAt: null, animal: { farmId } } }),
-        this.prisma.zone.count({ where: { farmId } }),
-        this.prisma.geofence.count({ where: { active: true, zone: { farmId } } }),
-        this.prisma.alert.count({ where: { isResolved: false, animal: { farmId } } }),
-        this.prisma.alert.groupBy({ by: ['type'], where: { animal: { farmId } }, _count: { _all: true } }),
-      ]);
+    const [totalAnimals, assignedCollars, activeGeofences, unresolvedAlerts, alertsByType] = await Promise.all([
+      this.prisma.animal.count({ where: { farmId, isArchived: false } }),
+      this.prisma.animalCollar.count({ where: { endAt: null, animal: { farmId } } }),
+      this.prisma.geofence.count({ where: { active: true, farmId } }),
+      this.prisma.alert.count({ where: { isResolved: false, animal: { farmId } } }),
+      this.prisma.alert.groupBy({ by: ['type'], where: { animal: { farmId } }, _count: { _all: true } }),
+    ]);
 
     // Últimos 14 días, del más viejo al más nuevo, con los días sin alertas en 0
     // (para que el gráfico no salte fechas).
@@ -446,7 +445,6 @@ export class ReportsService {
     return {
       totalAnimals,
       assignedCollars,
-      totalZones,
       activeGeofences,
       unresolvedAlerts,
       alertsByType: alertsByType.map((a) => ({ type: a.type, count: a._count._all })),

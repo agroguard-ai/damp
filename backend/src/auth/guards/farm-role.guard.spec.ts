@@ -34,7 +34,6 @@ describe('FarmRoleGuard', () => {
     user: { findUnique: jest.Mock };
     farmUser: { findUnique: jest.Mock };
     animal: { findUnique: jest.Mock };
-    zone: { findUnique: jest.Mock };
     geofence: { findUnique: jest.Mock };
     gateway: { findUnique: jest.Mock };
     alert: { findUnique: jest.Mock };
@@ -47,7 +46,6 @@ describe('FarmRoleGuard', () => {
       user: { findUnique: jest.fn() },
       farmUser: { findUnique: jest.fn() },
       animal: { findUnique: jest.fn() },
-      zone: { findUnique: jest.fn() },
       geofence: { findUnique: jest.fn() },
       gateway: { findUnique: jest.fn() },
       alert: { findUnique: jest.fn() },
@@ -96,7 +94,7 @@ describe('FarmRoleGuard', () => {
     const { context } = makeContext({
       clerkSub: 'clerk_1',
       dbUser: { id: 'u1', globalRole: GlobalRole.USER },
-      params: { id: 'zone-99' }, // :id de una zona, no una granja
+      params: { id: 'animal-99' }, // :id de un animal, no una granja
     });
 
     await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException);
@@ -157,9 +155,9 @@ describe('FarmRoleGuard', () => {
       );
     });
 
-    it('resuelve el farmId de una geofence vía su zona (2 hops)', async () => {
+    it('resuelve el farmId de una geofence directo de su campo', async () => {
       mockReflector(['OPERATOR', 'ADMIN'], { resource: 'geofence', idKey: 'id' });
-      prisma.geofence.findUnique.mockResolvedValue({ zone: { farmId: 'farm-7' } });
+      prisma.geofence.findUnique.mockResolvedValue({ farmId: 'farm-7' });
       prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu1', isActive: true, role: { name: 'OPERATOR' } });
       const { context } = makeContext({
         clerkSub: 'clerk_1',

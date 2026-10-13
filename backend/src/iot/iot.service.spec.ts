@@ -62,8 +62,8 @@ describe('IotService', () => {
       expect(mlHealthService.predict).not.toHaveBeenCalled();
     });
 
-    it('returns rotated downlink coordinates when animal zone has active rotation', async () => {
-      const zoneRotationsService = {
+    it('returns rotated downlink coordinates when animal farm has active rotation', async () => {
+      const rotationsService = {
         resolveActiveCoordinatesForAnimal: jest.fn().mockResolvedValue({
           polygon: [
             [-34.1, -58.1],
@@ -79,7 +79,7 @@ describe('IotService', () => {
         gatewaysService as any,
         alertSettingsService as any,
         mlHealthService as any,
-        zoneRotationsService as any
+        rotationsService as any
       );
 
       prisma.collar.findUnique.mockResolvedValue({ id: 1, fenceNotificationPending: true });
@@ -87,7 +87,7 @@ describe('IotService', () => {
       prisma.collar.update.mockResolvedValue({});
       prisma.animalCollar.findFirst.mockResolvedValue({
         animalId: 'animal-1',
-        animal: { farmId: 'farm-1', zoneId: 'zone-1' },
+        animal: { farmId: 'farm-1' },
       });
       prisma.animal.findUnique.mockResolvedValue({ sex: 'FEMALE' });
       prisma.telemetryReading.findMany.mockResolvedValue([]);
@@ -100,10 +100,7 @@ describe('IotService', () => {
         temp: 38.5,
       } as any);
 
-      expect(zoneRotationsService.resolveActiveCoordinatesForAnimal).toHaveBeenCalledWith(
-        'animal-1',
-        'zone-1'
-      );
+      expect(rotationsService.resolveActiveCoordinatesForAnimal).toHaveBeenCalledWith('animal-1', 'farm-1');
       expect(result.downlink).toBe('-34.1,-58.1;-34.1,-58.2;-34.2,-58.2');
       expect(prisma.collar.update).toHaveBeenCalledWith({
         where: { id: 1 },
@@ -115,7 +112,7 @@ describe('IotService', () => {
     });
 
     it('returns downlink NONE when fenceNotificationPending is false', async () => {
-      const zoneRotationsService = {
+      const rotationsService = {
         resolveActiveCoordinatesForAnimal: jest.fn().mockResolvedValue({
           polygon: [
             [-34.1, -58.1],
@@ -131,7 +128,7 @@ describe('IotService', () => {
         gatewaysService as any,
         alertSettingsService as any,
         mlHealthService as any,
-        zoneRotationsService as any
+        rotationsService as any
       );
 
       prisma.collar.findUnique.mockResolvedValue({ id: 1, fenceNotificationPending: false });
@@ -139,7 +136,7 @@ describe('IotService', () => {
       prisma.collar.update.mockResolvedValue({});
       prisma.animalCollar.findFirst.mockResolvedValue({
         animalId: 'animal-1',
-        animal: { farmId: 'farm-1', zoneId: 'zone-1' },
+        animal: { farmId: 'farm-1' },
       });
       prisma.animal.findUnique.mockResolvedValue({ sex: 'FEMALE' });
       prisma.telemetryReading.findMany.mockResolvedValue([]);

@@ -24,9 +24,4 @@ export class UpdateAnimalDto {
   @IsUUID()
   @IsOptional()
   animalTypeId?: string | null;
-
-  @IsUUID()
-  @IsOptional()
-  zoneId?: string | null;
 }
-

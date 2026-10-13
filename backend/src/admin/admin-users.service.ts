@@ -204,7 +204,7 @@ export class AdminUsersService {
           _count: {
             select: {
               animals: true,
-              zones: true,
+              geofences: true,
               gateways: true,
               farmUsers: true,
             },

@@ -14,11 +14,10 @@ function makePrismaMock() {
       updateMany: jest.fn(),
     },
     animalType: { findUnique: jest.fn() },
-    zone: { findFirst: jest.fn(), findUnique: jest.fn() },
-    geofence: { findUnique: jest.fn() },
+    geofence: { findUnique: jest.fn(), findFirst: jest.fn() },
     collar: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     animalCollar: { create: jest.fn(), updateMany: jest.fn(), findMany: jest.fn() },
-    animalGeofence: { create: jest.fn(), updateMany: jest.fn() },
+    animalGeofence: { create: jest.fn(), createMany: jest.fn(), updateMany: jest.fn() },
     medicalEvent: { create: jest.fn() },
     telemetryReading: { findMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(prisma)),
@@ -95,7 +94,6 @@ describe('AnimalsService', () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
         farmId: 'farm-1',
-        zoneId: 'zone-1',
         animalCollars: [],
         animalGeofences: [],
       });
@@ -108,7 +106,6 @@ describe('AnimalsService', () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
         farmId: 'farm-1',
-        zoneId: 'zone-1',
         animalCollars: [{ collarId: 10, endAt: null }],
         animalGeofences: [],
       });
@@ -116,8 +113,7 @@ describe('AnimalsService', () => {
       prisma.geofence.findUnique.mockResolvedValue({
         id: 'geo-1',
         active: true,
-        zoneId: 'zone-1',
-        zone: { farmId: 'farm-1', name: 'Potrero 1' },
+        farmId: 'farm-1',
       });
 
       const res = await service.assignGeofence('animal-1', 'geo-1', 'user-1');
@@ -144,24 +140,41 @@ describe('AnimalsService', () => {
       expect(prisma.animalGeofence.updateMany).toHaveBeenCalled();
     });
 
-    it('bulkAssignZone actualiza masivamente los animales de un campo', async () => {
+    it('bulkAssignGeofence asigna masivamente los animales de un campo a un cerco', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
-      prisma.zone.findFirst.mockResolvedValue({ id: 'zone-1', farmId: 'farm-1' });
+      prisma.geofence.findFirst.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', active: true });
       prisma.animal.findMany.mockResolvedValue([
-        { id: 'a1', animalGeofences: [] },
-        { id: 'a2', animalGeofences: [] },
+        { id: 'a1', tag: '001', animalCollars: [{ collarId: 10 }] },
+        { id: 'a2', tag: '002', animalCollars: [{ collarId: 11 }] },
       ]);
 
-      const res = await service.bulkAssignZone(
-        { farmId: 'farm-1', animalIds: ['a1', 'a2'], zoneId: 'zone-1' },
+      const res = await service.bulkAssignGeofence(
+        { farmId: 'farm-1', animalIds: ['a1', 'a2'], geofenceId: 'geo-1' },
         'user-1'
       );
 
       expect(res.count).toBe(2);
-      expect(prisma.animal.updateMany).toHaveBeenCalledWith({
-        where: { id: { in: ['a1', 'a2'] } },
-        data: { zoneId: 'zone-1' },
+      expect(prisma.animalGeofence.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({ animalId: 'a1', geofenceId: 'geo-1' }),
+          expect.objectContaining({ animalId: 'a2', geofenceId: 'geo-1' }),
+        ],
       });
+      expect(prisma.collar.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: [10, 11] } },
+        data: { fenceNotificationPending: true },
+      });
+    });
+
+    it('bulkAssignGeofence rechaza animales sin collar activo', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findFirst.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', active: true });
+      prisma.animal.findMany.mockResolvedValue([{ id: 'a1', tag: '001', animalCollars: [] }]);
+
+      await expect(
+        service.bulkAssignGeofence({ farmId: 'farm-1', animalIds: ['a1'], geofenceId: 'geo-1' }, 'user-1')
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.animalGeofence.createMany).not.toHaveBeenCalled();
     });
   });
 
@@ -183,11 +196,7 @@ describe('AnimalsService', () => {
         breed: 'Braford',
       });
 
-      const res = await service.update(
-        'animal-1',
-        { tag: 'TAG-NEW', breed: 'Braford' },
-        'user-1'
-      );
+      const res = await service.update('animal-1', { tag: 'TAG-NEW', breed: 'Braford' }, 'user-1');
 
       expect(res.message).toContain('exitosamente');
       expect(prisma.animal.update).toHaveBeenCalledWith(
@@ -208,9 +217,7 @@ describe('AnimalsService', () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
       prisma.animal.findFirst.mockResolvedValue({ id: 'animal-2', tag: 'TAG-DUPLICADA' });
 
-      await expect(
-        service.update('animal-1', { tag: 'TAG-DUPLICADA' }, 'user-1')
-      ).rejects.toThrow(ConflictException);
+      await expect(service.update('animal-1', { tag: 'TAG-DUPLICADA' }, 'user-1')).rejects.toThrow(ConflictException);
     });
 
     it('registra automáticamente un evento clínico WEIGHING cuando se modifica el peso', async () => {

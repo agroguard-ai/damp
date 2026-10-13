@@ -6,7 +6,7 @@ import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { haversineMeters } from './utils/haversine.utils';
 import { MlHealthService, ML_WINDOW_SIZE } from './ml-health.service';
-import { ZoneRotationsService } from '@/zones/zone-rotations.service';
+import { RotationsService } from '@/rotations/rotations.service';
 
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
 const INACTIVITY_RADIUS_M = 15;
@@ -27,7 +27,7 @@ export class IotService {
     private readonly gatewaysService: GatewaysService,
     private readonly alertSettingsService: AlertSettingsService,
     private readonly mlHealthService: MlHealthService,
-    @Optional() private readonly zoneRotationsService?: ZoneRotationsService
+    @Optional() private readonly rotationsService?: RotationsService
   ) {}
 
   /**
@@ -40,10 +40,7 @@ export class IotService {
    * 5. Si el animal está fuera del cerco, dispara una alerta ESCAPE (si no hay ya una sin resolver).
    * 6. Devuelve downlink con las coordenadas del cerco activo para el collar (o "NONE").
    */
-  async handleTelemetry(
-    payload: TelemetryPayloadDto,
-    authenticatedGateway?: { id: string; farmId: string | null; zoneId: string | null }
-  ) {
+  async handleTelemetry(payload: TelemetryPayloadDto, authenticatedGateway?: { id: string; farmId: string | null }) {
     const collar = await this.prisma.collar.findUnique({
       where: { id: payload.collar_id },
     });
@@ -81,7 +78,7 @@ export class IotService {
 
     const animalCollar = await this.prisma.animalCollar.findFirst({
       where: { collarId: payload.collar_id, endAt: null },
-      select: { animalId: true, animal: { select: { farmId: true, zoneId: true } } },
+      select: { animalId: true, animal: { select: { farmId: true } } },
     });
 
     if (!animalCollar) {
@@ -92,13 +89,13 @@ export class IotService {
     await this.checkPredictiveHealth(animalCollar.animalId, payload.collar_id);
 
     // Obtener las coordenadas del cerco activo.
-    // Si la zona tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
+    // Si el campo tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
     // las coordenadas rotadas / incrementales hora a hora para enviar en el downlink al gateway.
     let activeFence: { polygon: [number, number][]; geofenceName: string } | null = null;
-    if (this.zoneRotationsService) {
-      activeFence = await this.zoneRotationsService.resolveActiveCoordinatesForAnimal(
+    if (this.rotationsService) {
+      activeFence = await this.rotationsService.resolveActiveCoordinatesForAnimal(
         animalCollar.animalId,
-        animalCollar.animal.zoneId
+        animalCollar.animal.farmId
       );
     } else {
       const animalGeofence = await this.prisma.animalGeofence.findFirst({

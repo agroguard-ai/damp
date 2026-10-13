@@ -22,16 +22,6 @@ export class GatewaysService {
     return { ...gateway, status };
   }
 
-  private async assertZoneBelongsToFarm(farmId: string, zoneId: string) {
-    const zone = await this.prisma.zone.findUnique({ where: { id: zoneId } });
-    if (!zone) {
-      throw new NotFoundException(`La zona con ID ${zoneId} no existe.`);
-    }
-    if (zone.farmId !== farmId) {
-      throw new BadRequestException('La zona indicada no pertenece a la granja indicada.');
-    }
-  }
-
   async create(dto: CreateGatewayDto, userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
@@ -51,12 +41,6 @@ export class GatewaysService {
           throw new ForbiddenException('No tienes acceso a este establecimiento.');
         }
       }
-
-      if (dto.zoneId) {
-        await this.assertZoneBelongsToFarm(dto.farmId, dto.zoneId);
-      }
-    } else if (dto.zoneId) {
-      throw new BadRequestException('No se puede asignar una zona sin asignar primero un establecimiento.');
     }
 
     let apiKey = dto.apiKey?.trim();
@@ -75,7 +59,6 @@ export class GatewaysService {
       data: {
         name: dto.name,
         farmId: dto.farmId || null,
-        zoneId: dto.zoneId || null,
         apiKey,
       },
       include: {
@@ -87,7 +70,6 @@ export class GatewaysService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
-        zone: { select: { id: true, name: true } },
       },
     });
     return this.withStatus(gateway);
@@ -109,7 +91,6 @@ export class GatewaysService {
               user: { select: { id: true, name: true, email: true } },
             },
           },
-          zone: { select: { id: true, name: true } },
         },
       });
       return gateways.map((g) => this.withStatus(g));
@@ -134,7 +115,6 @@ export class GatewaysService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
-        zone: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
       omit: { apiKey: true },
@@ -171,7 +151,6 @@ export class GatewaysService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
-        zone: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'desc' },
       omit: { apiKey: true },
@@ -249,13 +228,6 @@ export class GatewaysService {
       }
     }
 
-    if (dto.zoneId) {
-      if (!targetFarmId) {
-        throw new BadRequestException('No se puede asignar una zona sin asignar primero un establecimiento.');
-      }
-      await this.assertZoneBelongsToFarm(targetFarmId, dto.zoneId);
-    }
-
     if (dto.apiKey?.trim() && dto.apiKey.trim() !== gateway.apiKey) {
       const existing = await this.prisma.gateway.findUnique({
         where: { apiKey: dto.apiKey.trim() },
@@ -270,7 +242,6 @@ export class GatewaysService {
       data: {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
         ...(dto.farmId !== undefined ? { farmId: dto.farmId } : {}),
-        ...(dto.zoneId !== undefined ? { zoneId: dto.zoneId } : {}),
         ...(dto.apiKey !== undefined ? { apiKey: dto.apiKey.trim() } : {}),
       },
       include: {
@@ -282,7 +253,6 @@ export class GatewaysService {
             user: { select: { id: true, name: true, email: true } },
           },
         },
-        zone: { select: { id: true, name: true } },
       },
     });
     return this.withStatus(updated);
@@ -318,7 +288,6 @@ export class GatewaysService {
     id: string;
     name?: string | null;
     farmId: string | null;
-    zoneId: string | null;
     farm?: { id: string; name: string | null } | null;
   } | null> {
     if (!providedKey || typeof providedKey !== 'string') {
@@ -332,7 +301,6 @@ export class GatewaysService {
           id: true,
           name: true,
           farmId: true,
-          zoneId: true,
           apiKey: true,
           farm: { select: { id: true, name: true } },
         },
@@ -348,7 +316,6 @@ export class GatewaysService {
         id: gateway.id,
         name: gateway.name,
         farmId: gateway.farmId,
-        zoneId: gateway.zoneId,
         farm: gateway.farm,
       };
     }
@@ -360,7 +327,6 @@ export class GatewaysService {
         id: true,
         name: true,
         farmId: true,
-        zoneId: true,
         farm: { select: { id: true, name: true } },
       },
     });
@@ -369,10 +335,8 @@ export class GatewaysService {
           id: gateway.id,
           name: gateway.name,
           farmId: gateway.farmId,
-          zoneId: gateway.zoneId,
           farm: gateway.farm,
         }
       : null;
   }
 }
-

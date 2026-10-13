@@ -56,7 +56,8 @@ model Farm {
   user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
   farmUsers     FarmUser[]
   animals       Animal[]
-  zones         Zone[]
+  geofences     Geofence[]
+  rotationPlans RotationPlan[]
   gateways      Gateway[]
   collars       Collar[]
   alertSettings AlertSettings?
@@ -82,8 +83,9 @@ model FarmUser {
 
 model Geofence {
   id                 String    @id @default(uuid())
-  zoneId             String    @map("zone_id")
+  farmId             String    @map("farm_id")
   name               String
+  pastureType        String?   @map("pasture_type")
   polygonCoordinates Json?     @map("polygon_coordinates")
   active             Boolean   @default(true)
   activatedAt        DateTime? @map("activated_at")
@@ -91,9 +93,9 @@ model Geofence {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  zone            Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  farm            Farm             @relation(fields: [farmId], references: [id], onDelete: Cascade)
   animalGeofences AnimalGeofence[]
-  rotationSteps   ZoneRotationStep[]
+  rotationSteps   RotationStep[]
 
   @@map("geofences")
 }
@@ -107,7 +109,6 @@ model Animal {
   breed        String?
   weightKg     Float?      @map("weight_kg")
   animalTypeId String?     @map("animal_type_id")
-  zoneId       String?     @map("zone_id")
 
   isArchived   Boolean     @default(false) @map("is_archived")
   status       String      @default("ACTIVE")
@@ -115,7 +116,6 @@ model Animal {
 
   farm            Farm              @relation(fields: [farmId], references: [id])
   animalType      AnimalType?       @relation(fields: [animalTypeId], references: [id])
-  zone            Zone?             @relation(fields: [zoneId], references: [id])
   medicalEvents   MedicalEvent[]
   animalGeofences AnimalGeofence[]
   animalCollars   AnimalCollar[]
@@ -202,29 +202,10 @@ enum MedicalEventType {
   BIRTH
 }
 
-model Zone {
-  id                 String   @id @default(uuid())
-  name               String
-  pastureType        String?  @map("pasture_type")
-  farmId             String   @map("farm_id")
-  polygonCoordinates Json?    @map("polygon_coordinates")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  farm          Farm               @relation(fields: [farmId], references: [id], onDelete: Cascade)
-  animals       Animal[]
-  geofences     Geofence[]
-  gateways      Gateway[]
-  rotationPlans ZoneRotationPlan[]
-
-  @@map("zones")
-}
-
 model Gateway {
   id         String    @id @default(uuid())
   name       String
   farmId     String?   @map("farm_id")
-  zoneId     String?   @map("zone_id")
   apiKey     String    @unique @map("api_key")
   lastSeenAt DateTime? @map("last_seen_at")
   lastRssi   Float?    @map("last_rssi")
@@ -232,7 +213,6 @@ model Gateway {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   farm Farm? @relation(fields: [farmId], references: [id], onDelete: SetNull)
-  zone Zone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
 
   @@map("gateways")
 }
@@ -323,7 +303,7 @@ model AlertSettings {
   @@map("alert_settings")
 }
 
-enum ZoneRotationStatus {
+enum RotationStatus {
   ACTIVE
   PAUSED
   COMPLETED
@@ -336,11 +316,11 @@ enum RotationStepStatus {
   COMPLETED
 }
 
-model ZoneRotationPlan {
+model RotationPlan {
   id               String             @id @default(uuid())
-  zoneId           String             @map("zone_id")
+  farmId           String             @map("farm_id")
   name             String             @default("Rotación de Pastoreo")
-  status           ZoneRotationStatus @default(ACTIVE)
+  status           RotationStatus     @default(ACTIVE)
   frequencyHours   Int                @default(24) @map("frequency_hours")
   currentStepIndex Int                @default(0) @map("current_step_index")
   totalSteps       Int                @default(0) @map("total_steps")
@@ -352,13 +332,13 @@ model ZoneRotationPlan {
   createdAt        DateTime           @default(now()) @map("created_at")
   updatedAt        DateTime           @updatedAt @map("updated_at")
 
-  zone  Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
-  steps ZoneRotationStep[]
+  farm  Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  steps RotationStep[]
 
-  @@map("zone_rotation_plans")
+  @@map("rotation_plans")
 }
 
-model ZoneRotationStep {
+model RotationStep {
   id             String             @id @default(uuid())
   rotationPlanId String             @map("rotation_plan_id")
   geofenceId     String             @map("geofence_id")
@@ -368,11 +348,11 @@ model ZoneRotationStep {
   completedAt    DateTime?          @map("completed_at")
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  rotationPlan ZoneRotationPlan @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
+  rotationPlan RotationPlan     @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
   geofence     Geofence         @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
 
   @@unique([rotationPlanId, orderIndex])
-  @@map("zone_rotation_steps")
+  @@map("rotation_steps")
 }
 
 model IotRequestLog {

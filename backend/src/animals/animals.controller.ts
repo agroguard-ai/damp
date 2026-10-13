@@ -3,10 +3,9 @@ import { AnimalsService } from './animals.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
 import { UpdateAnimalDto } from './dto/update-animal.dto';
 import { ArchiveAnimalDto } from './dto/archive-animal.dto';
-import { UpdateAnimalZoneDto } from './dto/update-animal-zone.dto';
 import { LinkAnimalCollarDto } from './dto/link-animal-collar.dto';
 import { AssignAnimalGeofenceDto } from './dto/assign-animal-geofence.dto';
-import { BulkAssignZoneDto } from './dto/bulk-assign-zone.dto';
+import { BulkAssignGeofenceDto } from './dto/bulk-assign-geofence.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
@@ -27,11 +26,11 @@ export class AnimalsController {
     return this.animalsService.create(createAnimalDto, userId);
   }
 
-  @Post('bulk/zone')
+  @Post('bulk/geofence')
   @UseGuards(GlobalRolesGuard, FarmRoleGuard)
   @RequireFarmRole('ADMIN', 'OPERATOR')
-  bulkAssignZone(@Body() dto: BulkAssignZoneDto, @CurrentUser('sub') userId: string) {
-    return this.animalsService.bulkAssignZone(dto, userId);
+  bulkAssignGeofence(@Body() dto: BulkAssignGeofenceDto, @CurrentUser('sub') userId: string) {
+    return this.animalsService.bulkAssignGeofence(dto, userId);
   }
 
   @Post('bulk/transfer-farm')
@@ -48,7 +47,7 @@ export class AnimalsController {
   findAll(
     @CurrentUser('sub') userId: string,
     @Query('farmId') farmId?: string,
-    @Query('zoneId') zoneId?: string,
+    @Query('geofenceId') geofenceId?: string,
     @Query('animalType') animalType?: string,
     @Query('healthStatus') healthStatus?: string,
     @Query('status') status?: string,
@@ -58,7 +57,7 @@ export class AnimalsController {
     return this.animalsService.findAll(
       {
         farmId,
-        zoneId,
+        geofenceId,
         animalType,
         healthStatus,
         status,
@@ -80,11 +79,7 @@ export class AnimalsController {
   @UseGuards(GlobalRolesGuard, FarmRoleGuard)
   @ResolveFarmIdFrom('animal')
   @RequireFarmRole('ADMIN', 'OPERATOR')
-  update(
-    @Param('id') id: string,
-    @Body() updateAnimalDto: UpdateAnimalDto,
-    @CurrentUser('sub') userId: string
-  ) {
+  update(@Param('id') id: string, @Body() updateAnimalDto: UpdateAnimalDto, @CurrentUser('sub') userId: string) {
     return this.animalsService.update(id, updateAnimalDto, userId);
   }
 
@@ -96,27 +91,11 @@ export class AnimalsController {
     return this.animalsService.archive(id, archiveAnimalDto.status, userId);
   }
 
-  @Patch(':id/zone')
-  @UseGuards(GlobalRolesGuard, FarmRoleGuard)
-  @ResolveFarmIdFrom('animal')
-  @RequireFarmRole('ADMIN', 'OPERATOR')
-  updateZone(
-    @Param('id') id: string,
-    @Body() dto: UpdateAnimalZoneDto,
-    @CurrentUser('sub') userId: string
-  ) {
-    return this.animalsService.updateZone(id, dto.zoneId ?? null, userId);
-  }
-
   @Patch(':id/collar')
   @UseGuards(GlobalRolesGuard, FarmRoleGuard)
   @ResolveFarmIdFrom('animal')
   @RequireFarmRole('ADMIN', 'OPERATOR')
-  updateCollar(
-    @Param('id') id: string,
-    @Body() dto: LinkAnimalCollarDto,
-    @CurrentUser('sub') userId: string
-  ) {
+  updateCollar(@Param('id') id: string, @Body() dto: LinkAnimalCollarDto, @CurrentUser('sub') userId: string) {
     if (dto.collarId === null || dto.collarId === undefined) {
       return this.animalsService.unlinkCollar(id, userId);
     }
@@ -127,11 +106,7 @@ export class AnimalsController {
   @UseGuards(GlobalRolesGuard, FarmRoleGuard)
   @ResolveFarmIdFrom('animal')
   @RequireFarmRole('ADMIN', 'OPERATOR')
-  updateGeofence(
-    @Param('id') id: string,
-    @Body() dto: AssignAnimalGeofenceDto,
-    @CurrentUser('sub') userId: string
-  ) {
+  updateGeofence(@Param('id') id: string, @Body() dto: AssignAnimalGeofenceDto, @CurrentUser('sub') userId: string) {
     return this.animalsService.assignGeofence(id, dto.geofenceId ?? null, userId);
   }
 }
