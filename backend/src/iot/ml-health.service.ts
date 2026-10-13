@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { MlBlock } from './ml-window';
 
-/** Debe coincidir con `lookback` del modelo entrenado (damp-ml-api/machine-learning/model/preprocess.py). */
-export const ML_WINDOW_SIZE = 48;
+/** La predicción corre en segundo plano, pero no debe quedar colgada si ml-service no responde. */
+const ML_REQUEST_TIMEOUT_MS = 10_000;
 
 export interface MlEventPrediction {
   probability: number;
@@ -13,13 +14,6 @@ export interface MlEventPrediction {
 export interface MlPredictionResult {
   ready: boolean;
   events: Record<string, MlEventPrediction>;
-}
-
-export interface MlReadingInput {
-  temperature: number;
-  lat: number;
-  lng: number;
-  timestamp: string;
 }
 
 /**
@@ -40,13 +34,14 @@ export class MlHealthService {
   async predict(
     animalId: string,
     sex: string | null | undefined,
-    readings: MlReadingInput[]
+    readings: MlBlock[]
   ): Promise<MlPredictionResult | null> {
     try {
       const response = await fetch(`${this.baseUrl}/predict/health`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ animal_id: animalId, sex, readings }),
+        signal: AbortSignal.timeout(ML_REQUEST_TIMEOUT_MS),
       });
 
       if (!response.ok) {

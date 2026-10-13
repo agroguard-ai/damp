@@ -277,6 +277,8 @@ model HealthPrediction {
   detected            Boolean   @default(false)
   horizonHours        Int       @default(6) @map("horizon_hours")
   windowReadingsCount Int       @default(48) @map("window_readings_count")
+  /// Fin (exclusivo) de la ventana de 24 h usada; identifica la ventana para no predecir dos veces.
+  windowEndAt         DateTime? @map("window_end_at")
   alertId             String?   @map("alert_id")
   createdAt           DateTime  @default(now()) @map("created_at")
 
@@ -284,6 +286,7 @@ model HealthPrediction {
   alert  Alert?  @relation(fields: [alertId], references: [id], onDelete: SetNull)
 
   @@map("health_predictions")
+  @@unique([animalId, predictedEvent, windowEndAt])
   @@index([animalId, createdAt])
   @@index([predictedEvent, detected])
 }

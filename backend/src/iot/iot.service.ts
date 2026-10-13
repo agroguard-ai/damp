@@ -5,7 +5,8 @@ import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { haversineMeters } from './utils/haversine.utils';
-import { MlHealthService, ML_WINDOW_SIZE } from './ml-health.service';
+import { MlHealthService } from './ml-health.service';
+import { buildMlWindow, blockStartFor, ML_BLOCK_MINUTES, ML_MIN_BLOCKS_WITH_DATA, ML_WINDOW_BLOCKS } from './ml-window';
 import { RotationsService } from '@/rotations/rotations.service';
 
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
@@ -21,6 +22,8 @@ const EVENT_LABELS_ES: Record<string, string> = {
 @Injectable()
 export class IotService {
   private readonly logger = new Logger(IotService.name);
+  /** Última predicción lanzada en segundo plano (expuesta para tests y diagnóstico). */
+  predictiveHealthRun: Promise<void> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -59,7 +62,7 @@ export class IotService {
       );
     }
 
-    await this.prisma.telemetryReading.create({
+    const reading = await this.prisma.telemetryReading.create({
       data: {
         collarId: payload.collar_id,
         latitude: payload.lat,
@@ -86,7 +89,17 @@ export class IotService {
     }
 
     await this.checkHealthThresholds(animalCollar.animalId, animalCollar.animal.farmId, payload);
-    await this.checkPredictiveHealth(animalCollar.animalId, payload.collar_id);
+
+    // La predicción del modelo (consultas + llamada HTTP a ml-service) corre en segundo plano:
+    // la respuesta al gateway trae el downlink del cerco y no puede esperarla, porque el collar
+    // solo escucha unos instantes después de transmitir.
+    this.predictiveHealthRun = this.checkPredictiveHealth(
+      animalCollar.animalId,
+      payload.collar_id,
+      reading?.timestamp ?? new Date()
+    ).catch((err: unknown) => {
+      this.logger.warn(`Predicción de salud falló para el animal ${animalCollar.animalId}: ${String(err)}`);
+    });
 
     // Obtener las coordenadas del cerco activo.
     // Si el campo tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
@@ -229,35 +242,41 @@ export class IotService {
   }
 
   /**
-   * Predicción con el modelo LSTM real (damp-ml-api, servido por damp/ml-service): a
-   * partir de las últimas ML_WINDOW_SIZE lecturas, predice si cada evento (fiebre,
-   * celo, inactividad, anomalía) va a estar activo en las próximas 6hs. Requiere
-   * historial suficiente — si el animal tiene menos de ML_WINDOW_SIZE lecturas
-   * todavía, el servicio devuelve ready=false y no se genera ninguna alerta.
+   * Predicción con el modelo LSTM real (damp-ml-api, servido por damp/ml-service): con la
+   * ventana de las últimas 24 h agrupada en 48 bloques de 30 min (ver ml-window.ts), predice
+   * si cada evento (fiebre, celo, inactividad, anomalía) va a estar activo en las próximas 6 h.
+   *
+   * Se predice una sola vez por ventana: al llegar la primera lectura de un bloque nuevo se usa
+   * la ventana que termina en el bloque recién completado. Si faltan datos (menos de
+   * ML_MIN_BLOCKS_WITH_DATA bloques con lecturas), no se predice.
    */
-  private async checkPredictiveHealth(animalId: string, collarId: number) {
-    const [animal, recentReadings] = await Promise.all([
+  private async checkPredictiveHealth(animalId: string, collarId: number, anchor: Date) {
+    const blockMs = ML_BLOCK_MINUTES * 60 * 1000;
+    const windowEnd = blockStartFor(anchor); // fin del último bloque completo
+    const windowStart = new Date(windowEnd.getTime() - ML_WINDOW_BLOCKS * blockMs);
+
+    const alreadyPredicted = await this.prisma.healthPrediction.findFirst({
+      where: { animalId, windowEndAt: windowEnd },
+      select: { id: true },
+    });
+    if (alreadyPredicted) return;
+
+    const [animal, readings] = await Promise.all([
       this.prisma.animal.findUnique({ where: { id: animalId }, select: { sex: true } }),
       this.prisma.telemetryReading.findMany({
-        where: { collarId },
-        orderBy: { timestamp: 'desc' },
-        take: ML_WINDOW_SIZE,
+        // un bloque extra antes de la ventana, como punto de partida del primer tramo recorrido
+        where: { collarId, timestamp: { gte: new Date(windowStart.getTime() - blockMs), lt: windowEnd } },
+        orderBy: { timestamp: 'asc' },
         select: { temperature: true, latitude: true, longitude: true, timestamp: true },
       }),
     ]);
 
-    if (recentReadings.length < ML_WINDOW_SIZE) {
-      return; // Historial insuficiente todavía para una ventana de 24hs.
+    const window = buildMlWindow(readings, new Date(windowEnd.getTime() - 1));
+    if (window.blocksWithData < ML_MIN_BLOCKS_WITH_DATA) {
+      return; // Historial insuficiente todavía para una ventana de 24 h.
     }
 
-    const readings = recentReadings.reverse().map((r) => ({
-      temperature: r.temperature,
-      lat: r.latitude,
-      lng: r.longitude,
-      timestamp: r.timestamp.toISOString(),
-    }));
-
-    const result = await this.mlHealthService.predict(animalId, animal?.sex, readings);
+    const result = await this.mlHealthService.predict(animalId, animal?.sex, window.blocks);
     if (!result?.ready) {
       return;
     }
@@ -287,7 +306,8 @@ export class IotService {
             threshold: prediction.threshold,
             detected: prediction.detected,
             horizonHours: 6,
-            windowReadingsCount: readings.length,
+            windowReadingsCount: window.blocksWithData,
+            windowEndAt: windowEnd,
             alertId,
           },
         });
