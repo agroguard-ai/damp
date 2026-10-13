@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import {
   BrainCircuit,
   Activity,
@@ -11,10 +12,30 @@ import {
   Filter,
   ShieldCheck,
   TrendingUp,
+  SearchCode,
+  CircleCheck,
+  CircleAlert,
 } from 'lucide-react';
 import { alertsApi } from '@/lib/api/alerts';
-import type { HealthPrediction, MlHealthMetrics } from '@/types';
+import type { HealthPrediction, MlHealthMetrics, MlServiceStatus } from '@/types';
 import { Select } from '@/components/ui/Select';
+import TimeSeriesChart from '@/components/charts/TimeSeriesChart';
+import { EVENT_NAMES, EVENT_ORDER } from './mlEvents';
+
+const PredictionInputsModal = dynamic(() => import('./PredictionInputsModal'), { ssr: false });
+
+const FARM_TZ = 'America/Argentina/Buenos_Aires';
+const formatShortDateTime = (t: number) =>
+  new Date(t).toLocaleString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: FARM_TZ,
+  });
+
+/** Momento al que corresponde la predicción: fin de su ventana (o, en las viejas, cuándo se creó). */
+const predictionTime = (p: HealthPrediction) => Date.parse(p.windowEndAt ?? p.createdAt);
 
 interface PredictiveHealthMonitoringProps {
   farmId: string;
@@ -53,23 +74,27 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
   const [selectedAnimal, setSelectedAnimal] = useState<string>('');
   const [selectedEvent, setSelectedEvent] = useState<string>('');
   const [filterDetected, setFilterDetected] = useState<string>('all'); // 'all' | 'detected' | 'subthreshold'
+  const [mlStatus, setMlStatus] = useState<MlServiceStatus | null>(null);
+  const [inputsPredictionId, setInputsPredictionId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!farmId) return;
     setLoading(true);
     try {
-      const [m, p] = await Promise.all([
+      const [m, p, status] = await Promise.all([
         alertsApi.getMlMetrics(farmId).catch(() => null),
         alertsApi
           .getPredictions({
             farmId,
             ...(selectedAnimal ? { animalId: selectedAnimal } : {}),
-            limit: 100,
+            limit: selectedAnimal ? 200 : 100,
           })
           .catch(() => []),
+        alertsApi.getMlStatus().catch(() => null),
       ]);
       setMetrics(m);
       setPredictions(p || []);
+      setMlStatus(status);
     } catch (err) {
       console.error('Error fetching ML predictions:', err);
     } finally {
@@ -81,6 +106,22 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
     loadData();
   }, [loadData]);
 
+  // Evolución de la probabilidad de cada evento para el animal elegido (una serie por evento)
+  const evolution = useMemo(() => {
+    if (!selectedAnimal) return [];
+    return EVENT_ORDER.map((event) => {
+      const series = predictions
+        .filter((p) => p.predictedEvent === event)
+        .sort((a, b) => predictionTime(a) - predictionTime(b));
+      return {
+        event,
+        points: series.map((p) => ({ t: predictionTime(p), value: p.probability })),
+        threshold: series.at(-1)?.threshold ?? null,
+        latest: series.at(-1) ?? null,
+      };
+    }).filter((e) => e.points.length > 0);
+  }, [predictions, selectedAnimal]);
+
   const filteredPredictions = predictions.filter((pred) => {
     if (selectedEvent && pred.predictedEvent !== selectedEvent) return false;
     if (filterDetected === 'detected' && !pred.detected) return false;
@@ -90,6 +131,33 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
 
   return (
     <div className="space-y-6">
+      {/* Estado del servicio de IA */}
+      {mlStatus &&
+        (mlStatus.online && mlStatus.modelLoaded ? (
+          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+            <CircleCheck className="w-4 h-4" />
+            <span>
+              Modelo de IA activo · analiza ventanas de 24 h ({mlStatus.requiredWindowBlocks ?? 48} bloques de 30 min)
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/25 px-4 py-3 text-xs text-amber-900 dark:text-amber-200">
+            <CircleAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold">
+                {mlStatus.online
+                  ? 'El servicio de IA está corriendo pero no pudo cargar el modelo.'
+                  : 'El servicio de IA no responde: no se están generando predicciones nuevas.'}
+              </p>
+              <p className="text-amber-800/80 dark:text-amber-300/80">
+                {mlStatus.online
+                  ? mlStatus.error
+                  : 'En local se levanta con start.bat (o docker-compose up -d ml-service).'}
+              </p>
+            </div>
+          </div>
+        ))}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Alertas IA */}
@@ -209,6 +277,49 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
         </button>
       </div>
 
+      {/* Evolución de las probabilidades del animal elegido */}
+      {selectedAnimal ? (
+        evolution.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs p-4 space-y-3">
+            <h4 className="font-bold text-sm text-zinc-900 dark:text-white">Evolución de la probabilidad por evento</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {evolution.map(({ event, points, threshold, latest }) => (
+                <div key={event} className="rounded-lg border border-zinc-100 dark:border-zinc-800 p-3 space-y-1">
+                  <div className="flex items-baseline justify-between text-xs">
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{EVENT_NAMES[event]}</span>
+                    {latest && (
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        última: <b className="text-zinc-900 dark:text-white">{Math.round(latest.probability * 100)}%</b>
+                        {latest.detected && ' · alerta'}
+                      </span>
+                    )}
+                  </div>
+                  <TimeSeriesChart
+                    kind="line"
+                    points={points}
+                    yMin={0}
+                    yMax={1}
+                    reference={
+                      threshold !== null
+                        ? { value: threshold, label: `umbral ${Math.round(threshold * 100)}%` }
+                        : undefined
+                    }
+                    ariaLabel={`Probabilidad de ${EVENT_NAMES[event]} en el tiempo`}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                    formatTime={formatShortDateTime}
+                    height={130}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          Elegí un animal en el filtro para ver cómo evolucionó la probabilidad de cada evento.
+        </p>
+      )}
+
       {/* Lista / Tabla de Predicciones */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs overflow-hidden">
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
@@ -267,9 +378,17 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
                     </div>
 
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      Raza: {pred.animal?.breed || 'N/A'} · Sexo: {pred.animal?.sex || 'N/A'} · Ventana:{' '}
-                      {pred.windowReadingsCount} lecturas analizadas (24hs)
+                      Raza: {pred.animal?.breed || 'N/A'} · Sexo: {pred.animal?.sex || 'N/A'} · Ventana de 24 h:{' '}
+                      {pred.windowReadingsCount} de 48 bloques con datos
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setInputsPredictionId(pred.id)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 dark:text-purple-400 hover:underline cursor-pointer"
+                    >
+                      <SearchCode className="w-3.5 h-3.5" />
+                      ¿En qué se basó?
+                    </button>
 
                     {pred.alert?.isFalsePositive && (
                       <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
@@ -299,9 +418,8 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
                       </div>
                     </div>
 
-                    <div className="text-right text-[11px] text-zinc-400 shrink-0">
-                      <p>{new Date(pred.createdAt).toLocaleDateString()}</p>
-                      <p>{new Date(pred.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    <div className="text-right text-[11px] text-zinc-400 shrink-0" title="Fin de la ventana analizada">
+                      <p>{formatShortDateTime(predictionTime(pred))}</p>
                     </div>
                   </div>
                 </div>
@@ -310,6 +428,10 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
           </div>
         )}
       </div>
+
+      {inputsPredictionId && (
+        <PredictionInputsModal predictionId={inputsPredictionId} onClose={() => setInputsPredictionId(null)} />
+      )}
     </div>
   );
 }

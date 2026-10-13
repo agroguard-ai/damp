@@ -52,6 +52,8 @@ export interface MlWindow {
   windowEnd: Date;
   /** Cuántos de los 48 bloques tienen lecturas reales (el resto se rellenó). */
   blocksWithData: number;
+  /** Por bloque: true si tuvo lecturas reales, false si se rellenó con el anterior/siguiente. */
+  hasData: boolean[];
 }
 
 /** Inicio (UTC) del bloque de 30 min, alineado en hora local, que contiene `date`. */
@@ -123,5 +125,5 @@ export function buildMlWindow(readings: RawReading[], anchor: Date): MlWindow {
     blocks.push({ ...values, timestamp: toFarmLocalIso(new Date(windowStart.getTime() + i * BLOCK_MS)) });
   }
 
-  return { blocks, windowStart, windowEnd, blocksWithData };
+  return { blocks, windowStart, windowEnd, blocksWithData, hasData: acc.map((a) => a !== null) };
 }

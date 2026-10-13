@@ -51,14 +51,29 @@ export class AlertsController {
     return this.alertsService.getHealthPredictions(userId, farmId, animalId, limit ? Number(limit) : 50);
   }
 
+  /** CU014 - Estado del servicio de IA (online / modelo cargado). */
+  @Get('ml-status')
+  getMlStatus() {
+    return this.alertsService.getMlStatus();
+  }
+
+  /** CU014 - Riesgo actual por animal según las predicciones recientes del modelo. */
+  @Get('predictions/current-risk')
+  getCurrentMlRisk(@CurrentUser('sub') userId: string, @Query('farmId') farmId: string) {
+    return this.alertsService.getCurrentMlRisk(userId, farmId);
+  }
+
+  /** CU014 - Datos de entrada (ventana de 24 h) que analizó el modelo para una predicción. */
+  @Get('predictions/:id/inputs')
+  getPredictionInputs(@CurrentUser('sub') userId: string, @Param('id') id: string) {
+    return this.alertsService.getPredictionInputs(userId, id);
+  }
+
   /**
    * CU014 - Métricas de precisión y falsos positivos del modelo ML en campo.
    */
   @Get('ml-metrics')
-  getMlPerformanceMetrics(
-    @CurrentUser('sub') userId: string,
-    @Query('farmId') farmId: string
-  ) {
+  getMlPerformanceMetrics(@CurrentUser('sub') userId: string, @Query('farmId') farmId: string) {
     return this.alertsService.getMlPerformanceMetrics(userId, farmId);
   }
 
@@ -66,10 +81,7 @@ export class AlertsController {
    * CU014 - Dataset de feedback de operarios para reentrenamiento futuro del modelo.
    */
   @Get('feedback-dataset')
-  getFeedbackDataset(
-    @CurrentUser('sub') userId: string,
-    @Query('farmId') farmId?: string
-  ) {
+  getFeedbackDataset(@CurrentUser('sub') userId: string, @Query('farmId') farmId?: string) {
     return this.alertsService.getFeedbackDataset(userId, farmId);
   }
 

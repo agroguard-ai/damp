@@ -18,6 +18,8 @@ import { animalTypesApi } from '@/lib/api/animal-types';
 import { collarsApi } from '@/lib/api/collars';
 import { geofencesApi } from '@/lib/api/geofences';
 import { medicalEventsApi } from '@/lib/api/medical-events';
+import { alertsApi } from '@/lib/api/alerts';
+import { EVENT_NAMES } from '@/components/alerts/mlEvents';
 import { animalsApi, type Animal } from '@/lib/api/animals';
 import type { MedicalEventType } from '@/types';
 import {
@@ -35,6 +37,7 @@ import {
   CheckCircle2,
   Edit2,
   FileDown,
+  BrainCircuit,
 } from 'lucide-react';
 import { Select } from '@/components/ui/Select';
 
@@ -77,6 +80,14 @@ function AnimalsContent() {
   const activeFarmGeofences = useMemo(() => farmGeofences.filter((g) => g.active), [farmGeofences]);
 
   const { data: collars = [], refetch: refetchCollars } = useApi(collarsApi.getAll);
+
+  // Riesgo actual según la IA (eventos detectados en las últimas horas), por animal
+  const fetchMlRisk = useCallback(
+    () => (activeFarmId ? alertsApi.getCurrentMlRisk(activeFarmId).catch(() => []) : Promise.resolve([])),
+    [activeFarmId]
+  );
+  const { data: mlRisk = [] } = useApi(fetchMlRisk, [activeFarmId]);
+  const mlRiskByAnimal = useMemo(() => new Map(mlRisk.map((r) => [r.animalId, r.events])), [mlRisk]);
   const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
 
   // Search & Filters state
@@ -799,6 +810,16 @@ function AnimalsContent() {
                             >
                               {health.label}
                             </span>
+                            {mlRiskByAnimal.get(animal.id)?.map((risk) => (
+                              <span
+                                key={risk.event}
+                                className="ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-full border bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300"
+                                title="Predicción del modelo de IA para las próximas 6 h (ver Alertas → Salud Predictiva)"
+                              >
+                                <BrainCircuit className="w-3 h-3" />
+                                {EVENT_NAMES[risk.event] ?? risk.event} {Math.round(risk.probability * 100)}%
+                              </span>
+                            ))}
                           </td>
 
                           {/* Weight & Age */}
