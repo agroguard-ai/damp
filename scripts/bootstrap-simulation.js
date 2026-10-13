@@ -2,18 +2,18 @@
  * ============================================================
  *  DAMP — Bootstrap de la granja de simulación
  *  ------------------------------------------
- *  Crea de una todo lo que necesita fleet-simulator.js: una zona
- *  de prueba, un gateway, 20 collares, 20 animales (uno por
- *  collar) y un geofence que los agrupa a todos. Al final escribe
+ *  Crea de una todo lo que necesita fleet-simulator.js: un gateway,
+ *  20 collares, 20 animales (uno por collar) y un geofence que los
+ *  agrupa a todos. Al final escribe
  *  scripts/fleet-simulator.config.json ya completo.
  *
  *  Se loguea solo contra POST /auth/login (usuario/contraseña, ya no Clerk)
  *  y usa el JWT que devuelve — dura 7 días por defecto, así que no hay
  *  apuro de token expirando a mitad de script como antes.
  *
- *  IMPORTANTE: ZonesService (y algún otro service más) tiene su propio
+ *  IMPORTANTE: GeofencesService (y algún otro service más) tiene su propio
  *  chequeo de dueño (`farm.userId !== userId`) que NO respeta el rol
- *  SUPER_ADMIN ni la membresía FarmUser — así que crear la zona/gateway/
+ *  SUPER_ADMIN ni la membresía FarmUser — así que crear el gateway/
  *  animales/geofence hay que hacerlo logueado como el DUEÑO real de la
  *  granja, no como SUPER_ADMIN. Solo el alta de collares (`POST /collars`)
  *  exige sí o sí SUPER_ADMIN. Por eso este script pide dos logins.
@@ -24,10 +24,11 @@
  *        SUPER_ADMIN) y no crea nada.
  *    node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD> <FARM_ID> <OWNER_EMAIL> <OWNER_PASSWORD>
  *      → crea todo dentro de esa granja (OWNER_EMAIL tiene que ser el
- *        dueño real de FARM_ID, o el paso de zona va a fallar con 403).
+ *        dueño real de FARM_ID, o el paso del cerco va a fallar con 403).
  *
  *  Opcional: CENTER_LAT / CENTER_LNG (env vars) para elegir dónde
- *  queda el cerco de prueba. Por defecto usa un punto arbitrario.
+ *  queda el cerco de prueba. Por defecto lo centra en el perímetro del
+ *  campo (el backend rechaza cercos que caigan fuera de él).
  * ============================================================
  */
 
@@ -98,14 +99,10 @@ async function main() {
   console.log(`Logueando como ${OWNER_EMAIL} (dueño de la granja)...`);
   const ownerToken = await login(OWNER_EMAIL, OWNER_PASSWORD);
 
-  console.log('Creando zona de prueba...');
-  const zone = await api(ownerToken, 'POST', '/zones', { name: 'Zona Simulación', farmId: FARM_ID });
-
   console.log('Creando gateway...');
   const gateway = await api(ownerToken, 'POST', '/gateways', {
     name: 'Gateway Simulación',
     farmId: FARM_ID,
-    zoneId: zone.id,
   });
 
   console.log('Registrando 20 collares...');
@@ -126,13 +123,17 @@ async function main() {
       weightKg: 400,
       ageMonths: 24,
       collarId: c.collarId,
-      zoneId: zone.id,
     });
     animalIds.push(animal.id);
   }
 
-  const centerLat = parseFloat(process.env.CENTER_LAT || '-34.6037');
-  const centerLng = parseFloat(process.env.CENTER_LNG || '-58.3816');
+  // Por defecto el cerco va en el centro del perímetro del campo
+  const farm = await api(ownerToken, 'GET', `/farms/${FARM_ID}`);
+  const rawPolygon = typeof farm.polygonCoordinates === 'string' ? JSON.parse(farm.polygonCoordinates) : farm.polygonCoordinates;
+  const farmPolygon = Array.isArray(rawPolygon) ? rawPolygon : [];
+  const avg = (i) => farmPolygon.reduce((sum, pt) => sum + pt[i], 0) / farmPolygon.length;
+  const centerLat = parseFloat(process.env.CENTER_LAT || (farmPolygon.length ? avg(0) : '-34.6037'));
+  const centerLng = parseFloat(process.env.CENTER_LNG || (farmPolygon.length ? avg(1) : '-58.3816'));
   const d = 0.0015; // ~150m de lado
   const geofencePolygon = [
     [centerLat - d, centerLng - d],
@@ -143,7 +144,7 @@ async function main() {
 
   console.log('Creando geofence y asignando los 20 animales...');
   await api(ownerToken, 'POST', '/geofences', {
-    zoneId: zone.id,
+    farmId: FARM_ID,
     name: 'Cerco Simulación',
     polygonCoordinates: geofencePolygon,
     animalIds,

@@ -4,6 +4,8 @@
 * **Fecha de Creación**: 09/07/2026
 * **Estado**: Completado
 
+> **Nota (13/10/2026):** el nivel "Zona" se eliminó. Los cercos ahora cuelgan directo del campo y la pastura es un dato opcional del cerco. Ver [epic-simplificacion-campos-cercos-claude.md](epic-simplificacion-campos-cercos-claude.md). Lo que sigue describe la versión anterior.
+
 ## 1. Resumen de la Solución Técnica
 Esta Epic incluye la gestión completa de establecimientos agropecuarios (`Farms`) y la subdivisión de los mismos en potreros o parcelas (`Zones`), restringiendo el acceso del usuario autenticado con Clerk únicamente a sus propios establecimientos.
 
