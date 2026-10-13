@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 export interface PaginationMeta {
   totalItems: number;
@@ -67,17 +68,12 @@ export function Pagination({ meta, onPageChange, onLimitChange, limitOptions = [
         {onLimitChange && (
           <div className="flex items-center gap-2">
             <span>Por página:</span>
-            <select
-              value={limit}
-              onChange={(e) => onLimitChange(Number(e.target.value))}
-              className="bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-lg px-2.5 py-1 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs cursor-pointer"
-            >
-              {limitOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(limit)}
+              onChange={(v) => onLimitChange(Number(v))}
+              options={[...limitOptions.map((opt) => ({ value: String(opt), label: String(opt) }))]}
+              size="sm"
+            />
           </div>
         )}
       </div>

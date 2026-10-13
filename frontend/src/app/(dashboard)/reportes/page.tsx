@@ -9,6 +9,7 @@ import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import DashboardCharts from '@/components/reports/DashboardCharts';
+import { Select } from '@/components/ui/Select';
 
 export default function ReportesPage() {
   const { user, emulatedUser } = useAuth();
@@ -67,17 +68,11 @@ export default function ReportesPage() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>
-              <select
-                value={activeFarmId}
-                onChange={(e) => setSelectedFarm(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-              >
-                {farms.map((farm) => (
-                  <option key={farm.id} value={farm.id}>
-                    {farm.name}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={String(activeFarmId)}
+                onChange={(v) => setSelectedFarm(v)}
+                options={[...farms.map((farm) => ({ value: String(farm.id), label: String(farm.name) }))]}
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Desde (opcional)</label>
@@ -141,14 +136,14 @@ export default function ReportesPage() {
               description="Historial completo con origen (Modelo IA, Umbral o Escape), nivel de certeza %, estado de falsos positivos y observaciones del operario en PDF o Excel."
             >
               <div className="flex items-center gap-3">
-                <select
+                <Select
                   value={alertsFormat}
-                  onChange={(e) => setAlertsFormat(e.target.value as 'pdf' | 'xlsx')}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm cursor-pointer"
-                >
-                  <option value="pdf">PDF</option>
-                  <option value="xlsx">Excel</option>
-                </select>
+                  onChange={(v) => setAlertsFormat(v as 'pdf' | 'xlsx')}
+                  options={[
+                    { value: 'pdf', label: 'PDF' },
+                    { value: 'xlsx', label: 'Excel' },
+                  ]}
+                />
                 <a
                   href={`/api/reports/farms/${activeFarmId}/alerts${rangeQuery() ? `${rangeQuery()}&format=${alertsFormat}` : `?format=${alertsFormat}`}`}
                   className="inline-block bg-primary hover:bg-primary-hover text-on-primary text-sm font-semibold px-4 py-2 rounded-lg transition-all"
@@ -175,20 +170,18 @@ export default function ReportesPage() {
               description="PDF con vacunaciones, pesajes, partos y tratamientos."
             >
               <div className="flex items-center gap-3">
-                <select
-                  value={selectedAnimal}
-                  onChange={(e) => setSelectedAnimal(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary text-sm cursor-pointer flex-1"
-                >
-                  <option value="" disabled>
-                    Elegir animal...
-                  </option>
-                  {farmAnimals.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.tag || `Animal (${a.id.slice(0, 5)})`}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(selectedAnimal)}
+                  onChange={(v) => setSelectedAnimal(v)}
+                  options={[
+                    ...farmAnimals.map((a) => ({
+                      value: String(a.id),
+                      label: String(a.tag || `Animal (${a.id.slice(0, 5)})`),
+                    })),
+                  ]}
+                  className="flex-1"
+                  placeholder={'Elegir animal...'}
+                />
                 {selectedAnimal ? (
                   <a
                     href={`/api/reports/animals/${selectedAnimal}/medical-history`}

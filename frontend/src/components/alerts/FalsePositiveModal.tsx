@@ -5,6 +5,7 @@ import { AlertTriangle, X, Check, BrainCircuit } from 'lucide-react';
 import { alertsApi } from '@/lib/api/alerts';
 import { useToast } from '@/context/ToastContext';
 import type { Alert } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 interface FalsePositiveModalProps {
   alert: Alert | null;
@@ -88,17 +89,12 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
             <label className="font-semibold text-zinc-700 dark:text-zinc-300">
               Motivo principal del falso positivo:
             </label>
-            <select
-              value={selectedReason}
-              onChange={(e) => setSelectedReason(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 text-zinc-900 dark:text-white text-xs focus:ring-1 focus:ring-amber-500"
-            >
-              {PREDEFINED_REASONS.map((reason) => (
-                <option key={reason} value={reason}>
-                  {reason}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(selectedReason)}
+              onChange={(v) => setSelectedReason(v)}
+              options={[...PREDEFINED_REASONS.map((reason) => ({ value: String(reason), label: String(reason) }))]}
+              size="sm"
+            />
           </div>
 
           <div className="space-y-1.5">

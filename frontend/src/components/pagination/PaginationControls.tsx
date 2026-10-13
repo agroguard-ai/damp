@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 export interface PaginationControlsProps {
   page: number;
@@ -82,18 +83,13 @@ export function PaginationControls({
             <label htmlFor="pagination-limit-select" className="text-xs text-slate-500 dark:text-slate-400">
               Mostrar:
             </label>
-            <select
+            <Select
+              value={String(limit)}
+              onChange={(v) => onLimitChange(Number(v))}
+              options={[...limitOptions.map((opt) => ({ value: String(opt), label: `${opt} por pág.` }))]}
+              size="sm"
               id="pagination-limit-select"
-              value={limit}
-              onChange={(e) => onLimitChange(Number(e.target.value))}
-              className="px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {limitOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt} por pág.
-                </option>
-              ))}
-            </select>
+            />
           </div>
         )}
       </div>

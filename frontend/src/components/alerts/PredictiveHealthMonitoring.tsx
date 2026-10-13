@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { alertsApi } from '@/lib/api/alerts';
 import type { HealthPrediction, MlHealthMetrics } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 interface PredictiveHealthMonitoringProps {
   farmId: string;
@@ -154,48 +155,47 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
           {/* Selector Animal */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-zinc-500 font-semibold">Animal:</span>
-            <select
-              value={selectedAnimal}
-              onChange={(e) => setSelectedAnimal(e.target.value)}
-              className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 cursor-pointer"
-            >
-              <option value="">Todos los animales</option>
-              {animals.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.tag || `Animal ${a.id.slice(0, 5)}`}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(selectedAnimal)}
+              onChange={(v) => setSelectedAnimal(v)}
+              options={[
+                { value: '', label: 'Todos los animales' },
+                ...animals.map((a) => ({ value: String(a.id), label: String(a.tag || `Animal ${a.id.slice(0, 5)}`) })),
+              ]}
+              size="sm"
+            />
           </div>
 
           {/* Selector Evento */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-zinc-500 font-semibold">Evento:</span>
-            <select
+            <Select
               value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
-              className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 cursor-pointer"
-            >
-              <option value="">Todos los eventos</option>
-              <option value="fiebre">Fiebre</option>
-              <option value="celo">Celo</option>
-              <option value="inactividad">Inactividad</option>
-              <option value="anomalia">Anomalía</option>
-            </select>
+              onChange={(v) => setSelectedEvent(v)}
+              options={[
+                { value: '', label: 'Todos los eventos' },
+                { value: 'fiebre', label: 'Fiebre' },
+                { value: 'celo', label: 'Celo' },
+                { value: 'inactividad', label: 'Inactividad' },
+                { value: 'anomalia', label: 'Anomalía' },
+              ]}
+              size="sm"
+            />
           </div>
 
           {/* Selector Tipo de Certeza */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-zinc-500 font-semibold">Certeza:</span>
-            <select
+            <Select
               value={filterDetected}
-              onChange={(e) => setFilterDetected(e.target.value)}
-              className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 cursor-pointer"
-            >
-              <option value="all">Todas las predicciones</option>
-              <option value="detected">🚨 Alta certeza (Alerta disparada)</option>
-              <option value="subthreshold">📋 Baja certeza (Guardadas para revisión)</option>
-            </select>
+              onChange={(v) => setFilterDetected(v)}
+              options={[
+                { value: 'all', label: 'Todas las predicciones' },
+                { value: 'detected', label: '🚨 Alta certeza (Alerta disparada)' },
+                { value: 'subthreshold', label: '📋 Baja certeza (Guardadas para revisión)' },
+              ]}
+              size="sm"
+            />
           </div>
         </div>
 

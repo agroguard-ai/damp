@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/Button';
 import { GoogleAddressSearch, type AddressSearchResult } from '@/components/farms/GoogleAddressSearch';
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import { MapPin, Ruler, ChevronDown, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
+import { MapPin, Ruler, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
+import { Select } from '@/components/ui/Select';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 
@@ -44,8 +45,10 @@ export default function NewFarmPage() {
   const provincesList = getProvinces();
   const availableDepartments = getDepartments(formData.province);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    handleFieldChange(e.target.name, e.target.value);
+
+  function handleFieldChange(name: string, value: string) {
     if (name === 'province') {
       const center = getProvinceCenter(value);
       if (center && !hasCustomCoords) {
@@ -56,7 +59,7 @@ export default function NewFarmPage() {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }
 
   const handleSelectSearchResult = (result: AddressSearchResult) => {
     setMapCenter([result.lat, result.lng]);
@@ -260,23 +263,16 @@ export default function NewFarmPage() {
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Provincia *
                 </label>
-                <div className="relative">
-                  <select
-                    required
-                    name="province"
-                    value={formData.province}
-                    onChange={handleTextChange}
-                    className="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                  >
-                    <option value="">Seleccioná una Provincia</option>
-                    {provincesList.map((prov) => (
-                      <option key={prov} value={prov}>
-                        {prov}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <Select
+                  name="province"
+                  value={formData.province}
+                  onChange={(v) => handleFieldChange('province', v)}
+                  required
+                  placeholder="Seleccioná una Provincia"
+                  searchable
+                  searchPlaceholder="Buscar..."
+                  options={provincesList.map((x) => ({ value: x, label: x }))}
+                />
               </div>
 
               {/* Selector de Departamento / Partido */}
@@ -284,23 +280,16 @@ export default function NewFarmPage() {
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Departamento / Partido
                 </label>
-                <div className="relative">
-                  <select
-                    name="department"
-                    value={formData.department}
-                    onChange={handleTextChange}
-                    disabled={!formData.province}
-                    className="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="">Seleccioná un Departamento</option>
-                    {availableDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <Select
+                  name="department"
+                  value={formData.department}
+                  onChange={(v) => handleFieldChange('department', v)}
+                  disabled={!formData.province}
+                  placeholder="Seleccioná un Departamento"
+                  searchable
+                  searchPlaceholder="Buscar..."
+                  options={availableDepartments.map((x) => ({ value: x, label: x }))}
+                />
               </div>
             </div>
           </div>

@@ -15,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
+import { Select } from '@/components/ui/Select';
 
 export default function NewAnimalPage() {
   const { user, emulatedUser } = useAuth();
@@ -37,10 +38,12 @@ export default function NewAnimalPage() {
     collarId: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleFieldChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) reset();
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(e.target.name, e.target.value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,18 +126,15 @@ export default function NewAnimalPage() {
                     Registrar Nuevo Campo
                   </Link>
                 </div>
-                <select
+                <Select
                   name="farmId"
                   value={formData.farmId || farms[0]?.id || ''}
-                  onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
-                >
-                  {farms.map((farm) => (
-                    <option key={farm.id} value={farm.id}>
-                      {farm.name || `Campo (${farm.id.slice(0, 8)})`}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => handleFieldChange('farmId', v)}
+                  options={farms.map((farm) => ({
+                    value: farm.id,
+                    label: farm.name || `Campo (${farm.id.slice(0, 8)})`,
+                  }))}
+                />
               </div>
 
               {/* Tag / Caravana */}
@@ -162,7 +162,6 @@ export default function NewAnimalPage() {
                 }}
                 required
                 labelClassName="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider"
-                selectClassName="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
               />
 
               {/* Peso y edad */}
@@ -204,19 +203,15 @@ export default function NewAnimalPage() {
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Collar IoT (Opcional)
                 </label>
-                <select
+                <Select
                   name="collarId"
                   value={formData.collarId}
-                  onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
-                >
-                  <option value="">Sin collar</option>
-                  {availableCollars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.identifier}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => handleFieldChange('collarId', v)}
+                  options={[
+                    { value: '', label: 'Sin collar' },
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: c.identifier })),
+                  ]}
+                />
               </div>
             </div>
 

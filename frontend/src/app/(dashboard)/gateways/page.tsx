@@ -36,6 +36,7 @@ import {
   Layers,
 } from 'lucide-react';
 import type { GatewayStatus, Gateway } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 const STATUS_LABELS: Record<GatewayStatus, string> = {
   ONLINE: 'En línea',
@@ -547,66 +548,74 @@ export default function GatewaysPage() {
           {/* 2. Filter by User / Productor (SuperAdmin only) */}
           {isSuperAdmin && (
             <div>
-              <select
+              <Select
                 value={selectedUserFilter}
-                onChange={(e) => {
-                  setSelectedUserFilter(e.target.value);
+                onChange={(v) => {
+                  setSelectedUserFilter(v);
                   setSelectedFarmFilter('ALL'); // Reset farm filter when changing user
                 }}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-              >
-                <option value="ALL">👤 Todos los Productores ({usersList.length})</option>
-                <option value="UNASSIGNED">📦 Stock Libre (Sin asignar)</option>
-                {usersList.map((u) => {
-                  const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
-                  return (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email} ({userFarmsCount} {userFarmsCount === 1 ? 'campo' : 'campos'})
-                    </option>
-                  );
-                })}
-              </select>
+                size="sm"
+                searchable={usersList.length > 5}
+                searchPlaceholder="Buscar productor..."
+                options={[
+                  { value: 'ALL', label: `👤 Todos los Productores (${usersList.length})` },
+                  { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
+                  ...usersList.map((u) => {
+                    const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
+                    return {
+                      value: u.id,
+                      label: u.name || u.email,
+                      description: `${userFarmsCount} ${userFarmsCount === 1 ? 'campo' : 'campos'}`,
+                    };
+                  }),
+                ]}
+              />
             </div>
           )}
 
           {/* 3. Filter by Field / Campo (Filtered by selected user) */}
           <div>
-            <select
+            <Select
               disabled={selectedUserFilter === 'UNASSIGNED'}
               value={selectedFarmFilter}
-              onChange={(e) => setSelectedFarmFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50"
-            >
-              <option value="ALL">
-                🏢{' '}
-                {selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
-                  ? 'Todos los campos del productor'
-                  : 'Todos los Campos'}{' '}
-                ({farmsForFilterToolbar.length})
-              </option>
-              {isSuperAdmin && selectedUserFilter === 'ALL' && (
-                <option value="UNASSIGNED">📦 Sin campo asignado</option>
-              )}
-              {farmsForFilterToolbar.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} {f.user?.name ? `(${f.user.name})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSelectedFarmFilter(v)}
+              size="sm"
+              searchable={farmsForFilterToolbar.length > 5}
+              searchPlaceholder="Buscar campo..."
+              options={[
+                {
+                  value: 'ALL',
+                  label: `🏢 ${
+                    selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
+                      ? 'Todos los campos del productor'
+                      : 'Todos los Campos'
+                  } (${farmsForFilterToolbar.length})`,
+                },
+                ...(isSuperAdmin && selectedUserFilter === 'ALL'
+                  ? [{ value: 'UNASSIGNED', label: '📦 Sin campo asignado' }]
+                  : []),
+                ...farmsForFilterToolbar.map((f) => ({
+                  value: f.id,
+                  label: f.name || 'Sin nombre',
+                  description: f.user?.name ?? undefined,
+                })),
+              ]}
+            />
           </div>
 
           {/* 4. Filter by Status */}
           <div>
-            <select
+            <Select
               value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-            >
-              <option value="ALL">📡 Todos los Estados</option>
-              <option value="ONLINE">🟢 En línea ({onlineCount})</option>
-              <option value="OFFLINE">🔴 Fuera de línea ({offlineCount})</option>
-              <option value="NO_DATA">⚪ Sin datos</option>
-            </select>
+              onChange={(v) => setSelectedStatusFilter(v)}
+              options={[
+                { value: 'ALL', label: '📡 Todos los Estados' },
+                { value: 'ONLINE', label: `🟢 En línea (${onlineCount})` },
+                { value: 'OFFLINE', label: `🔴 Fuera de línea (${offlineCount})` },
+                { value: 'NO_DATA', label: '⚪ Sin datos' },
+              ]}
+              size="sm"
+            />
           </div>
         </div>
 
@@ -963,26 +972,26 @@ export default function GatewaysPage() {
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                         1. Seleccionar Productor *
                       </label>
-                      <select
+                      <Select
                         required
                         value={createUserId}
-                        onChange={(e) => {
-                          setCreateUserId(e.target.value);
+                        onChange={(v) => {
+                          setCreateUserId(v);
                           setCreateFarmId('');
                         }}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                      >
-                        <option value="">Seleccioná un productor ({usersList.length} disponibles)...</option>
-                        {usersList.map((u) => {
+                        size="sm"
+                        searchable={usersList.length > 5}
+                        searchPlaceholder="Buscar productor..."
+                        placeholder={`Seleccioná un productor (${usersList.length} disponibles)...`}
+                        options={usersList.map((u) => {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
-                          return (
-                            <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
-                              {farmCount === 1 ? 'campo' : 'campos'}
-                            </option>
-                          );
+                          return {
+                            value: u.id,
+                            label: u.name || u.email,
+                            description: `${u.name ? `${u.email} · ` : ''}${farmCount} ${farmCount === 1 ? 'campo' : 'campos'}`,
+                          };
                         })}
-                      </select>
+                      />
                     </div>
 
                     {/* Selector de Campo del Productor */}
@@ -999,21 +1008,19 @@ export default function GatewaysPage() {
                           Este productor no tiene ningún campo registrado aún.
                         </div>
                       ) : (
-                        <select
+                        <Select
+                          value={String(createFarmId)}
+                          onChange={(v) => setCreateFarmId(v)}
+                          options={[
+                            {
+                              value: '',
+                              label: `Seleccioná el campo (${farmsForCreateModal.length} de este usuario)...`,
+                            },
+                            ...farmsForCreateModal.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                          ]}
+                          size="sm"
                           required
-                          value={createFarmId}
-                          onChange={(e) => setCreateFarmId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">
-                            Seleccioná el campo ({farmsForCreateModal.length} de este usuario)...
-                          </option>
-                          {farmsForCreateModal.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       )}
                     </div>
                   </div>
@@ -1178,26 +1185,26 @@ export default function GatewaysPage() {
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                         1. Productor / Dueño *
                       </label>
-                      <select
+                      <Select
                         required
                         value={editUserId}
-                        onChange={(e) => {
-                          setEditUserId(e.target.value);
+                        onChange={(v) => {
+                          setEditUserId(v);
                           setEditFarmId('');
                         }}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                      >
-                        <option value="">Seleccionar productor ({usersList.length})...</option>
-                        {usersList.map((u) => {
+                        size="sm"
+                        searchable={usersList.length > 5}
+                        searchPlaceholder="Buscar productor..."
+                        placeholder={`Seleccionar productor (${usersList.length})...`}
+                        options={usersList.map((u) => {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
-                          return (
-                            <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
-                              {farmCount === 1 ? 'campo' : 'campos'}
-                            </option>
-                          );
+                          return {
+                            value: u.id,
+                            label: u.name || u.email,
+                            description: `${u.name ? `${u.email} · ` : ''}${farmCount} ${farmCount === 1 ? 'campo' : 'campos'}`,
+                          };
                         })}
-                      </select>
+                      />
                     </div>
 
                     <div className="space-y-1.5">
@@ -1213,19 +1220,16 @@ export default function GatewaysPage() {
                           Este productor no tiene campos registrados.
                         </div>
                       ) : (
-                        <select
+                        <Select
+                          value={String(editFarmId)}
+                          onChange={(v) => setEditFarmId(v)}
+                          options={[
+                            { value: '', label: `Seleccionar campo (${farmsForEditModal.length})...` },
+                            ...farmsForEditModal.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                          ]}
+                          size="sm"
                           required
-                          value={editFarmId}
-                          onChange={(e) => setEditFarmId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Seleccionar campo ({farmsForEditModal.length})...</option>
-                          {farmsForEditModal.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       )}
                     </div>
                   </div>

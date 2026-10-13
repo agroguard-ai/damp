@@ -22,6 +22,7 @@ import { rotationsApi } from '@/lib/api/rotations';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import type { Farm, Geofence, Animal, RotationResponse } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 // Load map dynamically to prevent SSR errors
 const RotationMap = dynamic(() => import('@/components/maps/RotationMap'), {
@@ -639,20 +640,20 @@ export default function RotationView({
                   <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
                     Frecuencia de Rotación (Horas por Cerco)
                   </label>
-                  <select
-                    value={frequencyHours}
-                    onChange={(e) => setFrequencyHours(parseInt(e.target.value, 10))}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer font-medium"
-                  >
-                    <option value={1}>Cada 1 hora (Rotación rápida / prueba)</option>
-                    <option value={4}>Cada 4 horas</option>
-                    <option value={8}>Cada 8 horas</option>
-                    <option value={12}>Cada 12 horas (Medio día)</option>
-                    <option value={24}>Cada 24 horas (1 día completo)</option>
-                    <option value={48}>Cada 48 horas (2 días)</option>
-                    <option value={72}>Cada 72 horas (3 días)</option>
-                    <option value={168}>Cada 7 días (1 semana)</option>
-                  </select>
+                  <Select
+                    value={String(frequencyHours)}
+                    onChange={(v) => setFrequencyHours(parseInt(v, 10))}
+                    options={[
+                      { value: '1', label: 'Cada 1 hora (Rotación rápida / prueba)' },
+                      { value: '4', label: 'Cada 4 horas' },
+                      { value: '8', label: 'Cada 8 horas' },
+                      { value: '12', label: 'Cada 12 horas (Medio día)' },
+                      { value: '24', label: 'Cada 24 horas (1 día completo)' },
+                      { value: '48', label: 'Cada 48 horas (2 días)' },
+                      { value: '72', label: 'Cada 72 horas (3 días)' },
+                      { value: '168', label: 'Cada 7 días (1 semana)' },
+                    ]}
+                  />
                 </div>
               </div>
 

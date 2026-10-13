@@ -5,6 +5,7 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { useToast } from '@/context/ToastContext';
 import { useFarmPermissions, FARM_ROLE_LABELS } from '@/hooks/useFarmPermissions';
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { Select } from '@/components/ui/Select';
 
 // Cada granja tiene un único administrador (regla del backend), así que desde acá solo se
 // invita o se cambia entre operador y solo lectura.
@@ -187,17 +188,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
             className="flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 p-2.5 text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
 
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="rounded-xl border border-zinc-300 dark:border-zinc-700 p-2.5 text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          >
-            {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r} value={r}>
-                {FARM_ROLE_LABELS[r]}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={String(selectedRole)}
+            onChange={(v) => setSelectedRole(v)}
+            options={[...ASSIGNABLE_ROLES.map((r) => ({ value: String(r), label: String(FARM_ROLE_LABELS[r]) }))]}
+          />
 
           <button
             type="submit"
@@ -240,17 +235,14 @@ export function FarmUserList({ farmId }: { farmId: string }) {
                         {FARM_ROLE_LABELS.ADMIN}
                       </span>
                     ) : (
-                      <select
-                        value={m.role?.name ?? 'OPERATOR'}
-                        onChange={(e) => void handleRoleUpdate(m.userId, e.target.value)}
-                        className="rounded-lg border border-zinc-300 dark:border-zinc-700 p-1.5 text-xs font-semibold bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
-                      >
-                        {ASSIGNABLE_ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {FARM_ROLE_LABELS[r]}
-                          </option>
-                        ))}
-                      </select>
+                      <Select
+                        value={String(m.role?.name ?? 'OPERATOR')}
+                        onChange={(v) => void handleRoleUpdate(m.userId, v)}
+                        options={[
+                          ...ASSIGNABLE_ROLES.map((r) => ({ value: String(r), label: String(FARM_ROLE_LABELS[r]) })),
+                        ]}
+                        size="sm"
+                      />
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">

@@ -36,6 +36,7 @@ import {
   Edit2,
   FileDown,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 function AnimalsContent() {
   const searchParams = useSearchParams();
@@ -563,17 +564,12 @@ function AnimalsContent() {
               {/* Establecimiento Selector */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider shrink-0">Campo:</span>
-                <select
-                  value={activeFarmId}
-                  onChange={(e) => setSelectedFarm(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-semibold cursor-pointer min-w-44"
-                >
-                  {farms.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(activeFarmId)}
+                  onChange={(v) => setSelectedFarm(v)}
+                  options={[...farms.map((f) => ({ value: String(f.id), label: String(f.name) }))]}
+                  className="min-w-44"
+                />
               </div>
             </div>
 
@@ -581,77 +577,74 @@ function AnimalsContent() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Cerco</label>
-                <select
-                  value={filters.geofenceId}
-                  onChange={(e) => setFilters({ ...filters, geofenceId: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todos los cercos</option>
-                  {activeFarmGeofences.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(filters.geofenceId)}
+                  onChange={(v) => setFilters({ ...filters, geofenceId: v })}
+                  options={[
+                    { value: '', label: 'Todos los cercos' },
+                    ...activeFarmGeofences.map((g) => ({ value: String(g.id), label: String(g.name) })),
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                   Estado Hacienda
                 </label>
-                <select
+                <Select
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="ACTIVE">Activos</option>
-                  <option value="SOLD">Vendidos</option>
-                  <option value="DEAD">Fallecidos</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, status: v })}
+                  options={[
+                    { value: 'ACTIVE', label: 'Activos' },
+                    { value: 'SOLD', label: 'Vendidos' },
+                    { value: 'DEAD', label: 'Fallecidos' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Tipo Animal</label>
-                <select
-                  value={filters.animalType}
-                  onChange={(e) => setFilters({ ...filters, animalType: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todos los tipos</option>
-                  {animalTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.species})
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(filters.animalType)}
+                  onChange={(v) => setFilters({ ...filters, animalType: v })}
+                  options={[
+                    { value: '', label: 'Todos los tipos' },
+                    ...animalTypes.map((t) => ({ value: String(t.id), label: `${t.name} (${t.species})` })),
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Collar IoT</label>
-                <select
+                <Select
                   value={filters.hasCollar}
-                  onChange={(e) => setFilters({ ...filters, hasCollar: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todos</option>
-                  <option value="true">Con collar</option>
-                  <option value="false">Sin collar</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, hasCollar: v })}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'true', label: 'Con collar' },
+                    { value: 'false', label: 'Sin collar' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Salud</label>
-                <select
+                <Select
                   value={filters.healthStatus}
-                  onChange={(e) => setFilters({ ...filters, healthStatus: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Cualquier estado</option>
-                  <option value="HEALTHY">Saludable</option>
-                  <option value="TREATMENT">Tratamiento</option>
-                  <option value="SURGERY">Post-Op</option>
-                  <option value="VACCINATION">Vacunado</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, healthStatus: v })}
+                  options={[
+                    { value: '', label: 'Cualquier estado' },
+                    { value: 'HEALTHY', label: 'Saludable' },
+                    { value: 'TREATMENT', label: 'Tratamiento' },
+                    { value: 'SURGERY', label: 'Post-Op' },
+                    { value: 'VACCINATION', label: 'Vacunado' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex items-end">
@@ -922,22 +915,18 @@ function AnimalsContent() {
                             </button>
 
                             {canEdit && animal.status === 'ACTIVE' && (
-                              <select
-                                defaultValue=""
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleArchive(animal.id, e.target.value);
-                                    e.target.value = '';
-                                  }
+                              <Select
+                                value=""
+                                onChange={(v) => {
+                                  if (v) handleArchive(animal.id, v);
                                 }}
-                                className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                              >
-                                <option value="" disabled>
-                                  Baja...
-                                </option>
-                                <option value="SOLD">Vendido</option>
-                                <option value="DEAD">Fallecido</option>
-                              </select>
+                                placeholder="Baja..."
+                                size="sm"
+                                options={[
+                                  { value: 'SOLD', label: 'Vendido' },
+                                  { value: 'DEAD', label: 'Fallecido' },
+                                ]}
+                              />
                             )}
                           </td>
                         </tr>
@@ -970,18 +959,17 @@ function AnimalsContent() {
             <div className="p-6 space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Cerco de destino</label>
-                <select
-                  value={targetGeofenceId}
-                  onChange={(e) => setTargetGeofenceId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Sin cerco (liberar)</option>
-                  {activeFarmGeofences.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} {g.pastureType ? `(${g.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(targetGeofenceId)}
+                  onChange={(v) => setTargetGeofenceId(v)}
+                  options={[
+                    { value: '', label: 'Sin cerco (liberar)' },
+                    ...activeFarmGeofences.map((g) => ({
+                      value: String(g.id),
+                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                    })),
+                  ]}
+                />
                 <p className="text-[11px] text-zinc-400 mt-1">
                   Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba.
                 </p>
@@ -1029,19 +1017,15 @@ function AnimalsContent() {
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Establecimiento Destino
                 </label>
-                <select
-                  value={targetFarmId}
-                  onChange={(e) => setTargetFarmId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  {farms
-                    .filter((f) => f.id !== activeFarmId)
-                    .map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                </select>
+                <Select
+                  value={String(targetFarmId)}
+                  onChange={(v) => setTargetFarmId(v)}
+                  options={[
+                    ...farms
+                      .filter((f) => f.id !== activeFarmId)
+                      .map((f) => ({ value: String(f.id), label: String(f.name) })),
+                  ]}
+                />
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
@@ -1094,23 +1078,22 @@ function AnimalsContent() {
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Collar Disponible
                 </label>
-                <select
+                <Select
                   value={targetCollarId}
-                  onChange={(e) => setTargetCollarId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Sin collar (desvincular)</option>
-                  {singleCollarAnimal.animalCollars[0]?.collar && (
-                    <option value={singleCollarAnimal.animalCollars[0].collar.id}>
-                      Collar actual: {singleCollarAnimal.animalCollars[0].collar.identifier}
-                    </option>
-                  )}
-                  {availableCollars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.identifier} (Disponible)
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setTargetCollarId(v)}
+                  options={[
+                    { value: '', label: 'Sin collar (desvincular)' },
+                    ...(singleCollarAnimal.animalCollars[0]?.collar
+                      ? [
+                          {
+                            value: String(singleCollarAnimal.animalCollars[0].collar.id),
+                            label: `Collar actual: ${singleCollarAnimal.animalCollars[0].collar.identifier}`,
+                          },
+                        ]
+                      : []),
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: `${c.identifier} (Disponible)` })),
+                  ]}
+                />
                 <p className="text-[11px] text-zinc-400 mt-1">
                   Nota: Desvincular el collar removerá automáticamente al animal de cualquier cerco eléctrico virtual
                   activo.
@@ -1174,18 +1157,17 @@ function AnimalsContent() {
                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                     Cerco Virtual Activo
                   </label>
-                  <select
-                    value={targetGeofenceId}
-                    onChange={(e) => setTargetGeofenceId(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                  >
-                    <option value="">Sin cerco virtual (liberar)</option>
-                    {activeFarmGeofences.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        ⚡ {g.name} {g.pastureType ? `(${g.pastureType})` : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    value={String(targetGeofenceId)}
+                    onChange={(v) => setTargetGeofenceId(v)}
+                    options={[
+                      { value: '', label: 'Sin cerco virtual (liberar)' },
+                      ...activeFarmGeofences.map((g) => ({
+                        value: String(g.id),
+                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                      })),
+                    ]}
+                  />
                   {activeFarmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
                       No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos.
@@ -1258,7 +1240,6 @@ function AnimalsContent() {
                 onChange={(animalTypeId) => setAddAnimalForm((prev) => ({ ...prev, animalTypeId }))}
                 required
                 labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
-                selectClassName="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
               />
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
@@ -1289,18 +1270,14 @@ function AnimalsContent() {
                 <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                   Collar IoT (Opcional)
                 </label>
-                <select
-                  value={addAnimalForm.collarId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, collarId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin collar</option>
-                  {availableCollars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.identifier} (Disponible)
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(addAnimalForm.collarId)}
+                  onChange={(v) => setAddAnimalForm({ ...addAnimalForm, collarId: v })}
+                  options={[
+                    { value: '', label: 'Sin collar' },
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: `${c.identifier} (Disponible)` })),
+                  ]}
+                />
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <Button
@@ -1377,7 +1354,6 @@ function AnimalsContent() {
                 keepTypeId={editAnimal.animalTypeId}
                 required
                 labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
-                selectClassName="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -1541,17 +1517,18 @@ function AnimalsContent() {
                     <div className="grid grid-cols-3 gap-2.5 pt-4">
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
-                        <select
+                        <Select
                           value={medicalForm.type}
-                          onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
-                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
-                        >
-                          <option value="VACCINATION">Vacunación</option>
-                          <option value="WEIGHING">Pesaje</option>
-                          <option value="BIRTH">Parto</option>
-                          <option value="TREATMENT">Tratamiento</option>
-                          <option value="SURGERY">Cirugía</option>
-                        </select>
+                          onChange={(v) => setMedicalForm({ ...medicalForm, type: v as MedicalEventType })}
+                          options={[
+                            { value: 'VACCINATION', label: 'Vacunación' },
+                            { value: 'WEIGHING', label: 'Pesaje' },
+                            { value: 'BIRTH', label: 'Parto' },
+                            { value: 'TREATMENT', label: 'Tratamiento' },
+                            { value: 'SURGERY', label: 'Cirugía' },
+                          ]}
+                          size="sm"
+                        />
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">

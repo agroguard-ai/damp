@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { AnimalType } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 interface BreedSelectProps {
   animalTypes: AnimalType[];
@@ -13,7 +14,6 @@ interface BreedSelectProps {
   keepTypeId?: string | null;
   required?: boolean;
   labelClassName: string;
-  selectClassName: string;
 }
 
 /**
@@ -27,7 +27,6 @@ export default function BreedSelect({
   keepTypeId,
   required = false,
   labelClassName,
-  selectClassName,
 }: BreedSelectProps) {
   const available = useMemo(
     () => animalTypes.filter((t) => t.isActive !== false || t.id === keepTypeId),
@@ -71,40 +70,24 @@ export default function BreedSelect({
     <div className="grid grid-cols-2 gap-4">
       <div className="flex flex-col gap-1">
         <label className={labelClassName}>Especie</label>
-        <select
+        <Select
+          value={String(species)}
+          onChange={(v) => handleSpeciesChange(v)}
+          options={[...speciesList.map((s) => ({ value: String(s), label: String(s) }))]}
           required={required}
-          value={species}
-          onChange={(e) => handleSpeciesChange(e.target.value)}
-          className={selectClassName}
-        >
-          <option value="" disabled>
-            Elegí la especie...
-          </option>
-          {speciesList.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+          placeholder={'Elegí la especie...'}
+        />
       </div>
       <div className="flex flex-col gap-1">
         <label className={labelClassName}>Raza</label>
-        <select
-          required={required}
-          value={selectedType ? value : ''}
-          onChange={(e) => onChange(e.target.value)}
+        <Select
+          value={String(selectedType ? value : '')}
+          onChange={(v) => onChange(v)}
+          options={[...breeds.map((t) => ({ value: String(t.id), label: String(t.name) }))]}
           disabled={!species}
-          className={`${selectClassName} disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          <option value="" disabled>
-            {species ? 'Elegí la raza...' : 'Primero la especie'}
-          </option>
-          {breeds.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
+          required={required}
+          placeholder={String(species ? 'Elegí la raza...' : 'Primero la especie')}
+        />
       </div>
     </div>
   );

@@ -39,6 +39,7 @@ import {
   RotateCcw,
   RefreshCw,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 const STATUS_LABELS: Record<CollarStatus, string> = {
   AVAILABLE: 'Disponible',
@@ -670,68 +671,76 @@ export default function CollaresPage() {
             {/* 2. Admin de Granja Filter (SuperAdmin only) */}
             {isSuperAdmin && (
               <div>
-                <select
+                <Select
                   value={selectedUserFilter}
-                  onChange={(e) => {
-                    setSelectedUserFilter(e.target.value);
+                  onChange={(v) => {
+                    setSelectedUserFilter(v);
                     setSelectedFarmFilter('ALL');
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                >
-                  <option value="ALL">👤 Todos los Administradores de Granja ({farmAdminsList.length})</option>
-                  <option value="UNASSIGNED">📦 Stock Libre (Sin asignar)</option>
-                  {farmAdminsList.map((u) => {
-                    const userFarmsCount = allFarms.filter(
-                      (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
-                    ).length;
-                    return (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email} ({userFarmsCount} {userFarmsCount === 1 ? 'campo' : 'campos'})
-                      </option>
-                    );
-                  })}
-                </select>
+                  size="sm"
+                  searchable={farmAdminsList.length > 5}
+                  searchPlaceholder="Buscar administrador..."
+                  options={[
+                    { value: 'ALL', label: `👤 Todos los Administradores de Granja (${farmAdminsList.length})` },
+                    { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
+                    ...farmAdminsList.map((u) => {
+                      const userFarmsCount = allFarms.filter(
+                        (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
+                      ).length;
+                      return {
+                        value: u.id,
+                        label: u.name || u.email,
+                        description: `${userFarmsCount} ${userFarmsCount === 1 ? 'campo' : 'campos'}`,
+                      };
+                    }),
+                  ]}
+                />
               </div>
             )}
 
             {/* 3. Farm Filter */}
             <div>
-              <select
+              <Select
                 disabled={selectedUserFilter === 'UNASSIGNED'}
                 value={selectedFarmFilter}
-                onChange={(e) => setSelectedFarmFilter(e.target.value)}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50"
-              >
-                <option value="ALL">
-                  🏢{' '}
-                  {selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
-                    ? 'Todos los campos del productor'
-                    : 'Todos los Campos'}{' '}
-                  ({farmsForFilterToolbar.length})
-                </option>
-                {isSuperAdmin && selectedUserFilter === 'ALL' && (
-                  <option value="UNASSIGNED">📦 Sin campo asignado</option>
-                )}
-                {farmsForFilterToolbar.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} {f.user?.name ? `(${f.user.name})` : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setSelectedFarmFilter(v)}
+                size="sm"
+                searchable={farmsForFilterToolbar.length > 5}
+                searchPlaceholder="Buscar campo..."
+                options={[
+                  {
+                    value: 'ALL',
+                    label: `🏢 ${
+                      selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
+                        ? 'Todos los campos del productor'
+                        : 'Todos los Campos'
+                    } (${farmsForFilterToolbar.length})`,
+                  },
+                  ...(isSuperAdmin && selectedUserFilter === 'ALL'
+                    ? [{ value: 'UNASSIGNED', label: '📦 Sin campo asignado' }]
+                    : []),
+                  ...farmsForFilterToolbar.map((f) => ({
+                    value: f.id,
+                    label: f.name || 'Sin nombre',
+                    description: f.user?.name ?? undefined,
+                  })),
+                ]}
+              />
             </div>
 
             {/* 4. Status Filter */}
             <div>
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ASSIGNED' | 'AVAILABLE' | 'ARCHIVED')}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-              >
-                <option value="ALL">📡 Todos los Estados</option>
-                <option value="ASSIGNED">🟢 En uso ({placedCount})</option>
-                <option value="AVAILABLE">🟡 Disponibles ({availableCount})</option>
-                <option value="ARCHIVED">⚪ Archivados / Fuera de servicio ({archivedCount})</option>
-              </select>
+                onChange={(v) => setStatusFilter(v as 'ALL' | 'ASSIGNED' | 'AVAILABLE' | 'ARCHIVED')}
+                options={[
+                  { value: 'ALL', label: '📡 Todos los Estados' },
+                  { value: 'ASSIGNED', label: `🟢 En uso (${placedCount})` },
+                  { value: 'AVAILABLE', label: `🟡 Disponibles (${availableCount})` },
+                  { value: 'ARCHIVED', label: `⚪ Archivados / Fuera de servicio (${archivedCount})` },
+                ]}
+                size="sm"
+              />
             </div>
           </div>
 
@@ -859,16 +868,18 @@ export default function CollaresPage() {
 
                       {/* Role action quick toggle */}
                       <div className="shrink-0 flex items-center gap-1.5">
-                        <select
+                        <Select
                           value={c.status}
                           disabled={!canEditIn(c.farmId)}
-                          onChange={(e) => void handleStatusChange(c.id, e.target.value as CollarStatus)}
-                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-700 dark:text-zinc-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                        >
-                          <option value="AVAILABLE">Disponible</option>
-                          <option value="DAMAGED">Dañado</option>
-                          {isSuperAdmin && <option value="OUT_OF_SERVICE">Fuera de servicio</option>}
-                        </select>
+                          onChange={(v) => void handleStatusChange(c.id, v as CollarStatus)}
+                          size="sm"
+                          className="w-36"
+                          options={[
+                            { value: 'AVAILABLE', label: 'Disponible' },
+                            { value: 'DAMAGED', label: 'Dañado' },
+                            ...(isSuperAdmin ? [{ value: 'OUT_OF_SERVICE', label: 'Fuera de servicio' }] : []),
+                          ]}
+                        />
                       </div>
                     </div>
 
@@ -1198,36 +1209,35 @@ export default function CollaresPage() {
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider block">
                   1. Administrador de Granja *
                 </label>
-                <select
+                <Select
                   required
                   value={assignProducerId}
-                  onChange={(e) => {
-                    const nextUserId = e.target.value;
+                  onChange={(nextUserId) => {
                     setAssignProducerId(nextUserId);
                     const matchingFarms = allFarms.filter(
                       (f) => f.userId === nextUserId || f.farmUsers?.some((fu) => fu.userId === nextUserId)
                     );
                     setAssignFarmId(matchingFarms.length === 1 ? matchingFarms[0].id : '');
                   }}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                >
-                  <option value="">
-                    {farmAdminsList.length === 0
+                  size="sm"
+                  searchable={farmAdminsList.length > 5}
+                  searchPlaceholder="Buscar administrador..."
+                  placeholder={
+                    farmAdminsList.length === 0
                       ? 'No hay administradores de granja registrados...'
-                      : `Seleccionar administrador de granja (${farmAdminsList.length})...`}
-                  </option>
-                  {farmAdminsList.map((u) => {
+                      : `Seleccionar administrador de granja (${farmAdminsList.length})...`
+                  }
+                  options={farmAdminsList.map((u) => {
                     const farmCount = allFarms.filter(
                       (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
                     ).length;
-                    return (
-                      <option key={u.id} value={u.id}>
-                        {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount}{' '}
-                        {farmCount === 1 ? 'campo' : 'campos'}
-                      </option>
-                    );
+                    return {
+                      value: u.id,
+                      label: u.name || u.email,
+                      description: `${u.name ? `${u.email} · ` : ''}${farmCount} ${farmCount === 1 ? 'campo' : 'campos'}`,
+                    };
                   })}
-                </select>
+                />
               </div>
 
               {/* Paso 2: Establecimiento / Campo */}
@@ -1244,19 +1254,16 @@ export default function CollaresPage() {
                     Este administrador no tiene campos o establecimientos registrados actualmente.
                   </div>
                 ) : (
-                  <select
+                  <Select
+                    value={String(assignFarmId)}
+                    onChange={(v) => setAssignFarmId(v)}
+                    options={[
+                      { value: '', label: `Seleccionar campo (${farmsForAssignModal.length})...` },
+                      ...farmsForAssignModal.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                    ]}
+                    size="sm"
                     required
-                    value={assignFarmId}
-                    onChange={(e) => setAssignFarmId(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                  >
-                    <option value="">Seleccionar campo ({farmsForAssignModal.length})...</option>
-                    {farmsForAssignModal.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 )}
               </div>
 

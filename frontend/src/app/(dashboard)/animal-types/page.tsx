@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { Tag, Search, Plus, Edit2, Trash2, RotateCcw, CheckCircle2, X, Layers, AlertTriangle } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 export default function AnimalTypesPage() {
   const { user, emulatedUser, loading: authLoading } = useAuth();
@@ -267,31 +268,33 @@ export default function AnimalTypesPage() {
 
               {/* Species Filter */}
               <div className="flex items-center gap-1.5">
-                <select
+                <Select
                   value={speciesFilter}
-                  onChange={(e) => setSpeciesFilter(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todas las especies</option>
-                  <option value="Bovino">Bovinos</option>
-                  <option value="Equino">Equinos</option>
-                  <option value="Ovino">Ovinos</option>
-                  <option value="Porcino">Porcinos</option>
-                  <option value="Caprino">Caprinos</option>
-                </select>
+                  onChange={(v) => setSpeciesFilter(v)}
+                  options={[
+                    { value: '', label: 'Todas las especies' },
+                    { value: 'Bovino', label: 'Bovinos' },
+                    { value: 'Equino', label: 'Equinos' },
+                    { value: 'Ovino', label: 'Ovinos' },
+                    { value: 'Porcino', label: 'Porcinos' },
+                    { value: 'Caprino', label: 'Caprinos' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               {/* Status Filter */}
               <div className="flex items-center gap-1.5">
-                <select
+                <Select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="ALL">Todos los estados</option>
-                  <option value="ACTIVE">Solo Activos</option>
-                  <option value="ARCHIVED">Solo Archivados</option>
-                </select>
+                  onChange={(v) => setStatusFilter(v)}
+                  options={[
+                    { value: 'ALL', label: 'Todos los estados' },
+                    { value: 'ACTIVE', label: 'Solo Activos' },
+                    { value: 'ARCHIVED', label: 'Solo Archivados' },
+                  ]}
+                  size="sm"
+                />
               </div>
             </div>
           </div>
@@ -490,17 +493,17 @@ export default function AnimalTypesPage() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Especie Ganadera</label>
-                <select
+                <Select
                   value={species}
-                  onChange={(e) => setSpecies(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="Bovino">Bovino (Vacas, Toros, Terneros)</option>
-                  <option value="Equino">Equino (Caballos, Yeguas)</option>
-                  <option value="Ovino">Ovino (Ovejas, Carneros, Corderos)</option>
-                  <option value="Porcino">Porcino (Cerdos, Lechones)</option>
-                  <option value="Caprino">Caprino (Cabras, Chivos)</option>
-                </select>
+                  onChange={(v) => setSpecies(v)}
+                  options={[
+                    { value: 'Bovino', label: 'Bovino (Vacas, Toros, Terneros)' },
+                    { value: 'Equino', label: 'Equino (Caballos, Yeguas)' },
+                    { value: 'Ovino', label: 'Ovino (Ovejas, Carneros, Corderos)' },
+                    { value: 'Porcino', label: 'Porcino (Cerdos, Lechones)' },
+                    { value: 'Caprino', label: 'Caprino (Cabras, Chivos)' },
+                  ]}
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

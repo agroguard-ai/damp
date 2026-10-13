@@ -33,6 +33,7 @@ import {
   Flame,
   Route,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 const HeatmapModal = dynamic(() => import('@/components/farms/HeatmapModal'), { ssr: false });
@@ -185,14 +186,16 @@ export default function FarmsPage() {
     });
   };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    handleEditFieldChange(e.target.name, e.target.value);
+
+  function handleEditFieldChange(name: string, value: string) {
     if (name === 'province') {
       setEditFormData((prev) => ({ ...prev, province: value, department: '' }));
     } else {
       setEditFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -600,39 +603,33 @@ export default function FarmsPage() {
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                     Provincia
                   </label>
-                  <select
+                  <Select
                     name="province"
                     value={editFormData.province}
-                    onChange={handleEditChange}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-500"
-                  >
-                    <option value="">Seleccionar Provincia</option>
-                    {provincesList.map((prov) => (
-                      <option key={prov} value={prov}>
-                        {prov}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => handleEditFieldChange('province', v)}
+                    placeholder="Seleccionar Provincia"
+                    size="sm"
+                    searchable
+                    searchPlaceholder="Buscar..."
+                    options={provincesList.map((x) => ({ value: x, label: x }))}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                     Departamento
                   </label>
-                  <select
+                  <Select
                     name="department"
                     value={editFormData.department}
-                    onChange={handleEditChange}
+                    onChange={(v) => handleEditFieldChange('department', v)}
                     disabled={!editFormData.province}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-40"
-                  >
-                    <option value="">Seleccionar Depto</option>
-                    {availableDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Seleccionar Depto"
+                    size="sm"
+                    searchable
+                    searchPlaceholder="Buscar..."
+                    options={availableDepartments.map((x) => ({ value: x, label: x }))}
+                  />
                 </div>
               </div>
 

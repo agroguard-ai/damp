@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 
 import { Pagination, PaginationMeta } from '@/components/ui/Pagination';
+import { Select } from '@/components/ui/Select';
 
 interface UserRecord {
   id: string;
@@ -414,15 +415,16 @@ export function AdminUserList() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <select
-                        disabled={updatingId === u.id || !u.isActive}
+                      <Select
                         value={u.globalRole}
-                        onChange={(e) => void handleRoleChange(u.id, e.target.value as 'SUPER_ADMIN' | 'USER')}
-                        className="block w-full rounded-lg border-zinc-300 dark:border-zinc-700 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-xs bg-zinc-50 dark:bg-zinc-800 border p-2 font-semibold text-zinc-800 dark:text-zinc-200 disabled:opacity-50"
-                      >
-                        <option value="USER">USER (Usuario estándar)</option>
-                        <option value="SUPER_ADMIN">SUPER_ADMIN (Administrador Global)</option>
-                      </select>
+                        onChange={(v) => void handleRoleChange(u.id, v as 'SUPER_ADMIN' | 'USER')}
+                        options={[
+                          { value: 'USER', label: 'USER (Usuario estándar)' },
+                          { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Administrador Global)' },
+                        ]}
+                        size="sm"
+                        disabled={updatingId === u.id || !u.isActive}
+                      />
                     </td>
 
                     <td className="px-6 py-4">
@@ -627,14 +629,14 @@ export function AdminUserList() {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Rol Global</label>
-                <select
+                <Select
                   value={formRole}
-                  onChange={(e) => setFormRole(e.target.value as 'USER' | 'SUPER_ADMIN')}
-                  className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                >
-                  <option value="USER">USER (Cliente / Productor estándar)</option>
-                  <option value="SUPER_ADMIN">SUPER_ADMIN (Super Administrador Plataforma)</option>
-                </select>
+                  onChange={(v) => setFormRole(v as 'USER' | 'SUPER_ADMIN')}
+                  options={[
+                    { value: 'USER', label: 'USER (Cliente / Productor estándar)' },
+                    { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Super Administrador Plataforma)' },
+                  ]}
+                />
               </div>
 
               {formRole === 'USER' && (

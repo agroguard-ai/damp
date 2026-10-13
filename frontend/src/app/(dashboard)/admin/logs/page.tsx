@@ -25,6 +25,7 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 export default function AdminIotLogsPage() {
   const { user } = useAuth();
@@ -299,21 +300,22 @@ export default function AdminIotLogsPage() {
 
           <div className="flex items-center gap-1.5">
             <Filter className="w-3.5 h-3.5 text-zinc-400" />
-            <select
+            <Select
               value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
+              onChange={(v) => {
+                setStatusFilter(v);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 cursor-pointer"
-            >
-              <option value="ALL">Todos los Estados</option>
-              <option value="SUCCESS">Éxito (200 / 204)</option>
-              <option value="REJECTED_AUTH">Rechazo Auth (401)</option>
-              <option value="NOT_FOUND">No Encontrado (404)</option>
-              <option value="FORBIDDEN">Granja Inválida (403)</option>
-              <option value="ERROR">Todos los Errores (4xx / 5xx)</option>
-            </select>
+              options={[
+                { value: 'ALL', label: 'Todos los Estados' },
+                { value: 'SUCCESS', label: 'Éxito (200 / 204)' },
+                { value: 'REJECTED_AUTH', label: 'Rechazo Auth (401)' },
+                { value: 'NOT_FOUND', label: 'No Encontrado (404)' },
+                { value: 'FORBIDDEN', label: 'Granja Inválida (403)' },
+                { value: 'ERROR', label: 'Todos los Errores (4xx / 5xx)' },
+              ]}
+              size="sm"
+            />
           </div>
         </div>
 
