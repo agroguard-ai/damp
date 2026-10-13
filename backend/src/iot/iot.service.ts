@@ -1,4 +1,11 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { GatewaysService } from '@/gateways/gateways.service';
 import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
@@ -62,18 +69,21 @@ export class IotService {
       );
     }
 
+    const readingTime = this.resolveReadingTime(payload);
+
     const reading = await this.prisma.telemetryReading.create({
       data: {
         collarId: payload.collar_id,
         latitude: payload.lat,
         longitude: payload.lng,
         temperature: payload.temp,
+        ...(readingTime ? { timestamp: readingTime } : {}),
       },
     });
 
     await this.prisma.collar.update({
       where: { id: payload.collar_id },
-      data: { lastTelemetryDate: new Date() },
+      data: { lastTelemetryDate: readingTime ?? new Date() },
     });
 
     // gateway_id ya se validó en IotDeviceAuthGuard (existe y el X-API-Key matchea) antes de llegar acá.
@@ -96,7 +106,7 @@ export class IotService {
     this.predictiveHealthRun = this.checkPredictiveHealth(
       animalCollar.animalId,
       payload.collar_id,
-      reading?.timestamp ?? new Date()
+      reading?.timestamp ?? readingTime ?? new Date()
     ).catch((err: unknown) => {
       this.logger.warn(`Predicción de salud falló para el animal ${animalCollar.animalId}: ${String(err)}`);
     });
@@ -209,13 +219,18 @@ export class IotService {
       return;
     }
 
-    await this.checkInactivity(animalId, payload.collar_id, settings.inactivityMinutes);
+    await this.checkInactivity(
+      animalId,
+      payload.collar_id,
+      settings.inactivityMinutes,
+      this.resolveReadingTime(payload) ?? new Date()
+    );
   }
 
-  private async checkInactivity(animalId: string, collarId: number, inactivityMinutes: number) {
-    const since = new Date(Date.now() - inactivityMinutes * 60 * 1000);
+  private async checkInactivity(animalId: string, collarId: number, inactivityMinutes: number, now: Date) {
+    const since = new Date(now.getTime() - inactivityMinutes * 60 * 1000);
     const readings = await this.prisma.telemetryReading.findMany({
-      where: { collarId, timestamp: { gte: since } },
+      where: { collarId, timestamp: { gte: since, lte: now } },
       orderBy: { timestamp: 'asc' },
       select: { latitude: true, longitude: true, timestamp: true },
     });
@@ -335,5 +350,19 @@ export class IotService {
     return this.prisma.alert.create({
       data: { animalId, type: 'HEALTH', message: `${dedupeKey} ${message}` },
     });
+  }
+
+  /**
+   * Fecha de la lectura: la de recepción, salvo que venga `timestamp` en el payload, que solo
+   * se acepta con ALLOW_SIMULATED_TIMESTAMPS=true (simulador de historial; nunca en producción).
+   */
+  private resolveReadingTime(payload: TelemetryPayloadDto): Date | null {
+    if (!payload.timestamp) return null;
+    if (process.env.ALLOW_SIMULATED_TIMESTAMPS !== 'true') {
+      throw new BadRequestException(
+        'El campo timestamp solo se acepta en entornos de simulación (ALLOW_SIMULATED_TIMESTAMPS=true).'
+      );
+    }
+    return new Date(payload.timestamp);
   }
 }

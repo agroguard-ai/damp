@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { IotService } from './iot.service';
 import { ML_WINDOW_BLOCKS, ML_MIN_BLOCKS_WITH_DATA } from './ml-window';
 
@@ -150,6 +150,57 @@ describe('IotService', () => {
       } as any);
 
       expect(result.downlink).toBe('NONE');
+    });
+  });
+
+  describe('timestamp simulado (solo con ALLOW_SIMULATED_TIMESTAMPS=true)', () => {
+    const original = process.env.ALLOW_SIMULATED_TIMESTAMPS;
+    afterEach(() => {
+      process.env.ALLOW_SIMULATED_TIMESTAMPS = original;
+    });
+
+    const setup = () => {
+      prisma.collar.findUnique.mockResolvedValue({ id: 1 });
+      prisma.telemetryReading.create.mockImplementation(({ data }: any) => Promise.resolve(data));
+      prisma.collar.update.mockResolvedValue({});
+      prisma.animalCollar.findFirst.mockResolvedValue(null);
+    };
+
+    it('rechaza un timestamp en el payload si el backend no está en modo simulación', async () => {
+      delete process.env.ALLOW_SIMULATED_TIMESTAMPS;
+      setup();
+
+      await expect(
+        service.handleTelemetry({
+          collar_id: 1,
+          lat: -34,
+          lng: -58,
+          temp: 38,
+          timestamp: '2026-10-12T10:00:00Z',
+        } as any)
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.telemetryReading.create).not.toHaveBeenCalled();
+    });
+
+    it('guarda la lectura con el timestamp indicado cuando la simulación está habilitada', async () => {
+      process.env.ALLOW_SIMULATED_TIMESTAMPS = 'true';
+      setup();
+
+      await service.handleTelemetry({
+        collar_id: 1,
+        lat: -34,
+        lng: -58,
+        temp: 38,
+        timestamp: '2026-10-12T10:00:00Z',
+      } as any);
+
+      expect(prisma.telemetryReading.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ timestamp: new Date('2026-10-12T10:00:00Z') }),
+      });
+      expect(prisma.collar.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { lastTelemetryDate: new Date('2026-10-12T10:00:00Z') },
+      });
     });
   });
 

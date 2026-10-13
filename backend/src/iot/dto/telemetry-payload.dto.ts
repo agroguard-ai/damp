@@ -1,4 +1,4 @@
-import { IsNumber, IsInt, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsInt, IsOptional, IsString, IsISO8601 } from 'class-validator';
 
 /**
  * DTO de entrada para POST /api/iot/telemetry.
@@ -38,4 +38,14 @@ export class TelemetryPayloadDto {
   @IsNumber()
   @IsOptional()
   snr?: number;
+
+  /**
+   * Momento de la lectura (ISO 8601). SOLO para simulación: un gateway real nunca lo manda
+   * (la lectura se fecha al recibirla). Se rechaza salvo que el backend tenga
+   * ALLOW_SIMULATED_TIMESTAMPS=true, para que en producción nadie cargue lecturas con fecha falsa.
+   * Lo usa scripts/ml-simulator.js para cargar 24 h de historial en segundos.
+   */
+  @IsISO8601()
+  @IsOptional()
+  timestamp?: string;
 }
