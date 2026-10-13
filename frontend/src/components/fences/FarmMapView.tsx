@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { RotateCcw, Zap } from 'lucide-react';
 import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
@@ -90,14 +90,7 @@ export default function FarmMapView({ farm, geofences }: FarmMapViewProps) {
                 ]}
               />
             )}
-            <button
-              type="button"
-              onClick={herd.refetch}
-              className="p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors cursor-pointer"
-              title="Actualizar ahora (se actualiza solo cada 30 s)"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
+            <RefreshButton fetchedAt={fetchedAt} loading={herd.loading} onRefresh={herd.refetch} />
           </div>
         </div>
       )}
@@ -120,5 +113,47 @@ export default function FarmMapView({ farm, geofences }: FarmMapViewProps) {
         />
       )}
     </div>
+  );
+}
+
+/** Hace cuánto se actualizó, en texto corto ("recién", "hace 25 s", "hace 2 min"). */
+function formatAgo(ms: number) {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 10) return 'recién';
+  if (seconds < 60) return `hace ${seconds} s`;
+  return `hace ${Math.floor(seconds / 60)} min`;
+}
+
+/**
+ * Botón de actualizar posiciones: muestra cuándo fue la última actualización y gira
+ * mientras consulta. Las posiciones igual se refrescan solas cada 30 s.
+ */
+function RefreshButton({
+  fetchedAt,
+  loading,
+  onRefresh,
+}: {
+  fetchedAt: number;
+  loading: boolean;
+  onRefresh: () => void;
+}) {
+  // Reloj propio para que el "hace X s" avance sin depender de nuevos datos
+  const [now, setNow] = useState(fetchedAt);
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={onRefresh}
+      disabled={loading}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 hover:border-green-500/60 hover:text-green-700 dark:hover:text-green-400 shadow-xs transition-colors cursor-pointer disabled:cursor-wait"
+      title="Actualizar ahora (se actualiza solo cada 30 s)"
+    >
+      <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin [animation-direction:reverse]' : ''}`} />
+      <span>{loading ? 'Actualizando…' : `Actualizado ${formatAgo(Math.max(0, now - fetchedAt))}`}</span>
+    </button>
   );
 }
