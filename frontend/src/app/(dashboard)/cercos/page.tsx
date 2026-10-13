@@ -20,20 +20,18 @@ import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Activity, Flame, Edit3 } from 'lucide-react';
+import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Flame, Edit3 } from 'lucide-react';
 import type { Geofence } from '@/types';
 
-const FenceMap = dynamic(() => import('@/components/maps/FenceMap'), { ssr: false });
 const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
-const HerdMapView = dynamic(() => import('@/components/fences/HerdMapView'), { ssr: false });
+const FarmMapView = dynamic(() => import('@/components/fences/FarmMapView'), { ssr: false });
 const RotationView = dynamic(() => import('@/components/fences/RotationView'), { ssr: false });
 
-type MapView = 'fences' | 'live' | 'heatmap';
+type MapView = 'fences' | 'heatmap';
 type FenceModalState = { mode: 'create' } | { mode: 'edit'; fence: Geofence } | null;
 
 const MAP_VIEWS: { value: MapView; label: string; icon: typeof Zap; active: string }[] = [
   { value: 'fences', label: 'Cercos', icon: Zap, active: 'text-cyan-700 dark:text-cyan-400' },
-  { value: 'live', label: 'Hacienda en vivo', icon: Activity, active: 'text-green-700 dark:text-green-400' },
   { value: 'heatmap', label: 'Mapa de calor', icon: Flame, active: 'text-orange-600 dark:text-orange-400' },
 ];
 
@@ -55,7 +53,7 @@ function CercosContent() {
   const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
     searchParams?.get('tab') === 'rotation' ? 'rotation' : 'fences'
   );
-  const [mapView, setMapView] = useState<MapView>(searchParams?.get('vista') === 'hacienda' ? 'live' : 'fences');
+  const [mapView, setMapView] = useState<MapView>('fences');
 
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
 
@@ -290,19 +288,7 @@ function CercosContent() {
               ))}
             </div>
 
-            {mapView === 'fences' ? (
-              <FenceMap
-                farmPolygon={farmPolygon}
-                geofences={geofences}
-                newPoints={[]}
-                onAddPoint={() => {}}
-                interactive={false}
-                center={mapCenter}
-                heightClassName="h-[55vh] min-h-96"
-              />
-            ) : (
-              <HerdMapView farmId={activeFarmId} farmPolygon={farmPolygon} geofences={geofences} mode={mapView} />
-            )}
+            <FarmMapView farmId={activeFarmId} farmPolygon={farmPolygon} geofences={geofences} mode={mapView} />
           </div>
 
           {/* Listado de Cercos */}
@@ -482,6 +468,7 @@ function CercosContent() {
           }
           initialPoints={fenceModal.mode === 'edit' ? parsePolygon(fenceModal.fence.polygonCoordinates) : []}
           mapContext={{
+            farmId: activeFarmId,
             farmPolygon,
             // Al editar, el cerco propio se dibuja como trazado editable, no como cerco existente
             geofences: fenceModal.mode === 'edit' ? geofences.filter((g) => g.id !== fenceModal.fence.id) : geofences,

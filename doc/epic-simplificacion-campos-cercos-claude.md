@@ -52,6 +52,14 @@ También se ajustaron: reportes (la columna "Zona" del Excel pasa a "Cerco"; el 
 - **Alta/edición en modal** (commit `e5d27bd`): el formulario lateral pasó a un modal con su propio mapa para dibujar, el mapa de la pantalla quedó a todo el ancho y los selectores chicos arriba a la derecha. Nombres sugeridos secuenciales (`suggestNextName`: "Cerco 1", "Cerco 2"…).
 - **Se eliminó `/geolocalizacion`** (commit `871d173`): repetía los polígonos de otras pantallas; lo único propio (posición de los animales, recorrido por animal y mapa de calor) se integró como vistas del mapa. Hoy esas vistas viven en Cercos.
 
+### 1.6 Capa de animales opcional en todos los mapas
+
+Todos los mapas asociados a un campo (Cercos, Mapa de calor, el modal de crear/editar cerco, Pastoreo rotativo y la edición del perímetro de un campo) tienen un botón **"Animales"** en sus controles, **apagado por defecto**. Con la capa apagada no se hace ningún request de posiciones (`useAnimalLocations` solo consulta y refresca cada 30 s mientras está prendida).
+
+- Se eliminó la vista "Hacienda en vivo": prendiendo "Animales" en la vista Cercos se ve lo mismo (estado de señal, filtro por cerco y recorrido de un animal desde su popup).
+- Los marcadores se movieron a `components/maps/AnimalMarkersLayer.tsx` para reusarlos en todos los mapas.
+- De paso se arregló `RotationMap`, que nunca mostraba animales (recibía la hacienda sin posición).
+
 ## 2. Cómo probarlo
 
 ```bash

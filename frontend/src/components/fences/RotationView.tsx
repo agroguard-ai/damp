@@ -235,19 +235,6 @@ export default function RotationView({
   const plan = rotationData?.plan;
   const isPlanActiveOrPaused = plan && (plan.status === 'ACTIVE' || plan.status === 'PAUSED');
 
-  // Convert raw animals into AnimalLocation shape for map
-  const mapAnimals = useMemo(() => {
-    return animals.map((a) => ({
-      id: a.id,
-      tag: a.tag,
-      breed: a.breed,
-      weightKg: a.weightKg,
-      status: a.status,
-      animalType: a.animalType ? { name: a.animalType.name, species: a.animalType.species } : null,
-      latestReading: null,
-    }));
-  }, [animals]);
-
   return (
     <div className="space-y-6">
       {/* Precondition verification banners */}
@@ -347,7 +334,7 @@ export default function RotationView({
                 activeTransitionPolygon={rotationData?.activeTransitionPolygon}
                 transitionInfo={rotationData?.transition}
                 allGeofences={geofences}
-                animals={mapAnimals}
+                farmId={farm.id}
                 heatmapPoints={rotationData?.heatmapPoints}
                 showHeatmap={showHeatmap}
               />

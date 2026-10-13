@@ -1,8 +1,17 @@
 'use client';
 
-import { Layers, Maximize2, Minimize2, LocateFixed } from 'lucide-react';
+import { Layers, Maximize2, Minimize2, LocateFixed, PawPrint } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { type MapLayerType } from './MapLayerControl';
+
+/** Botón para mostrar/ocultar la hacienda sobre el mapa (arranca apagado por performance). */
+export interface AnimalsToggleControl {
+  enabled: boolean;
+  onToggle: () => void;
+  /** Animales con posición conocida (se muestra con la capa prendida). */
+  count?: number;
+  loading?: boolean;
+}
 
 export interface MapActionControlsProps {
   targetRef: React.RefObject<HTMLDivElement | null>;
@@ -12,6 +21,8 @@ export interface MapActionControlsProps {
   onToggleLabels?: () => void;
   /** Opcional — solo los mapas con datos que se mueven solos (tracking en vivo) lo necesitan. */
   onRecenter?: () => void;
+  /** Opcional — solo los mapas asociados a un campo muestran el botón de animales. */
+  animalsToggle?: AnimalsToggleControl;
 }
 
 export default function MapActionControls({
@@ -21,6 +32,7 @@ export default function MapActionControls({
   showLabels = true,
   onToggleLabels,
   onRecenter,
+  animalsToggle,
 }: MapActionControlsProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
@@ -98,6 +110,32 @@ export default function MapActionControls({
           <Maximize2 className="w-5 h-5 text-zinc-200" />
         )}
       </button>
+
+      {/* Animales: prender/apagar la capa de hacienda */}
+      {animalsToggle && (
+        <button
+          type="button"
+          onClick={animalsToggle.onToggle}
+          className={`relative w-10 h-10 rounded-full backdrop-blur-md border shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            animalsToggle.enabled
+              ? 'bg-green-600/95 hover:bg-green-500 border-green-400 text-white'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-700/70 text-zinc-400'
+          }`}
+          title={animalsToggle.enabled ? 'Ocultar animales' : 'Mostrar animales'}
+          aria-pressed={animalsToggle.enabled}
+        >
+          {animalsToggle.loading ? (
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          ) : (
+            <PawPrint className="w-5 h-5" />
+          )}
+          {animalsToggle.enabled && !animalsToggle.loading && animalsToggle.count !== undefined && (
+            <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-white text-green-700 text-[10px] font-bold flex items-center justify-center shadow">
+              {animalsToggle.count}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* 2. Recenter Button — vuelve a encuadrar el mapa alrededor de la hacienda/cerco actual */}
       {onRecenter && (

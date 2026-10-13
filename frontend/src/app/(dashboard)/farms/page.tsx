@@ -482,6 +482,7 @@ export default function FarmsPage() {
                 fillColor="#fbbf24"
                 selectedVertexIndex={selectedVertexIndex}
                 onSelectVertex={setSelectedVertexIndex}
+                farmId={perimeterModalFarm?.id}
               />
             </div>
 

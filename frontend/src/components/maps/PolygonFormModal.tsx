@@ -27,7 +27,10 @@ const ACCENTS = {
   },
 } as const;
 
-export type PolygonMapContext = Pick<FenceMapProps, 'geofences' | 'farmPolygon' | 'boundaryLabel' | 'center'>;
+export type PolygonMapContext = Pick<
+  FenceMapProps,
+  'geofences' | 'farmPolygon' | 'boundaryLabel' | 'center' | 'farmId'
+>;
 
 export interface PolygonFormModalProps {
   title: string;

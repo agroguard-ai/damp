@@ -1,55 +1,16 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Marker, Popup, CircleMarker, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { MapContainer, TileLayer, Polygon, Popup, CircleMarker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapActionControls from './controls/MapActionControls';
+import AnimalMarkersLayer from './AnimalMarkersLayer';
+import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
-import type { Geofence, AnimalLocation } from '@/types';
+import type { Geofence } from '@/types';
 
 // Ícono para animales pastando
-const createAnimalGrazingIcon = (tag: string) => {
-  return new L.DivIcon({
-    className: 'animal-grazing-badge',
-    html: `
-      <div style="position:relative;width:34px;height:34px;">
-        <div style="
-          width: 34px;
-          height: 34px;
-          background: linear-gradient(135deg, #16a34a, #15803d);
-          color: white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          font-size: 15px;
-          border: 2px solid white;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.35);
-        ">🐄</div>
-        <div style="
-          position: absolute;
-          bottom: -8px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0,0,0,0.8);
-          color: white;
-          font-size: 9px;
-          font-weight: 700;
-          padding: 1px 4px;
-          border-radius: 4px;
-          white-space: nowrap;
-          pointer-events: none;
-        ">${tag}</div>
-      </div>
-    `,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
-  });
-};
-
 function parsePolygon(raw: unknown): [number, number][] {
   try {
     const poly = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -89,18 +50,6 @@ function MapAutoBounds({
   return null;
 }
 
-export interface GrazingAnimal {
-  id: string;
-  tag: string | null;
-  breed?: string;
-  animalType?: { name: string; species?: string } | null;
-  latestReading?: {
-    latitude: number;
-    longitude: number;
-    temperature: number;
-  } | null;
-}
-
 export interface RotationMapProps {
   /** Campo donde corre la rotación (se dibuja su perímetro como referencia). */
   farm: { name: string | null; polygonCoordinates?: unknown };
@@ -115,7 +64,8 @@ export interface RotationMapProps {
     progressPercent: number;
   } | null;
   allGeofences?: Geofence[];
-  animals?: GrazingAnimal[];
+  /** Campo del mapa: habilita el botón "Animales" (apagado por defecto). */
+  farmId?: string;
   heatmapPoints?: { latitude: number; longitude: number }[];
   showHeatmap?: boolean;
 }
@@ -128,7 +78,7 @@ export default function RotationMap({
   activeTransitionPolygon,
   transitionInfo,
   allGeofences = [],
-  animals = [],
+  farmId,
   heatmapPoints = [],
   showHeatmap = false,
 }: RotationMapProps) {
@@ -189,7 +139,7 @@ export default function RotationMap({
   }, [heatmapPoints, showHeatmap]);
 
   // Filter animals that have GPS coordinates
-  const validAnimals = useMemo(() => animals.filter((a) => a.latestReading !== null), [animals]);
+  const herd = useAnimalsToggle(farmId);
 
   return (
     <div
@@ -203,6 +153,7 @@ export default function RotationMap({
         showLabels={showLabels}
         onToggleLabels={() => setShowLabels((prev) => !prev)}
         onRecenter={() => setRecenterTick((t) => t + 1)}
+        animalsToggle={herd.control}
       />
 
       <MapContainer center={center} zoom={14} className="w-full h-full">
@@ -420,30 +371,8 @@ export default function RotationMap({
             );
           })}
 
-        {/* 7. Animales pastando en vivo */}
-        {validAnimals.map((animal) => {
-          const { latitude, longitude, temperature } = animal.latestReading!;
-          return (
-            <Marker
-              key={animal.id}
-              position={[latitude, longitude]}
-              icon={createAnimalGrazingIcon(animal.tag || animal.id.slice(0, 4))}
-            >
-              <Popup>
-                <div className="p-2 space-y-1 text-xs text-zinc-900 min-w-40">
-                  <h4 className="font-bold text-sm">{animal.tag || 'Animal'}</h4>
-                  <p className="text-zinc-500 text-[10px]">
-                    {animal.animalType?.name || 'Vacuno'} &bull; {animal.breed}
-                  </p>
-                  <p className="text-zinc-700">Temp: {temperature.toFixed(1)} °C</p>
-                  <p className="text-orange-600 font-semibold text-[11px]">
-                    Pastando en: {currentGeofence?.name || 'Cerco activo'}
-                  </p>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+        {/* 7. Hacienda (capa opcional) */}
+        {herd.enabled && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}
 
         <MapAutoBounds farmCoords={farmCoords} fenceCoords={fenceCoords} recenterTick={recenterTick} />
       </MapContainer>

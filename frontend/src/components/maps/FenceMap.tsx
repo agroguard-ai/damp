@@ -5,6 +5,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import MapActionControls from './controls/MapActionControls';
+import AnimalMarkersLayer from './AnimalMarkersLayer';
+import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS, DraggableVertex } from './PolygonDrawerMap';
 import { validatePointInBoundary } from '@/lib/geo/spatial';
@@ -49,6 +51,8 @@ export interface FenceMapProps {
   onSelectVertex?: (idx: number | null) => void;
   /** Clases de altura del contenedor (por defecto 450px). */
   heightClassName?: string;
+  /** Campo del mapa: habilita el botón "Animales" (apagado por defecto). */
+  farmId?: string;
 }
 
 function MapAutoBounds({
@@ -169,7 +173,9 @@ export default function FenceMap({
   selectedVertexIndex: controlledSelectedIndex,
   onSelectVertex: controlledOnSelectVertex,
   heightClassName = 'h-112.5',
+  farmId,
 }: FenceMapProps) {
+  const herd = useAnimalsToggle(farmId);
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -364,6 +370,7 @@ export default function FenceMap({
         onChangeLayer={setCurrentLayer}
         showLabels={showLabels}
         onToggleLabels={() => setShowLabels((prev) => !prev)}
+        animalsToggle={herd.control}
       />
 
       {/* Legend Badge Bar */}
@@ -515,6 +522,8 @@ export default function FenceMap({
             ))}
           </>
         )}
+
+        {herd.enabled && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}
 
         {interactive && (
           <MapClickHandler
