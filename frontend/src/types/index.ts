@@ -1,7 +1,6 @@
 export * from './farm';
 export * from './alert';
 export * from './animal-type';
-export * from './zone';
 export * from './animal';
 export * from './collar';
 export * from './telemetry';
@@ -9,4 +8,4 @@ export * from './geofence';
 export * from './medical-event';
 export * from './gateway';
 export * from './alert-settings';
-export * from './zone-rotation';
+export * from './rotation';

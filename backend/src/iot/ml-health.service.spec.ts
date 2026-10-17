@@ -23,7 +23,7 @@ describe('MlHealthService', () => {
       json: async () => ({ ready: true, events: { fiebre: { probability: 0.9, threshold: 0.3, detected: true } } }),
     });
 
-    const readings = [{ temperature: 38.5, lat: 1, lng: 2, timestamp: '2026-08-25T00:00:00.000Z' }];
+    const readings = [{ temperature: 38.5, lat: 1, lng: 2, timestamp: '2026-08-25T00:00:00-03:00', distance_m: 120 }];
     const result = await service.predict('animal-1', 'MALE', readings);
 
     expect(fetchMock).toHaveBeenCalledWith(

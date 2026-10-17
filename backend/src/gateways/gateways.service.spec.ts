@@ -5,7 +5,6 @@ function makePrismaMock() {
     user: { findUnique: jest.fn() },
     farmUser: { findUnique: jest.fn() },
     farm: { findUnique: jest.fn() },
-    zone: { findUnique: jest.fn() },
     gateway: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() },
   };
 }
@@ -22,13 +21,12 @@ describe('GatewaysService', () => {
   describe('create', () => {
     it('genera un apiKey aleatorio distinto en cada gateway y lo persiste', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
-      prisma.zone.findUnique.mockResolvedValue({ id: 'zone-1', farmId: 'farm-1' });
       prisma.gateway.create.mockImplementation(({ data }: any) =>
         Promise.resolve({ id: 'gw-1', ...data, lastSeenAt: null })
       );
 
-      const result1 = await service.create({ name: 'A', farmId: 'farm-1', zoneId: 'zone-1' }, 'user-1');
-      const result2 = await service.create({ name: 'B', farmId: 'farm-1', zoneId: 'zone-1' }, 'user-1');
+      const result1 = await service.create({ name: 'A', farmId: 'farm-1' }, 'user-1');
+      const result2 = await service.create({ name: 'B', farmId: 'farm-1' }, 'user-1');
 
       expect(result1.apiKey).toBeDefined();
       expect(result1.apiKey).toHaveLength(64); // 32 bytes en hex
@@ -37,14 +35,13 @@ describe('GatewaysService', () => {
 
     it('respeta un apiKey personalizado si es provisto', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
-      prisma.zone.findUnique.mockResolvedValue({ id: 'zone-1', farmId: 'farm-1' });
       prisma.gateway.findUnique.mockResolvedValue(null); // uniqueness check
       prisma.gateway.create.mockImplementation(({ data }: any) =>
         Promise.resolve({ id: 'gw-1', ...data, lastSeenAt: null })
       );
 
       const result = await service.create(
-        { name: 'Gateway Custom', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'custom-secret-key-123' },
+        { name: 'Gateway Custom', farmId: 'farm-1', apiKey: 'custom-secret-key-123' },
         'user-1'
       );
 
@@ -81,25 +78,23 @@ describe('GatewaysService', () => {
 
   describe('validateApiKey', () => {
     it('devuelve el gateway cuando la clave coincide exactamente con gatewayId', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'secret-key-123' });
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', apiKey: 'secret-key-123' });
       await expect(service.validateApiKey('secret-key-123', 'gw-1')).resolves.toEqual({
         id: 'gw-1',
         farmId: 'farm-1',
-        zoneId: 'zone-1',
       });
     });
 
     it('devuelve el gateway cuando solo se provee apiKey', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1' });
       await expect(service.validateApiKey('secret-key-123')).resolves.toEqual({
         id: 'gw-1',
         farmId: 'farm-1',
-        zoneId: 'zone-1',
       });
     });
 
     it('devuelve null cuando la clave no coincide', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'secret-key-123' });
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', apiKey: 'secret-key-123' });
       await expect(service.validateApiKey('wrong-key', 'gw-1')).resolves.toBeNull();
     });
 
@@ -109,7 +104,7 @@ describe('GatewaysService', () => {
     });
 
     it('devuelve null sin tirar excepción cuando las claves tienen distinta longitud', async () => {
-      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1', apiKey: 'short' });
+      prisma.gateway.findUnique.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', apiKey: 'short' });
       await expect(service.validateApiKey('a-much-longer-provided-key', 'gw-1')).resolves.toBeNull();
     });
   });

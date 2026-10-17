@@ -12,9 +12,4 @@ export class CreateGatewayDto {
   @IsString()
   @IsOptional()
   farmId?: string;
-
-  @IsString()
-  @IsOptional()
-  zoneId?: string;
 }
-

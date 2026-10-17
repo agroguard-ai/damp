@@ -6,9 +6,8 @@ import type {
   ArchiveAnimalPayload,
   CreateAnimalPayload,
   UpdateAnimalPayload,
-  BulkAssignZonePayload,
+  BulkAssignGeofencePayload,
   BulkTransferFarmPayload,
-  UpdateAnimalZonePayload,
   LinkAnimalCollarPayload,
   AssignAnimalGeofencePayload,
   AnimalTrajectoryResponse,
@@ -50,13 +49,6 @@ export const animalsApi = {
       body: JSON.stringify(data),
     }),
 
-  /** PATCH /api/animals/[id]/zone — updates an animal's zone */
-  updateZone: (id: string, data: UpdateAnimalZonePayload): Promise<Animal> =>
-    apiFetch<Animal>(`/api/animals/${id}/zone`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-
   /** PATCH /api/animals/[id]/collar — links or unlinks collar */
   updateCollar: (id: string, data: LinkAnimalCollarPayload): Promise<{ message: string; collarId?: number }> =>
     apiFetch<{ message: string; collarId?: number }>(`/api/animals/${id}/collar`, {
@@ -71,9 +63,9 @@ export const animalsApi = {
       body: JSON.stringify(data),
     }),
 
-  /** POST /api/animals/bulk/zone — bulk assign zone to multiple animals */
-  bulkAssignZone: (data: BulkAssignZonePayload): Promise<{ count: number; message: string }> =>
-    apiFetch<{ count: number; message: string }>('/api/animals/bulk/zone', {
+  /** POST /api/animals/bulk/geofence — bulk assign (or remove) multiple animals to a virtual fence */
+  bulkAssignGeofence: (data: BulkAssignGeofencePayload): Promise<{ count: number; message: string }> =>
+    apiFetch<{ count: number; message: string }>('/api/animals/bulk/geofence', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

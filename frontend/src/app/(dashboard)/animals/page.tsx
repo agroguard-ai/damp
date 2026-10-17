@@ -3,9 +3,11 @@
 import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import BreedSelect from '@/components/animals/BreedSelect';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
@@ -13,17 +15,17 @@ import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalTypesApi } from '@/lib/api/animal-types';
-import { zonesApi } from '@/lib/api/zones';
 import { collarsApi } from '@/lib/api/collars';
 import { geofencesApi } from '@/lib/api/geofences';
 import { medicalEventsApi } from '@/lib/api/medical-events';
+import { alertsApi } from '@/lib/api/alerts';
+import { EVENT_NAMES } from '@/components/alerts/mlEvents';
 import { animalsApi, type Animal } from '@/lib/api/animals';
 import type { MedicalEventType } from '@/types';
 import {
   CirclePlus,
   Search,
   Filter,
-  Layers,
   Radio,
   Zap,
   Lock,
@@ -35,15 +37,18 @@ import {
   CheckCircle2,
   Edit2,
   FileDown,
+  BrainCircuit,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 function AnimalsContent() {
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
-  const urlZoneId = searchParams.get('zoneId') || '';
+  const urlGeofenceId = searchParams.get('geofenceId') || '';
   const urlFarmId = searchParams.get('farmId') || '';
 
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const { toast } = useToast();
   const confirm = useConfirm();
 
@@ -62,22 +67,27 @@ function AnimalsContent() {
   }, [farms, urlFarmId, selectedFarm]);
 
   const activeFarmId = selectedFarm || farms[0]?.id || '';
+  // VIEWER: solo lectura (el backend igual rechaza cualquier escritura con 403).
+  const { canEdit } = useFarmPermissions(activeFarmId || null);
+  const canCreateFarm = farmPerms.role === null || farmPerms.role === 'ADMIN';
   const activeFarm = farms.find((f) => f.id === activeFarmId);
 
-  const fetchZones = useCallback(
-    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+  const fetchGeofences = useCallback(
+    () => (activeFarmId ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
     [activeFarmId]
   );
-  const { data: farmZones = [] } = useApi(fetchZones, [activeFarmId]);
-
-  const fetchGeofences = useCallback(async () => {
-    if (farmZones.length === 0) return [];
-    const results = await Promise.all(farmZones.map((z) => geofencesApi.getByZone(z.id)));
-    return results.flat();
-  }, [farmZones]);
-  const { data: farmGeofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [farmZones]);
+  const { data: farmGeofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [activeFarmId]);
+  const activeFarmGeofences = useMemo(() => farmGeofences.filter((g) => g.active), [farmGeofences]);
 
   const { data: collars = [], refetch: refetchCollars } = useApi(collarsApi.getAll);
+
+  // Riesgo actual según la IA (eventos detectados en las últimas horas), por animal
+  const fetchMlRisk = useCallback(
+    () => (activeFarmId ? alertsApi.getCurrentMlRisk(activeFarmId).catch(() => []) : Promise.resolve([])),
+    [activeFarmId]
+  );
+  const { data: mlRisk = [] } = useApi(fetchMlRisk, [activeFarmId]);
+  const mlRiskByAnimal = useMemo(() => new Map(mlRisk.map((r) => [r.animalId, r.events])), [mlRisk]);
   const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
 
   // Search & Filters state
@@ -85,7 +95,7 @@ function AnimalsContent() {
   const [filters, setFilters] = useState({
     animalType: '',
     healthStatus: '',
-    zoneId: urlZoneId || '',
+    geofenceId: urlGeofenceId || '',
     status: 'ACTIVE',
     hasActiveAlert: false,
     hasCollar: '',
@@ -97,8 +107,8 @@ function AnimalsContent() {
   }, [urlSearch]);
 
   useEffect(() => {
-    if (urlZoneId) setFilters((prev) => ({ ...prev, zoneId: urlZoneId }));
-  }, [urlZoneId]);
+    if (urlGeofenceId) setFilters((prev) => ({ ...prev, geofenceId: urlGeofenceId }));
+  }, [urlGeofenceId]);
 
   const fetchAnimals = useCallback(
     () =>
@@ -107,7 +117,7 @@ function AnimalsContent() {
             farmId: activeFarmId,
             ...(filters.animalType && { animalType: filters.animalType }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
-            ...(filters.zoneId && { zoneId: filters.zoneId }),
+            ...(filters.geofenceId && { geofenceId: filters.geofenceId }),
             ...(filters.hasActiveAlert && { hasActiveAlert: 'true' }),
             ...(filters.hasCollar && { hasCollar: filters.hasCollar }),
             status: filters.status,
@@ -153,27 +163,23 @@ function AnimalsContent() {
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isBulkZoneModalOpen, setIsBulkZoneModalOpen] = useState(false);
+  const [isBulkGeofenceModalOpen, setIsBulkGeofenceModalOpen] = useState(false);
   const [isBulkTransferModalOpen, setIsBulkTransferModalOpen] = useState(false);
-  const [singleZoneAnimal, setSingleZoneAnimal] = useState<Animal | null>(null);
   const [singleCollarAnimal, setSingleCollarAnimal] = useState<Animal | null>(null);
   const [singleGeofenceAnimal, setSingleGeofenceAnimal] = useState<Animal | null>(null);
   const [medicalHistoryAnimalId, setMedicalHistoryAnimalId] = useState<string | null>(null);
 
   // Form states for modals
-  const [targetZoneId, setTargetZoneId] = useState<string>('');
   const [targetFarmId, setTargetFarmId] = useState<string>('');
   const [targetCollarId, setTargetCollarId] = useState<string>('');
   const [targetGeofenceId, setTargetGeofenceId] = useState<string>('');
 
   const [addAnimalForm, setAddAnimalForm] = useState({
     tag: '',
-    breed: '',
     weightKg: '',
     ageMonths: '12',
     collarId: '',
     animalTypeId: '',
-    zoneId: '',
   });
 
   // Mutations
@@ -184,9 +190,8 @@ function AnimalsContent() {
     error: modalError,
     reset: resetModal,
   } = useMutation(animalsApi.create);
-  const { mutate: bulkAssignZone, loading: bulkAssigning } = useMutation(animalsApi.bulkAssignZone);
+  const { mutate: bulkAssignGeofence, loading: bulkAssigning } = useMutation(animalsApi.bulkAssignGeofence);
   const { mutate: bulkTransferFarm, loading: bulkTransferring } = useMutation(animalsApi.bulkTransferFarm);
-  const { mutate: updateAnimalZone, loading: updatingZone } = useMutation(animalsApi.updateZone);
   const { mutate: updateAnimalCollar, loading: updatingCollar } = useMutation(animalsApi.updateCollar);
   const { mutate: updateAnimalGeofence, loading: updatingGeofence } = useMutation(animalsApi.updateGeofence);
   const {
@@ -201,11 +206,9 @@ function AnimalsContent() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editAnimalForm, setEditAnimalForm] = useState({
     tag: '',
-    breed: '',
     weightKg: '',
     ageMonths: '',
     animalTypeId: '',
-    zoneId: '',
   });
 
   // Medical events
@@ -255,7 +258,7 @@ function AnimalsContent() {
     const ok = await confirm({
       title: `Archivar animal como ${reason === 'SOLD' ? 'Vendido' : 'Muerto'}`,
       description:
-        'Se desvinculará de inmediato su collar activo (quedando disponible para otra cabeza) y saldrá de cualquier cerco o potrero. El historial médico se conservará.',
+        'Se desvinculará de inmediato su collar activo (quedando disponible para otra cabeza) y saldrá de su cerco. El historial médico se conservará.',
       confirmLabel: 'Archivar y Liberar Recursos',
       danger: true,
     });
@@ -278,23 +281,20 @@ function AnimalsContent() {
       await createAnimal({
         farmId: activeFarmId,
         tag: addAnimalForm.tag,
-        breed: addAnimalForm.breed,
+        breed: animalTypes.find((t) => t.id === addAnimalForm.animalTypeId)?.name ?? '',
         weightKg: Number(addAnimalForm.weightKg),
         ageMonths: Number(addAnimalForm.ageMonths),
         collarId: addAnimalForm.collarId ? Number(addAnimalForm.collarId) : undefined,
         animalTypeId: addAnimalForm.animalTypeId || undefined,
-        zoneId: addAnimalForm.zoneId || undefined,
       });
       toast.success('Animal registrado exitosamente');
       setIsAddModalOpen(false);
       setAddAnimalForm({
         tag: '',
-        breed: '',
         weightKg: '',
         ageMonths: '12',
         collarId: '',
         animalTypeId: '',
-        zoneId: '',
       });
       refetchAnimals();
       refetchCollars();
@@ -314,11 +314,9 @@ function AnimalsContent() {
 
     setEditAnimalForm({
       tag: animal.tag || '',
-      breed: animal.breed || '',
       weightKg: animal.weightKg ? String(animal.weightKg) : '',
       ageMonths: calculatedMonths,
       animalTypeId: animal.animalTypeId || '',
-      zoneId: animal.zoneId || '',
     });
     setIsEditModalOpen(true);
   };
@@ -329,11 +327,10 @@ function AnimalsContent() {
     try {
       await updateAnimal(editAnimal.id, {
         tag: editAnimalForm.tag.trim(),
-        breed: editAnimalForm.breed.trim(),
+        breed: animalTypes.find((t) => t.id === editAnimalForm.animalTypeId)?.name ?? editAnimal.breed,
         weightKg: parseFloat(editAnimalForm.weightKg),
         ...(editAnimalForm.ageMonths ? { ageMonths: parseInt(editAnimalForm.ageMonths, 10) } : {}),
         animalTypeId: editAnimalForm.animalTypeId || null,
-        zoneId: editAnimalForm.zoneId || null,
       });
       toast.success(`Animal ${editAnimalForm.tag.trim() || editAnimal.id} actualizado exitosamente`);
       setIsEditModalOpen(false);
@@ -344,21 +341,21 @@ function AnimalsContent() {
     }
   };
 
-  const handleBulkAssignZone = async () => {
+  const handleBulkAssignGeofence = async () => {
     if (selectedIds.length === 0 || !activeFarmId) return;
     try {
-      const res = await bulkAssignZone({
+      const res = await bulkAssignGeofence({
         farmId: activeFarmId,
         animalIds: selectedIds,
-        zoneId: targetZoneId || null,
+        geofenceId: targetGeofenceId || null,
       });
-      toast.success(res?.message || 'Potrero actualizado correctamente');
-      setIsBulkZoneModalOpen(false);
+      toast.success(res?.message || 'Cerco actualizado correctamente');
+      setIsBulkGeofenceModalOpen(false);
       setSelectedIds([]);
       refetchAnimals();
       refetchGeofences();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al reasignar potrero');
+      toast.error(err instanceof Error ? err.message : 'Error al asignar el cerco');
     }
   };
 
@@ -368,7 +365,7 @@ function AnimalsContent() {
     const ok = await confirm({
       title: `Transferir ${selectedIds.length} animales a "${targetFarm?.name || 'otro campo'}"`,
       description:
-        'Los animales pasarán al nuevo establecimiento a campo abierto (sin potrero asignado) y se cerrarán sus cercos virtuales actuales. Los collares asignados continuarán con ellos.',
+        'Los animales pasarán al nuevo establecimiento sin cerco asignado (se cierran sus cercos virtuales actuales). Los collares asignados continuarán con ellos.',
       confirmLabel: 'Confirmar Traslado',
       danger: false,
     });
@@ -388,21 +385,6 @@ function AnimalsContent() {
       refetchGeofences();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al transferir animales');
-    }
-  };
-
-  const handleSingleUpdateZone = async () => {
-    if (!singleZoneAnimal) return;
-    try {
-      await updateAnimalZone(singleZoneAnimal.id, {
-        zoneId: targetZoneId || null,
-      });
-      toast.success('Potrero asignado correctamente');
-      setSingleZoneAnimal(null);
-      refetchAnimals();
-      refetchGeofences();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al actualizar zona');
     }
   };
 
@@ -540,27 +522,21 @@ function AnimalsContent() {
             Gestión y Asignación de Hacienda
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Control de inventario ganadero, asignación masiva de potreros y vinculación de collares y cercos virtuales.
+            Control de inventario ganadero, vinculación de collares y asignación a cercos virtuales.
           </p>
         </div>
         {farms.length > 0 && (
           <div className="flex gap-3">
-            <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
-              Registrar Campo
-            </Button>
-            <Button
-              variant="success"
-              size="md"
-              icon={CirclePlus}
-              onClick={() => {
-                if (animalTypes.length > 0 && !addAnimalForm.animalTypeId) {
-                  setAddAnimalForm((prev) => ({ ...prev, animalTypeId: animalTypes[0].id }));
-                }
-                setIsAddModalOpen(true);
-              }}
-            >
-              Añadir Animal
-            </Button>
+            {canCreateFarm && (
+              <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
+                Registrar Campo
+              </Button>
+            )}
+            {canEdit && (
+              <Button variant="success" size="md" icon={CirclePlus} onClick={() => setIsAddModalOpen(true)}>
+                Añadir Animal
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -599,97 +575,87 @@ function AnimalsContent() {
               {/* Establecimiento Selector */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider shrink-0">Campo:</span>
-                <select
-                  value={activeFarmId}
-                  onChange={(e) => setSelectedFarm(e.target.value)}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-semibold cursor-pointer min-w-44"
-                >
-                  {farms.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(activeFarmId)}
+                  onChange={(v) => setSelectedFarm(v)}
+                  options={[...farms.map((f) => ({ value: String(f.id), label: String(f.name) }))]}
+                  className="min-w-44"
+                />
               </div>
             </div>
 
             {/* Granular Filters Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-850">
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                  Potrero / Zona
-                </label>
-                <select
-                  value={filters.zoneId}
-                  onChange={(e) => setFilters({ ...filters, zoneId: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todas las zonas</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Cerco</label>
+                <Select
+                  value={String(filters.geofenceId)}
+                  onChange={(v) => setFilters({ ...filters, geofenceId: v })}
+                  options={[
+                    { value: '', label: 'Todos los cercos' },
+                    ...activeFarmGeofences.map((g) => ({ value: String(g.id), label: String(g.name) })),
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                   Estado Hacienda
                 </label>
-                <select
+                <Select
                   value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="ACTIVE">Activos</option>
-                  <option value="SOLD">Vendidos</option>
-                  <option value="DEAD">Fallecidos</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, status: v })}
+                  options={[
+                    { value: 'ACTIVE', label: 'Activos' },
+                    { value: 'SOLD', label: 'Vendidos' },
+                    { value: 'DEAD', label: 'Fallecidos' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Tipo Animal</label>
-                <select
-                  value={filters.animalType}
-                  onChange={(e) => setFilters({ ...filters, animalType: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todos los tipos</option>
-                  {animalTypes.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({t.species})
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(filters.animalType)}
+                  onChange={(v) => setFilters({ ...filters, animalType: v })}
+                  options={[
+                    { value: '', label: 'Todos los tipos' },
+                    ...animalTypes.map((t) => ({ value: String(t.id), label: `${t.name} (${t.species})` })),
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Collar IoT</label>
-                <select
+                <Select
                   value={filters.hasCollar}
-                  onChange={(e) => setFilters({ ...filters, hasCollar: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Todos</option>
-                  <option value="true">Con collar</option>
-                  <option value="false">Sin collar</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, hasCollar: v })}
+                  options={[
+                    { value: '', label: 'Todos' },
+                    { value: 'true', label: 'Con collar' },
+                    { value: 'false', label: 'Sin collar' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Salud</label>
-                <select
+                <Select
                   value={filters.healthStatus}
-                  onChange={(e) => setFilters({ ...filters, healthStatus: e.target.value })}
-                  className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                >
-                  <option value="">Cualquier estado</option>
-                  <option value="HEALTHY">Saludable</option>
-                  <option value="TREATMENT">Tratamiento</option>
-                  <option value="SURGERY">Post-Op</option>
-                  <option value="VACCINATION">Vacunado</option>
-                </select>
+                  onChange={(v) => setFilters({ ...filters, healthStatus: v })}
+                  options={[
+                    { value: '', label: 'Cualquier estado' },
+                    { value: 'HEALTHY', label: 'Saludable' },
+                    { value: 'TREATMENT', label: 'Tratamiento' },
+                    { value: 'SURGERY', label: 'Post-Op' },
+                    { value: 'VACCINATION', label: 'Vacunado' },
+                  ]}
+                  size="sm"
+                />
               </div>
 
               <div className="flex items-end">
@@ -707,7 +673,7 @@ function AnimalsContent() {
           </div>
 
           {/* Bulk Action Sticky Bar */}
-          {selectedIds.length > 0 && (
+          {canEdit && selectedIds.length > 0 && (
             <div className="sticky top-4 z-40 bg-zinc-900/95 dark:bg-zinc-800/95 text-white p-3.5 rounded-2xl shadow-xl border border-zinc-700/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
@@ -727,13 +693,13 @@ function AnimalsContent() {
                 <button
                   type="button"
                   onClick={() => {
-                    setTargetZoneId('');
-                    setIsBulkZoneModalOpen(true);
+                    setTargetGeofenceId('');
+                    setIsBulkGeofenceModalOpen(true);
                   }}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Mover a Potrero / Zona...</span>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Asignar a cerco...</span>
                 </button>
 
                 {farms.length > 1 && (
@@ -788,9 +754,8 @@ function AnimalsContent() {
                       <th className="py-3.5 px-3">Caravana (Tag) / Especie</th>
                       <th className="py-3.5 px-3">Estado / Salud</th>
                       <th className="py-3.5 px-3">Peso & Edad</th>
-                      <th className="py-3.5 px-3">Potrero (Zona)</th>
                       <th className="py-3.5 px-3">Collar IoT</th>
-                      <th className="py-3.5 px-3">Cerco Virtual Eléctrico</th>
+                      <th className="py-3.5 px-3">Cerco</th>
                       <th className="py-3.5 pr-4 pl-2 text-right">Acciones</th>
                     </tr>
                   </thead>
@@ -845,6 +810,16 @@ function AnimalsContent() {
                             >
                               {health.label}
                             </span>
+                            {mlRiskByAnimal.get(animal.id)?.map((risk) => (
+                              <span
+                                key={risk.event}
+                                className="ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-full border bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300"
+                                title="Predicción del modelo de IA para las próximas 6 h (ver Alertas → Salud Predictiva)"
+                              >
+                                <BrainCircuit className="w-3 h-3" />
+                                {EVENT_NAMES[risk.event] ?? risk.event} {Math.round(risk.probability * 100)}%
+                              </span>
+                            ))}
                           </td>
 
                           {/* Weight & Age */}
@@ -853,36 +828,6 @@ function AnimalsContent() {
                             <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1.5">
                               {animal.birthDate ? `• ${animal.birthDate.slice(0, 10)}` : ''}
                             </span>
-                          </td>
-
-                          {/* Zone */}
-                          <td className="py-3 px-3">
-                            {animal.zone ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSingleZoneAnimal(animal);
-                                  setTargetZoneId(animal.zoneId || '');
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
-                                title="Clic para cambiar de potrero"
-                              >
-                                <Layers className="w-3 h-3" />
-                                <span>{animal.zone.name}</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSingleZoneAnimal(animal);
-                                  setTargetZoneId('');
-                                }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Clic para asignar potrero"
-                              >
-                                <span>Campo abierto</span>
-                              </button>
-                            )}
                           </td>
 
                           {/* Collar IoT */}
@@ -895,7 +840,8 @@ function AnimalsContent() {
                                   setTargetCollarId(String(collar.id));
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
-                                title="Clic para gestionar collar"
+                                title={canEdit ? 'Clic para gestionar collar' : undefined}
+                                disabled={!canEdit}
                               >
                                 <span
                                   className={`w-1.5 h-1.5 rounded-full ${
@@ -917,7 +863,8 @@ function AnimalsContent() {
                                   setTargetCollarId('');
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Clic para vincular collar"
+                                title={canEdit ? 'Clic para vincular collar' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Radio className="w-3 h-3 text-zinc-300" />
                                 <span>Sin vincular</span>
@@ -935,7 +882,8 @@ function AnimalsContent() {
                                   setTargetGeofenceId(activeGeofence.id);
                                 }}
                                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-800/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 transition-colors cursor-pointer"
-                                title="Clic para gestionar cerco"
+                                title={canEdit ? 'Clic para gestionar cerco' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Zap className="w-3 h-3" />
                                 <span>{activeGeofence.name}</span>
@@ -948,7 +896,8 @@ function AnimalsContent() {
                                   setTargetGeofenceId('');
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-dashed border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Asignar cerco virtual disponible"
+                                title={canEdit ? 'Asignar cerco virtual disponible' : undefined}
+                                disabled={!canEdit}
                               >
                                 <Zap className="w-3 h-3 text-zinc-300" />
                                 <span>Sin cerco</span>
@@ -966,7 +915,7 @@ function AnimalsContent() {
 
                           {/* Quick Actions */}
                           <td className="py-3 pr-4 pl-2 text-right whitespace-nowrap space-x-1.5">
-                            {animal.status === 'ACTIVE' && (
+                            {canEdit && animal.status === 'ACTIVE' && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(animal)}
@@ -986,23 +935,19 @@ function AnimalsContent() {
                               <HeartPulse className="w-4 h-4" />
                             </button>
 
-                            {animal.status === 'ACTIVE' && (
-                              <select
-                                defaultValue=""
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleArchive(animal.id, e.target.value);
-                                    e.target.value = '';
-                                  }
+                            {canEdit && animal.status === 'ACTIVE' && (
+                              <Select
+                                value=""
+                                onChange={(v) => {
+                                  if (v) handleArchive(animal.id, v);
                                 }}
-                                className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-500 dark:text-zinc-400 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-500 cursor-pointer font-medium"
-                              >
-                                <option value="" disabled>
-                                  Baja...
-                                </option>
-                                <option value="SOLD">Vendido</option>
-                                <option value="DEAD">Fallecido</option>
-                              </select>
+                                placeholder="Baja..."
+                                size="sm"
+                                options={[
+                                  { value: 'SOLD', label: 'Vendido' },
+                                  { value: 'DEAD', label: 'Fallecido' },
+                                ]}
+                              />
                             )}
                           </td>
                         </tr>
@@ -1016,17 +961,17 @@ function AnimalsContent() {
         </>
       )}
 
-      {/* Modal: Bulk Assign Zone */}
-      {isBulkZoneModalOpen && (
+      {/* Modal: Bulk Assign Geofence */}
+      {isBulkGeofenceModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Mover Hacienda a Potrero / Zona</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Reasignar {selectedIds.length} cabezas seleccionadas</p>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Asignar hacienda a un cerco</h3>
+                <p className="text-xs text-zinc-400 mt-0.5">{selectedIds.length} cabezas seleccionadas</p>
               </div>
               <button
-                onClick={() => setIsBulkZoneModalOpen(false)}
+                onClick={() => setIsBulkGeofenceModalOpen(false)}
                 className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1034,39 +979,35 @@ function AnimalsContent() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  Potrero de Destino
-                </label>
-                <select
-                  value={targetZoneId}
-                  onChange={(e) => setTargetZoneId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Campo abierto / Sin potrero específico</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Cerco de destino</label>
+                <Select
+                  value={String(targetGeofenceId)}
+                  onChange={(v) => setTargetGeofenceId(v)}
+                  options={[
+                    { value: '', label: 'Sin cerco (liberar)' },
+                    ...activeFarmGeofences.map((g) => ({
+                      value: String(g.id),
+                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                    })),
+                  ]}
+                />
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Nota: Si un animal estaba asignado a un cerco virtual que no corresponde a este potrero, el cerco se
-                  cerrará automáticamente.
+                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba.
                 </p>
               </div>
 
               <div className="pt-2 flex justify-end gap-3">
-                <Button type="button" onClick={() => setIsBulkZoneModalOpen(false)} variant="outline" size="md">
+                <Button type="button" onClick={() => setIsBulkGeofenceModalOpen(false)} variant="outline" size="md">
                   Cancelar
                 </Button>
                 <Button
                   type="button"
-                  onClick={handleBulkAssignZone}
+                  onClick={handleBulkAssignGeofence}
                   disabled={bulkAssigning}
                   variant="success"
                   size="md"
                 >
-                  {bulkAssigning ? 'Reasignando...' : 'Aplicar a Selección'}
+                  {bulkAssigning ? 'Asignando...' : 'Aplicar a selección'}
                 </Button>
               </div>
             </div>
@@ -1097,27 +1038,22 @@ function AnimalsContent() {
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Establecimiento Destino
                 </label>
-                <select
-                  value={targetFarmId}
-                  onChange={(e) => setTargetFarmId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  {farms
-                    .filter((f) => f.id !== activeFarmId)
-                    .map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name}
-                      </option>
-                    ))}
-                </select>
+                <Select
+                  value={String(targetFarmId)}
+                  onChange={(v) => setTargetFarmId(v)}
+                  options={[
+                    ...farms
+                      .filter((f) => f.id !== activeFarmId)
+                      .map((f) => ({ value: String(f.id), label: String(f.name) })),
+                  ]}
+                />
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Al transferir al nuevo campo, los animales quedarán en <strong>campo abierto</strong> (sin potrero
-                  asignado) y se cerrarán sus cercos virtuales anteriores. Los collares asignados continuarán con cada
-                  cabeza.
+                  Al transferir al nuevo campo, los animales quedarán <strong>sin cerco asignado</strong> (se cierran
+                  sus cercos virtuales anteriores). Los collares asignados continuarán con cada cabeza.
                 </span>
               </div>
 
@@ -1133,58 +1069,6 @@ function AnimalsContent() {
                   size="md"
                 >
                   {bulkTransferring ? 'Transfiriendo...' : 'Confirmar Traslado'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Single Animal Zone Update */}
-      {singleZoneAnimal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Asignar Potrero / Zona</h3>
-                <p className="text-xs text-zinc-400 mt-0.5">Animal: {singleZoneAnimal.tag || singleZoneAnimal.id}</p>
-              </div>
-              <button
-                onClick={() => setSingleZoneAnimal(null)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Potrero</label>
-                <select
-                  value={targetZoneId}
-                  onChange={(e) => setTargetZoneId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Campo abierto / Sin potrero</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-2 flex justify-end gap-3">
-                <Button type="button" onClick={() => setSingleZoneAnimal(null)} variant="outline" size="md">
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSingleUpdateZone}
-                  disabled={updatingZone}
-                  variant="success"
-                  size="md"
-                >
-                  {updatingZone ? 'Guardando...' : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -1215,23 +1099,22 @@ function AnimalsContent() {
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Collar Disponible
                 </label>
-                <select
+                <Select
                   value={targetCollarId}
-                  onChange={(e) => setTargetCollarId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                >
-                  <option value="">Sin collar (desvincular)</option>
-                  {singleCollarAnimal.animalCollars[0]?.collar && (
-                    <option value={singleCollarAnimal.animalCollars[0].collar.id}>
-                      Collar actual: {singleCollarAnimal.animalCollars[0].collar.identifier}
-                    </option>
-                  )}
-                  {availableCollars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.identifier} (Disponible)
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setTargetCollarId(v)}
+                  options={[
+                    { value: '', label: 'Sin collar (desvincular)' },
+                    ...(singleCollarAnimal.animalCollars[0]?.collar
+                      ? [
+                          {
+                            value: String(singleCollarAnimal.animalCollars[0].collar.id),
+                            label: `Collar actual: ${singleCollarAnimal.animalCollars[0].collar.identifier}`,
+                          },
+                        ]
+                      : []),
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: `${c.identifier} (Disponible)` })),
+                  ]}
+                />
                 <p className="text-[11px] text-zinc-400 mt-1">
                   Nota: Desvincular el collar removerá automáticamente al animal de cualquier cerco eléctrico virtual
                   activo.
@@ -1295,26 +1178,20 @@ function AnimalsContent() {
                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                     Cerco Virtual Activo
                   </label>
-                  <select
-                    value={targetGeofenceId}
-                    onChange={(e) => setTargetGeofenceId(e.target.value)}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer font-medium"
-                  >
-                    <option value="">Sin cerco virtual (liberar)</option>
-                    {farmGeofences
-                      .filter(
-                        (g) => g.active && (!singleGeofenceAnimal.zoneId || g.zoneId === singleGeofenceAnimal.zoneId)
-                      )
-                      .map((g) => (
-                        <option key={g.id} value={g.id}>
-                          ⚡ {g.name} ({farmZones.find((z) => z.id === g.zoneId)?.name || g.zone?.name || 'Zona'})
-                        </option>
-                      ))}
-                  </select>
-                  {farmGeofences.length === 0 && (
+                  <Select
+                    value={String(targetGeofenceId)}
+                    onChange={(v) => setTargetGeofenceId(v)}
+                    options={[
+                      { value: '', label: 'Sin cerco virtual (liberar)' },
+                      ...activeFarmGeofences.map((g) => ({
+                        value: String(g.id),
+                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                      })),
+                    ]}
+                  />
+                  {activeFarmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos
-                      Eléctricos.
+                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos.
                     </span>
                   )}
                 </div>
@@ -1363,7 +1240,7 @@ function AnimalsContent() {
               </div>
             )}
             <form onSubmit={handleAddAnimalSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                     Caravana / Identificador (Tag)
@@ -1377,18 +1254,14 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Raza</label>
-                  <input
-                    required
-                    type="text"
-                    value={addAnimalForm.breed}
-                    onChange={(e) => setAddAnimalForm({ ...addAnimalForm, breed: e.target.value })}
-                    placeholder="Ej: Aberdeen Angus"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                  />
-                </div>
               </div>
+              <BreedSelect
+                animalTypes={animalTypes}
+                value={addAnimalForm.animalTypeId}
+                onChange={(animalTypeId) => setAddAnimalForm((prev) => ({ ...prev, animalTypeId }))}
+                required
+                labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Peso (Kg)</label>
@@ -1415,57 +1288,17 @@ function AnimalsContent() {
                 </div>
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Tipo de Animal</label>
-                <select
-                  value={addAnimalForm.animalTypeId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, animalTypeId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="" disabled>
-                    Seleccionar tipo...
-                  </option>
-                  {animalTypes
-                    .filter((t) => t.isActive !== false)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.species})
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                  Potrero / Zona (Opcional)
-                </label>
-                <select
-                  value={addAnimalForm.zoneId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, zoneId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin asignar / Campo abierto</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-col gap-1">
                 <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                   Collar IoT (Opcional)
                 </label>
-                <select
-                  value={addAnimalForm.collarId}
-                  onChange={(e) => setAddAnimalForm({ ...addAnimalForm, collarId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin collar</option>
-                  {availableCollars.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.identifier} (Disponible)
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={String(addAnimalForm.collarId)}
+                  onChange={(v) => setAddAnimalForm({ ...addAnimalForm, collarId: v })}
+                  options={[
+                    { value: '', label: 'Sin collar' },
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: `${c.identifier} (Disponible)` })),
+                  ]}
+                />
               </div>
               <div className="pt-4 flex justify-end gap-3">
                 <Button
@@ -1520,7 +1353,7 @@ function AnimalsContent() {
             )}
 
             <form onSubmit={handleEditAnimalSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                     Caravana / Identificador (Tag)
@@ -1534,18 +1367,15 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Raza</label>
-                  <input
-                    required
-                    type="text"
-                    value={editAnimalForm.breed}
-                    onChange={(e) => setEditAnimalForm({ ...editAnimalForm, breed: e.target.value })}
-                    placeholder="Ej: Aberdeen Angus"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
-                  />
-                </div>
               </div>
+              <BreedSelect
+                animalTypes={animalTypes}
+                value={editAnimalForm.animalTypeId}
+                onChange={(animalTypeId) => setEditAnimalForm((prev) => ({ ...prev, animalTypeId }))}
+                keepTypeId={editAnimal.animalTypeId}
+                required
+                labelClassName="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
@@ -1572,40 +1402,6 @@ function AnimalsContent() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
                   />
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Tipo de Animal</label>
-                <select
-                  value={editAnimalForm.animalTypeId}
-                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, animalTypeId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin tipo específico</option>
-                  {animalTypes
-                    .filter((t) => t.isActive !== false || t.id === editAnimal.animalTypeId)
-                    .map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.species})
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Potrero / Zona</label>
-                <select
-                  value={editAnimalForm.zoneId}
-                  onChange={(e) => setEditAnimalForm({ ...editAnimalForm, zoneId: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                >
-                  <option value="">Sin asignar / Campo abierto</option>
-                  {farmZones.map((z) => (
-                    <option key={z.id} value={z.id}>
-                      {z.name} {z.pastureType ? `(${z.pastureType})` : ''}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/50 rounded-xl p-3 text-[11px] text-zinc-500 dark:text-zinc-400 flex items-start gap-2">
@@ -1734,59 +1530,62 @@ function AnimalsContent() {
                   )}
                 </div>
 
-                <form
-                  onSubmit={handleAddMedicalEvent}
-                  className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
-                >
-                  <div className="grid grid-cols-3 gap-2.5 pt-4">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
-                      <select
-                        value={medicalForm.type}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, type: e.target.value as MedicalEventType })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs cursor-pointer font-medium"
-                      >
-                        <option value="VACCINATION">Vacunación</option>
-                        <option value="WEIGHING">Pesaje</option>
-                        <option value="BIRTH">Parto</option>
-                        <option value="TREATMENT">Tratamiento</option>
-                        <option value="SURGERY">Cirugía</option>
-                      </select>
+                {canEdit && (
+                  <form
+                    onSubmit={handleAddMedicalEvent}
+                    className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
+                  >
+                    <div className="grid grid-cols-3 gap-2.5 pt-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
+                        <Select
+                          value={medicalForm.type}
+                          onChange={(v) => setMedicalForm({ ...medicalForm, type: v as MedicalEventType })}
+                          options={[
+                            { value: 'VACCINATION', label: 'Vacunación' },
+                            { value: 'WEIGHING', label: 'Pesaje' },
+                            { value: 'BIRTH', label: 'Parto' },
+                            { value: 'TREATMENT', label: 'Tratamiento' },
+                            { value: 'SURGERY', label: 'Cirugía' },
+                          ]}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                          {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
+                          value={medicalForm.value}
+                          onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
+                        <input
+                          type="date"
+                          value={medicalForm.occurredAt}
+                          onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
+                        />
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                        {medicalForm.type === 'WEIGHING' ? 'Peso (Kg)' : 'Valor (opcional)'}
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
-                        value={medicalForm.value}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</label>
-                      <input
-                        type="date"
-                        value={medicalForm.occurredAt}
-                        onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
-                        className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
-                      />
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Descripción o anotación clínica..."
-                    value={medicalForm.description}
-                    onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
-                  />
-                  <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
-                    {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
-                  </Button>
-                </form>
+                    <input
+                      type="text"
+                      placeholder="Descripción o anotación clínica..."
+                      value={medicalForm.description}
+                      onChange={(e) => setMedicalForm({ ...medicalForm, description: e.target.value })}
+                      className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
+                    />
+                    <Button type="submit" disabled={creatingMedicalEvent} variant="success" size="md">
+                      {creatingMedicalEvent ? 'Agregando...' : 'Agregar Registro'}
+                    </Button>
+                  </form>
+                )}
               </div>
             </div>
           );

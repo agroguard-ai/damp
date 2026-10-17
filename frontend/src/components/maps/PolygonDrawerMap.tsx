@@ -6,6 +6,8 @@ import 'leaflet/dist/leaflet.css';
 import { Undo2, Redo2, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MapActionControls from './controls/MapActionControls';
+import AnimalMarkersLayer from './AnimalMarkersLayer';
+import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 
 // Fix Leaflet marker icons in Next.js
@@ -36,6 +38,8 @@ export interface PolygonDrawerMapProps {
   fillColor?: string;
   selectedVertexIndex?: number | null;
   onSelectVertex?: (idx: number | null) => void;
+  /** Campo del mapa: habilita el botón "Animales" (apagado por defecto). */
+  farmId?: string;
 }
 
 /**
@@ -259,7 +263,9 @@ export default function PolygonDrawerMap({
   fillColor = '#22c55e',
   selectedVertexIndex: controlledSelectedIndex,
   onSelectVertex: controlledOnSelectVertex,
+  farmId,
 }: PolygonDrawerMapProps) {
+  const herd = useAnimalsToggle(farmId);
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -486,6 +492,7 @@ export default function PolygonDrawerMap({
           onChangeLayer={setCurrentLayer}
           showLabels={showLabels}
           onToggleLabels={() => setShowLabels((prev) => !prev)}
+          animalsToggle={herd.control}
         />
 
         <MapContainer center={center} zoom={zoom} className="w-full h-full">
@@ -515,7 +522,7 @@ export default function PolygonDrawerMap({
           )}
           <MapRecenter center={center} zoom={zoom} />
 
-          {/* Render existing polygons (e.g. established farm boundary or surrounding zones) */}
+          {/* Render existing polygons (e.g. established farm boundary or existing fences) */}
           {existingPolygons.map((poly) => (
             <Polygon
               key={poly.id}
@@ -559,6 +566,8 @@ export default function PolygonDrawerMap({
               ))}
             </>
           )}
+
+          {herd.enabled && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}
 
           <MapClickHandler onAddPoint={handleAddPoint} isDraggingRef={isDraggingRef} />
         </MapContainer>

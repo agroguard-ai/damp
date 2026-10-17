@@ -12,6 +12,8 @@ Un compañero (Tomás) subió `doc/ANALISIS_UX_UI_Y_MEJORAS_FRONTEND.md` (25/08/
 
 ### 1.1 RENSPA (item 3.2.B)
 
+> **Eliminado (12/10/2026):** el equipo decidió que el RENSPA no hace falta. Se quitó del schema (migración `20261012000000_remove_farm_renspa`), del DTO y de todas las pantallas. Lo que sigue queda como registro histórico.
+
 Campo nuevo para el Registro Nacional Sanitario de Productores Agropecuarios (SENASA), necesario para trazabilidad ganadera.
 
 - **Backend**: `Farm.renspa` (`String?`, migración `20260826000000_add_farm_renspa`), validado con `@Matches` contra el formato `XX.XXX.X.XXXXX/XX` en `CreateFarmDto`.

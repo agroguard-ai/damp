@@ -8,33 +8,42 @@ import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
 import { collarsApi } from '@/lib/api/collars';
+import { animalTypesApi } from '@/lib/api/animal-types';
+import BreedSelect from '@/components/animals/BreedSelect';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
+import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
+import { Select } from '@/components/ui/Select';
 
 export default function NewAnimalPage() {
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const router = useRouter();
   const { toast } = useToast();
 
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
   const { data: collars = [] } = useApi(collarsApi.getAll);
+  const { data: animalTypes = [] } = useApi(animalTypesApi.getAll);
   const availableCollars = collars.filter((c) => c.status === 'AVAILABLE' && !c.assignedAnimal);
   const { mutate: createAnimal, loading, error, reset } = useMutation(animalsApi.create);
 
   const [formData, setFormData] = useState({
     farmId: '',
     tag: '',
-    breed: '',
+    animalTypeId: '',
     weightKg: '',
     ageMonths: '',
     collarId: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleFieldChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (error) reset();
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(e.target.name, e.target.value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +54,8 @@ export default function NewAnimalPage() {
       await createAnimal({
         farmId: finalFarmId,
         tag: formData.tag,
-        breed: formData.breed,
+        breed: animalTypes.find((t) => t.id === formData.animalTypeId)?.name ?? '',
+        animalTypeId: formData.animalTypeId || undefined,
         weightKg: Number(formData.weightKg),
         ageMonths: Number(formData.ageMonths),
         collarId: formData.collarId ? Number(formData.collarId) : undefined,
@@ -57,6 +67,12 @@ export default function NewAnimalPage() {
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="el Alta y Gestión de Animales" />;
+  }
+
+  if (!farmPerms.loading && farmPerms.role !== null && !farmPerms.canEdit) {
+    return (
+      <AccessDeniedState description="Tu rol es de solo lectura: no podés registrar animales. Consultá con el administrador de la granja." />
+    );
   }
 
   return (
@@ -110,18 +126,15 @@ export default function NewAnimalPage() {
                     Registrar Nuevo Campo
                   </Link>
                 </div>
-                <select
+                <Select
                   name="farmId"
                   value={formData.farmId || farms[0]?.id || ''}
-                  onChange={handleChange}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
-                >
-                  {farms.map((farm) => (
-                    <option key={farm.id} value={farm.id}>
-                      {farm.name || `Campo (${farm.id.slice(0, 8)})`}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => handleFieldChange('farmId', v)}
+                  options={farms.map((farm) => ({
+                    value: farm.id,
+                    label: farm.name || `Campo (${farm.id.slice(0, 8)})`,
+                  }))}
+                />
               </div>
 
               {/* Tag / Caravana */}
@@ -139,25 +152,20 @@ export default function NewAnimalPage() {
                 />
               </div>
 
-              {/* Grid 2x2 for breed details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Raza */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                    Raza
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    name="breed"
-                    value={formData.breed}
-                    onChange={handleChange}
-                    placeholder="Ej: Aberdeen Angus"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
-                  />
-                </div>
+              {/* Especie y raza (del catálogo de Tipos de animal) */}
+              <BreedSelect
+                animalTypes={animalTypes}
+                value={formData.animalTypeId}
+                onChange={(animalTypeId) => {
+                  setFormData((prev) => ({ ...prev, animalTypeId }));
+                  if (error) reset();
+                }}
+                required
+                labelClassName="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider"
+              />
 
-                {/* Peso */}
+              {/* Peso y edad */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                     Peso (Kg)
@@ -173,11 +181,7 @@ export default function NewAnimalPage() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
                   />
                 </div>
-              </div>
 
-              {/* Grid 2x2 for age and collar */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Edad */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                     Edad (Meses)
@@ -192,26 +196,22 @@ export default function NewAnimalPage() {
                     className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
                   />
                 </div>
+              </div>
 
-                {/* Collar */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                    Collar IoT (Opcional)
-                  </label>
-                  <select
-                    name="collarId"
-                    value={formData.collarId}
-                    onChange={handleChange}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm cursor-pointer"
-                  >
-                    <option value="">Sin collar</option>
-                    {availableCollars.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.identifier}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Collar */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
+                  Collar IoT (Opcional)
+                </label>
+                <Select
+                  name="collarId"
+                  value={formData.collarId}
+                  onChange={(v) => handleFieldChange('collarId', v)}
+                  options={[
+                    { value: '', label: 'Sin collar' },
+                    ...availableCollars.map((c) => ({ value: String(c.id), label: c.identifier })),
+                  ]}
+                />
               </div>
             </div>
 

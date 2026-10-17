@@ -3,7 +3,7 @@ import { SetMetadata } from '@nestjs/common';
 export const RESOLVE_FARM_ID_FROM_KEY = 'resolve_farm_id_from';
 
 /** Recursos desde los que FarmRoleGuard sabe resolver el farmId cuando no viaja directo en la request. */
-export type FarmIdResource = 'animal' | 'zone' | 'geofence' | 'gateway' | 'alert';
+export type FarmIdResource = 'animal' | 'geofence' | 'gateway' | 'alert';
 
 export interface ResolveFarmIdFromOptions {
   resource: FarmIdResource;

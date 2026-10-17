@@ -1,13 +1,10 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { CollarStatus, GlobalRole, Prisma, CollarClaimStatus, CollarRequestStatus } from '@generated/prisma';
+import { CollarStatus, GlobalRole, Prisma } from '@generated/prisma';
 import { CreateCollarDto } from './dto/create-collar.dto';
 import { UpdateCollarDto } from './dto/update-collar.dto';
-import { CreateCollarClaimDto } from './dto/create-collar-claim.dto';
-import { UpdateCollarClaimDto } from './dto/update-collar-claim.dto';
-import { CreateCollarRequestDto } from './dto/create-collar-request.dto';
-import { UpdateCollarRequestDto } from './dto/update-collar-request.dto';
 import { JwtPayload } from '@/auth/current-user.decorator';
+import { FARM_WRITE_ROLES } from '@/auth/farm-roles';
 
 @Injectable()
 export class CollarsService {
@@ -42,6 +39,15 @@ export class CollarsService {
       select: { id: true },
     });
     return userFarms.map((f) => f.id);
+  }
+
+  /** Granjas donde el usuario puede modificar datos (ADMIN u OPERATOR); un VIEWER no puede tocar collares. */
+  private async getUserWritableFarmIds(userId: string): Promise<string[]> {
+    const memberships = await this.prisma.farmUser.findMany({
+      where: { userId, isActive: true, role: { name: { in: [...FARM_WRITE_ROLES] } } },
+      select: { farmId: true },
+    });
+    return memberships.map((m) => m.farmId);
   }
 
   async create(dto: CreateCollarDto) {
@@ -247,7 +253,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes permisos para modificar el estado de este collar');
@@ -276,7 +282,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes permisos para archivar este collar');
@@ -323,7 +329,7 @@ export class CollarsService {
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserFarmIds(user.sub);
+      const farmIds = await this.getUserWritableFarmIds(user.sub);
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes acceso a este collar');
@@ -344,14 +350,13 @@ export class CollarsService {
   async remove(id: number, forceArchive = false) {
     const collar = await this.getOrThrow(id);
 
-    // Contar historial asociado (asignaciones a ganado, telemetrías y reclamos)
-    const [assignmentCount, telemetryCount, claimCount] = await Promise.all([
+    // Contar historial asociado (asignaciones a ganado y telemetrías)
+    const [assignmentCount, telemetryCount] = await Promise.all([
       this.prisma.animalCollar.count({ where: { collarId: id } }),
       this.prisma.telemetryReading.count({ where: { collarId: id } }),
-      this.prisma.collarClaim.count({ where: { collarId: id } }),
     ]);
 
-    const totalRelations = assignmentCount + telemetryCount + claimCount;
+    const totalRelations = assignmentCount + telemetryCount;
     if (totalRelations > 0) {
       if (forceArchive) {
         return this.archive(id);
@@ -360,7 +365,6 @@ export class CollarsService {
       const reasons: string[] = [];
       if (assignmentCount > 0) reasons.push(`${assignmentCount} asignación(es) a animales`);
       if (telemetryCount > 0) reasons.push(`${telemetryCount} lectura(s) de telemetría`);
-      if (claimCount > 0) reasons.push(`${claimCount} reclamo(s) de avería`);
 
       throw new BadRequestException(
         `No se puede eliminar permanentemente el collar #${id} (${collar.identifier}) porque posee historial registrado (${reasons.join(', ')}). Utilizá la opción "Archivar / Dar de baja" para retirarlo del inventario conservando los datos de trazabilidad.`
@@ -390,180 +394,6 @@ export class CollarsService {
     return collar;
   }
 
-  // --- RECLAMOS (CU009: Iniciar y gestionar reclamos por rotura o falla) ---
-  async createClaim(collarId: number, dto: CreateCollarClaimDto, user: JwtPayload) {
-    const collar = await this.getOrThrow(collarId);
-
-    const isSuperAdmin = user.globalRole === GlobalRole.SUPER_ADMIN && !user.isEmulated;
-    if (!isSuperAdmin) {
-      const farmIds = await this.getUserFarmIds(user.sub);
-      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
-      if (!belongsToFarm) {
-        throw new ForbiddenException('No puedes iniciar un reclamo sobre un collar de otro establecimiento');
-      }
-    }
-
-    if (dto.markAsDamaged) {
-      await this.updateStatus(collarId, CollarStatus.DAMAGED, user);
-    }
-
-    return this.prisma.collarClaim.create({
-      data: {
-        collarId,
-        farmId: collar.farmId,
-        userId: user.sub,
-        reason: dto.reason.trim(),
-        description: dto.description?.trim(),
-      },
-      include: {
-        collar: { select: { id: true, identifier: true, status: true } },
-        farm: { select: { id: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
-
-  async findAllClaims(user: JwtPayload) {
-    const isSuperAdmin = user.globalRole === GlobalRole.SUPER_ADMIN && !user.isEmulated;
-
-    let whereClause: Prisma.CollarClaimWhereInput = {};
-    if (!isSuperAdmin) {
-      const farmIds = await this.getUserFarmIds(user.sub);
-      whereClause = {
-        OR: [
-          { farmId: { in: farmIds } },
-          { userId: user.sub },
-        ],
-      };
-    }
-
-    return this.prisma.collarClaim.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        collar: { select: { id: true, identifier: true, status: true } },
-        farm: { select: { id: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
-
-  async updateClaim(claimId: string, dto: UpdateCollarClaimDto) {
-    const claim = await this.prisma.collarClaim.findUnique({ where: { id: claimId } });
-    if (!claim) {
-      throw new NotFoundException(`Reclamo con ID "${claimId}" no encontrado`);
-    }
-
-    const isResolvedOrRejected = dto.status === 'RESOLVED' || dto.status === 'REJECTED';
-
-    return this.prisma.collarClaim.update({
-      where: { id: claimId },
-      data: {
-        status: dto.status,
-        ...(dto.resolutionNotes !== undefined ? { resolutionNotes: dto.resolutionNotes } : {}),
-        resolvedAt: isResolvedOrRejected ? new Date() : null,
-      },
-      include: {
-        collar: { select: { id: true, identifier: true, status: true } },
-        farm: { select: { id: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
-
-  // --- SOLICITUDES (CU009: Solicitar más collares y ampliar cuota) ---
-  async createRequest(dto: CreateCollarRequestDto, user: JwtPayload) {
-    const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
-    if (!farm) {
-      throw new NotFoundException(`Establecimiento con ID "${dto.farmId}" no encontrado`);
-    }
-
-    const isSuperAdmin = user.globalRole === GlobalRole.SUPER_ADMIN && !user.isEmulated;
-    if (!isSuperAdmin) {
-      const farmIds = await this.getUserFarmIds(user.sub);
-      if (!farmIds.includes(dto.farmId)) {
-        throw new ForbiddenException('No tienes permisos para solicitar collares para este campo');
-      }
-    }
-
-    return this.prisma.collarRequest.create({
-      data: {
-        farmId: dto.farmId,
-        userId: user.sub,
-        requestedCount: dto.requestedCount,
-        notes: dto.notes?.trim(),
-      },
-      include: {
-        farm: { select: { id: true, name: true } },
-      },
-    });
-  }
-
-  async findAllRequests(user: JwtPayload) {
-    const isSuperAdmin = user.globalRole === GlobalRole.SUPER_ADMIN && !user.isEmulated;
-
-    let whereClause: Prisma.CollarRequestWhereInput = {};
-    if (!isSuperAdmin) {
-      const farmIds = await this.getUserFarmIds(user.sub);
-      whereClause = { farmId: { in: farmIds } };
-    }
-
-    return this.prisma.collarRequest.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        farm: { select: { id: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
-
-  async updateRequest(requestId: string, dto: UpdateCollarRequestDto) {
-    const request = await this.prisma.collarRequest.findUnique({
-      where: { id: requestId },
-      include: { farm: true },
-    });
-    if (!request) {
-      throw new NotFoundException(`Solicitud con ID "${requestId}" no encontrada`);
-    }
-
-    if (dto.status === 'APPROVED') {
-      if (dto.incrementMaxCollars && request.farm.userId) {
-        await this.prisma.user.update({
-          where: { id: request.farm.userId },
-          data: {
-            maxCollars: { increment: request.requestedCount },
-          },
-        });
-      }
-
-      // Si se especificaron collares a asignar a esta granja:
-      if (dto.assignedCollarIds && dto.assignedCollarIds.length > 0) {
-        await this.prisma.collar.updateMany({
-          where: {
-            id: { in: dto.assignedCollarIds },
-          },
-          data: {
-            farmId: request.farmId,
-            status: CollarStatus.AVAILABLE,
-          },
-        });
-      }
-    }
-
-    return this.prisma.collarRequest.update({
-      where: { id: requestId },
-      data: {
-        status: dto.status,
-        ...(dto.responseNotes !== undefined ? { responseNotes: dto.responseNotes } : {}),
-        resolvedAt: new Date(),
-      },
-      include: {
-        farm: { select: { id: true, name: true } },
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-  }
 
   private async assertCollarQuota(farmId: string, excludeCollarId?: number) {
     const farm = await this.prisma.farm.findUnique({

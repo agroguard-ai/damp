@@ -18,7 +18,7 @@ describe('IotDeviceAuthGuard', () => {
   });
 
   it('permite el acceso cuando gateway_id y X-API-Key son válidos', async () => {
-    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
+    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1' });
     const context = makeContext({ 'x-api-key': 'valid-key' }, { gateway_id: 'gw-1', collar_id: 1 });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
@@ -26,7 +26,7 @@ describe('IotDeviceAuthGuard', () => {
   });
 
   it('permite el acceso cuando solo se provee X-API-Key y deduce gateway_id', async () => {
-    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1', zoneId: 'zone-1' });
+    gatewaysService.validateApiKey.mockResolvedValue({ id: 'gw-1', farmId: 'farm-1' });
     const body: Record<string, unknown> = { collar_id: 1 };
     const context = makeContext({ 'x-api-key': 'valid-key' }, body);
 

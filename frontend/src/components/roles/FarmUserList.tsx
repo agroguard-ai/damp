@@ -3,6 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from '@/context/ConfirmDialogContext';
 import { useToast } from '@/context/ToastContext';
+import { useFarmPermissions, FARM_ROLE_LABELS } from '@/hooks/useFarmPermissions';
+import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { Select } from '@/components/ui/Select';
+
+// Cada granja tiene un único administrador (regla del backend), así que desde acá solo se
+// invita o se cambia entre operador y solo lectura.
+const ASSIGNABLE_ROLES = ['OPERATOR', 'VIEWER'] as const;
 
 interface FarmUserRecord {
   id: string;
@@ -24,6 +31,7 @@ interface FarmUserRecord {
 export function FarmUserList({ farmId }: { farmId: string }) {
   const confirm = useConfirm();
   const { toast } = useToast();
+  const { canManageUsers, loading: authLoading } = useFarmPermissions(farmId);
   const [members, setMembers] = useState<FarmUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +105,8 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       });
 
       if (!res.ok) {
-        throw new Error('Error al modificar el rol del sub-usuario');
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message || 'Error al modificar el rol del sub-usuario');
       }
 
       toast.success('Rol del usuario actualizado');
@@ -123,7 +132,8 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       });
 
       if (!res.ok) {
-        throw new Error('Error al remover sub-usuario');
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message || 'Error al remover sub-usuario');
       }
 
       toast.success('Acceso del usuario removido');
@@ -133,6 +143,15 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       toast.error(message);
     }
   };
+
+  if (!authLoading && !canManageUsers) {
+    return (
+      <AccessDeniedState
+        description="Solo el administrador de la granja puede gestionar el personal y sus accesos."
+        backHref="/farms"
+      />
+    );
+  }
 
   if (loading) {
     return (
@@ -169,15 +188,11 @@ export function FarmUserList({ farmId }: { farmId: string }) {
             className="flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 p-2.5 text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
 
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="rounded-xl border border-zinc-300 dark:border-zinc-700 p-2.5 text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          >
-            <option value="ADMIN">ADMIN (Administrador Granja)</option>
-            <option value="OPERATOR">OPERATOR (Operador de campo)</option>
-            <option value="VIEWER">VIEWER (Solo lectura)</option>
-          </select>
+          <Select
+            value={String(selectedRole)}
+            onChange={(v) => setSelectedRole(v)}
+            options={[...ASSIGNABLE_ROLES.map((r) => ({ value: String(r), label: String(FARM_ROLE_LABELS[r]) }))]}
+          />
 
           <button
             type="submit"
@@ -215,23 +230,31 @@ export function FarmUserList({ farmId }: { farmId: string }) {
                     <div className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">{m.userId}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <select
-                      value={m.role?.name ?? 'OPERATOR'}
-                      onChange={(e) => void handleRoleUpdate(m.userId, e.target.value)}
-                      className="rounded-lg border border-zinc-300 dark:border-zinc-700 p-1.5 text-xs font-semibold bg-zinc-50 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200"
-                    >
-                      <option value="ADMIN">ADMIN</option>
-                      <option value="OPERATOR">OPERATOR</option>
-                      <option value="VIEWER">VIEWER</option>
-                    </select>
+                    {m.role?.name === 'ADMIN' ? (
+                      <span className="inline-block rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/40 px-2 py-1 text-xs font-semibold text-purple-700 dark:text-purple-300">
+                        {FARM_ROLE_LABELS.ADMIN}
+                      </span>
+                    ) : (
+                      <Select
+                        value={String(m.role?.name ?? 'OPERATOR')}
+                        onChange={(v) => void handleRoleUpdate(m.userId, v)}
+                        options={[
+                          ...ASSIGNABLE_ROLES.map((r) => ({ value: String(r), label: String(FARM_ROLE_LABELS[r]) })),
+                        ]}
+                        size="sm"
+                      />
+                    )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => void handleRemoveUser(m.userId)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-semibold hover:underline cursor-pointer"
-                    >
-                      Revocar Acceso
-                    </button>
+                    {/* El admin no se puede revocar: la granja quedaría sin administrador */}
+                    {m.role?.name !== 'ADMIN' && (
+                      <button
+                        onClick={() => void handleRemoveUser(m.userId)}
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs font-semibold hover:underline cursor-pointer"
+                      >
+                        Revocar Acceso
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

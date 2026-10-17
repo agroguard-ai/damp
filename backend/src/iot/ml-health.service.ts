@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { MlBlock } from './ml-window';
 
-/** Debe coincidir con `lookback` del modelo entrenado (damp-ml-api/machine-learning/model/preprocess.py). */
-export const ML_WINDOW_SIZE = 48;
+/** La predicción corre en segundo plano, pero no debe quedar colgada si ml-service no responde. */
+const ML_REQUEST_TIMEOUT_MS = 10_000;
 
 export interface MlEventPrediction {
   probability: number;
@@ -10,16 +11,19 @@ export interface MlEventPrediction {
   detected: boolean;
 }
 
+export interface MlServiceStatus {
+  /** ml-service respondió. */
+  online: boolean;
+  /** El modelo entrenado está cargado y puede predecir. */
+  modelLoaded: boolean;
+  error: string | null;
+  /** Bloques de 30 min que necesita el modelo (48 = 24 h). */
+  requiredWindowBlocks: number | null;
+}
+
 export interface MlPredictionResult {
   ready: boolean;
   events: Record<string, MlEventPrediction>;
-}
-
-export interface MlReadingInput {
-  temperature: number;
-  lat: number;
-  lng: number;
-  timestamp: string;
 }
 
 /**
@@ -37,16 +41,45 @@ export class MlHealthService {
     this.baseUrl = this.configService.get<string>('ML_SERVICE_URL') ?? 'http://localhost:8000';
   }
 
+  /** Estado de ml-service para mostrarlo en el front (no lanza: si no responde, online=false). */
+  async status(): Promise<MlServiceStatus> {
+    try {
+      const response = await fetch(`${this.baseUrl}/health`, { signal: AbortSignal.timeout(3_000) });
+      if (!response.ok) {
+        return {
+          online: false,
+          modelLoaded: false,
+          error: `ml-service respondió ${response.status}`,
+          requiredWindowBlocks: null,
+        };
+      }
+      const body = (await response.json()) as {
+        model_loaded?: boolean;
+        model_load_error?: string | null;
+        required_window_size?: number | null;
+      };
+      return {
+        online: true,
+        modelLoaded: Boolean(body.model_loaded),
+        error: body.model_load_error ?? null,
+        requiredWindowBlocks: body.required_window_size ?? null,
+      };
+    } catch (error) {
+      return { online: false, modelLoaded: false, error: (error as Error).message, requiredWindowBlocks: null };
+    }
+  }
+
   async predict(
     animalId: string,
     sex: string | null | undefined,
-    readings: MlReadingInput[]
+    readings: MlBlock[]
   ): Promise<MlPredictionResult | null> {
     try {
       const response = await fetch(`${this.baseUrl}/predict/health`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ animal_id: animalId, sex, readings }),
+        signal: AbortSignal.timeout(ML_REQUEST_TIMEOUT_MS),
       });
 
       if (!response.ok) {

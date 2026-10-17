@@ -8,17 +8,17 @@ import { MlHealthService } from './ml-health.service';
 import { PrismaModule } from '@/prisma/prisma.module';
 import { GatewaysModule } from '@/gateways/gateways.module';
 import { AlertSettingsModule } from '@/alert-settings/alert-settings.module';
-import { ZonesModule } from '@/zones/zones.module';
+import { RotationsModule } from '@/rotations/rotations.module';
 import { AuthModule } from '@/auth/auth.module';
 
 @Module({
-  imports: [PrismaModule, GatewaysModule, AlertSettingsModule, ZonesModule, AuthModule],
+  imports: [PrismaModule, GatewaysModule, AlertSettingsModule, RotationsModule, AuthModule],
   controllers: [IotController, AdminIotLogsController],
   providers: [IotService, MlHealthService, IotLogsService],
   exports: [IotService, IotLogsService],
 })
 export class IotModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(IotLoggingMiddleware).forRoutes('api/iot', 'api/iot/*');
+    consumer.apply(IotLoggingMiddleware).forRoutes('api/iot', 'api/iot/{*path}');
   }
 }

@@ -102,10 +102,22 @@ model FarmUser {
 }
 ```
 
-### B. Roles Típicos de Granja
-* **`ADMIN`**: Administrador del establecimiento. Puede invocar sub-usuarios, cambiar roles locales y remover accesos.
-* **`OPERATOR`**: Operador de campo. Puede gestionar animales, actualizar pesajes y configurar zonas o geocercas.
-* **`VIEWER`**: Lector. Solo puede visualizar reportes y telemetría sin permisos de edición.
+### B. Roles de Granja (CU018)
+Los nombres válidos están en `backend/src/auth/farm-roles.ts`; los DTOs de `farm-users` rechazan cualquier otro (`@IsIn`).
+
+| Acción | SUPER_ADMIN | ADMIN | OPERATOR | VIEWER |
+| :--- | :---: | :---: | :---: | :---: |
+| Ver datos de la granja (animales, mapa, alertas, reportes) | ✅ | ✅ | ✅ | ✅ |
+| Animales, eventos médicos, zonas, rotaciones, cercos, alertas (resolver / falso positivo), estado de collares, gateways | ✅ | ✅ | ✅ | ❌ |
+| Configuración de umbrales de alerta (CU016) | ✅ | ✅ | ❌ | ❌ |
+| Editar / dar de baja la granja, crear granjas nuevas | ✅ | ✅ | ❌ | ❌ |
+| Gestionar personal de la granja (`/farms/:farmId/users`, incluido el listado) | ✅ | ✅ | ❌ | ❌ |
+| Inventario de collares/gateways, tipos de animal, usuarios globales | ✅ | ❌ | ❌ | ❌ |
+
+Reglas de negocio asociadas:
+* Cada granja tiene **un único ADMIN** y nunca puede quedar sin él: no se lo puede dar de baja ni degradar a otro rol.
+* Crear una granja (`POST /farms`) solo lo pueden hacer el SUPER_ADMIN, un usuario que ya es ADMIN de granja, o un productor nuevo sin ninguna membresía. Un OPERATOR/VIEWER no puede crearse una granja propia para escalar a ADMIN.
+* En el frontend, `useFarmPermissions()` (`frontend/src/hooks/useFarmPermissions.ts`) oculta/deshabilita las acciones según el rol. Es solo UX: el backend valida todo igual.
 
 ### C. Bypass Jerárquico (`AUTHZ-04`)
 Si un usuario con `globalRole === GlobalRole.SUPER_ADMIN` realiza una solicitud a un endpoint protegido por `FarmRoleGuard`, el guard autoriza el acceso **automáticamente**, sin requerir estar registrado en la tabla `farm_users` de dicha granja.
@@ -114,6 +126,7 @@ Si un usuario con `globalRole === GlobalRole.SUPER_ADMIN` realiza una solicitud 
 * **Decorador**: `@RequireFarmRole('ADMIN')` ([backend/src/auth/decorators/require-farm-role.decorator.ts](file:///home/tomas-wardoloff/Documents/Projects/damp/backend/src/auth/decorators/require-farm-role.decorator.ts))
 * **Guard**: `FarmRoleGuard` ([backend/src/auth/guards/farm-role.guard.ts](file:///home/tomas-wardoloff/Documents/Projects/damp/backend/src/auth/guards/farm-role.guard.ts))
 * **Extracción de `farmId`**: `FarmRoleGuard` resuelve de forma transparente el `farmId` desde los parámetros de la URL (`params`), cuerpo de la solicitud (`body`) o query string (`query`).
+* **Rutas con `@ResolveFarmIdFrom`**: manda siempre la granja del recurso (animal, zona, cerco, alerta). Si además viene un `farmId` en la request y no coincide, se responde 403 — evita que alguien mande `?farmId=<granja donde es ADMIN>` para modificar recursos de otra granja donde es VIEWER.
 
 ---
 
@@ -179,7 +192,7 @@ El frontend incluye vistas dedicadas para la administración de ambos niveles de
 * `PATCH /admin/users/:userId/role`: Modifica el `globalRole` del usuario objetivo.
 
 ### B. Administración de Granja (`/farms/:farmId/users`)
-* `GET /farms/:farmId/users`: Lista los integrantes registrados en la granja con su rol asignado.
+* `GET /farms/:farmId/users`: Lista los integrantes registrados en la granja con su rol asignado (Requiere rol `ADMIN`).
 * `POST /farms/:farmId/users`: Agrega un sub-usuario a la granja por `userId` o `email` (Requiere rol `ADMIN`).
 * `PATCH /farms/:farmId/users/:userId`: Cambia el rol de un sub-usuario en la granja (Requiere rol `ADMIN`).
 * `DELETE /farms/:farmId/users/:userId`: Revoca el acceso de un sub-usuario a la granja (Requiere rol `ADMIN`).

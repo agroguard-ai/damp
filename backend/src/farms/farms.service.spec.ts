@@ -18,7 +18,7 @@ function makePrismaMock() {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
     },
-    zone: {
+    geofence: {
       findMany: jest.fn(),
     },
     $transaction: jest.fn(),
@@ -41,18 +41,18 @@ describe('FarmsService', () => {
     service = new FarmsService(prisma as any);
   });
 
-  describe('update — zone containment validation', () => {
-    it('actualiza el campo exitosamente si todas sus zonas quedan dentro del nuevo perímetro', async () => {
+  describe('update — geofence containment validation', () => {
+    it('actualiza el campo exitosamente si todos sus cercos quedan dentro del nuevo perímetro', async () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.USER });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
         polygonCoordinates: farmPolygon,
       });
-      prisma.zone.findMany.mockResolvedValue([
+      prisma.geofence.findMany.mockResolvedValue([
         {
-          id: 'zone-1',
-          name: 'Potrero Norte',
+          id: 'geo-1',
+          name: 'Cerco Norte',
           polygonCoordinates: [
             [-34.8, -58.8],
             [-34.8, -58.2],
@@ -80,18 +80,18 @@ describe('FarmsService', () => {
       expect(prisma.farm.update).toHaveBeenCalled();
     });
 
-    it('lanza BadRequestException si al achicar el campo una zona queda fuera de los nuevos límites', async () => {
+    it('lanza BadRequestException si al achicar el campo un cerco queda fuera de los nuevos límites', async () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.USER });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
         polygonCoordinates: farmPolygon,
       });
-      // Zone exists at latitude -34.2
-      prisma.zone.findMany.mockResolvedValue([
+      // Geofence exists at latitude -34.2
+      prisma.geofence.findMany.mockResolvedValue([
         {
-          id: 'zone-1',
-          name: 'Potrero Norte',
+          id: 'geo-1',
+          name: 'Cerco Norte',
           polygonCoordinates: [
             [-34.4, -58.8],
             [-34.4, -58.2],

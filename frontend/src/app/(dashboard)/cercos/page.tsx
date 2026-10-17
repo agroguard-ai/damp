@@ -7,7 +7,6 @@ import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
-import { zonesApi } from '@/lib/api/zones';
 import { animalsApi } from '@/lib/api/animals';
 import { geofencesApi } from '@/lib/api/geofences';
 import { useToast } from '@/context/ToastContext';
@@ -15,136 +14,87 @@ import { useConfirm } from '@/context/ConfirmDialogContext';
 import { Select } from '@/components/ui/Select';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
+import { parsePolygon } from '@/lib/geo/spatial';
+import { suggestNextName } from '@/lib/suggestName';
+import { FEATURES } from '@/lib/features';
 import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import {
-  Zap,
-  ArrowLeft,
-  ShieldAlert,
-  CheckCircle2,
-  ShieldCheck,
-  AlertCircle,
-  Radio,
-  Trash2,
-  Tractor,
-  Layers,
-  Power,
-  Plus,
-  RotateCw,
-} from 'lucide-react';
+import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3 } from 'lucide-react';
+import type { Geofence } from '@/types';
 
-const ZoneMap = dynamic(() => import('@/components/maps/ZoneMap'), { ssr: false });
-const ZoneRotationView = dynamic(() => import('@/components/zones/ZoneRotationView'), {
-  ssr: false,
-});
+const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
+const FarmMapView = dynamic(() => import('@/components/fences/FarmMapView'), { ssr: false });
+const RotationView = dynamic(() => import('@/components/fences/RotationView'), { ssr: false });
 
-export default function CercosHubPage() {
+type FenceModalState = { mode: 'create' } | { mode: 'edit'; fence: Geofence } | null;
+
+export default function CercosPage() {
   return (
     <Suspense fallback={null}>
-      <CercosHubContent />
+      <CercosContent />
     </Suspense>
   );
 }
 
-function CercosHubContent() {
+function CercosContent() {
   const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
   const confirm = useConfirm();
   const searchParams = useSearchParams();
 
   const farmIdFromUrl = searchParams?.get('farmId') ?? '';
-  const zoneIdFromUrl = searchParams?.get('zoneId') ?? '';
-  const tabFromUrl = searchParams?.get('tab') ?? '';
+  const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(
+    FEATURES.grazingRotation && searchParams?.get('tab') === 'rotation' ? 'rotation' : 'fences'
+  );
 
-  const [activeTab, setActiveTab] = useState<'fences' | 'rotation'>(tabFromUrl === 'rotation' ? 'rotation' : 'fences');
-
-  // 1. Fetch all Farms
-  const { data: farms = [], loading: fetchingFarms, error: farmsError } = useApi(farmsApi.getAll);
+  const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
 
   const [selectedFarmId, setSelectedFarmId] = useState<string>('');
   const activeFarmId = selectedFarmId || farmIdFromUrl || farms[0]?.id || '';
   const activeFarm = useMemo(() => farms.find((f) => f.id === activeFarmId), [farms, activeFarmId]);
+  const farmPolygon = useMemo(() => parsePolygon(activeFarm?.polygonCoordinates), [activeFarm]);
+  // ADMIN y OPERATOR crean/desactivan cercos y rotaciones; VIEWER solo consulta (CU011/CU012).
+  const { canEdit } = useFarmPermissions(activeFarmId || null);
 
-  // 2. Fetch Zones of active farm
-  const fetchZones = useCallback(
-    () => (activeFarmId ? zonesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+  const fetchAnimals = useCallback(
+    () => (activeFarmId ? animalsApi.getAll({ farmId: activeFarmId, status: 'ACTIVE' }) : Promise.resolve([])),
     [activeFarmId]
   );
-  const { data: zones = [], loading: fetchingZones } = useApi(fetchZones, [activeFarmId]);
+  const { data: animals = [] } = useApi(fetchAnimals, [activeFarmId]);
 
-  const [selectedZoneId, setSelectedZoneId] = useState<string>('');
-  const activeZoneId = selectedZoneId || zoneIdFromUrl || zones[0]?.id || '';
-  const activeZone = useMemo(() => zones.find((z) => z.id === activeZoneId), [zones, activeZoneId]);
-
-  // 3. Fetch animals in active zone
-  const fetchAnimals = useCallback(
-    () =>
-      activeFarmId && activeZoneId
-        ? animalsApi.getAll({ farmId: activeFarmId, zoneId: activeZoneId, status: 'ACTIVE' })
-        : Promise.resolve([]),
-    [activeFarmId, activeZoneId]
-  );
-  const { data: animals = [] } = useApi(fetchAnimals, [activeFarmId, activeZoneId]);
-
-  // 4. Fetch Geofences of active zone
   const fetchGeofences = useCallback(
-    () => (activeZoneId ? geofencesApi.getByZone(activeZoneId) : Promise.resolve([])),
-    [activeZoneId]
+    () => (activeFarmId ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+    [activeFarmId]
   );
   const {
     data: geofences = [],
     loading: fetchingGeofences,
     refetch: refetchGeofences,
-  } = useApi(fetchGeofences, [activeZoneId]);
+  } = useApi(fetchGeofences, [activeFarmId]);
 
   const { mutate: createGeofence, loading: submitting } = useMutation(geofencesApi.create);
+  const { mutate: updateGeofence, loading: updating } = useMutation(geofencesApi.update);
   const { mutate: deactivateGeofence } = useMutation(geofencesApi.deactivate);
 
-  // Form State
-  const [name, setName] = useState('');
-  const [newPoints, setNewPoints] = useState<[number, number][]>([]);
-  const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
+  // Modal de alta / edición
+  const [fenceModal, setFenceModal] = useState<FenceModalState>(null);
+  const [pastureType, setPastureType] = useState('');
   const [selectedAnimalIds, setSelectedAnimalIds] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  // Extract Zone Polygon (Parent boundary)
-  const zonePolygon = useMemo<[number, number][]>(() => {
-    if (!activeZone?.polygonCoordinates) return [];
-    try {
-      const raw = activeZone.polygonCoordinates;
-      const coords = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      return Array.isArray(coords) ? coords : [];
-    } catch {
-      return [];
-    }
-  }, [activeZone]);
+  // Solo se pueden encerrar animales con collar activo (el backend lo exige)
+  const animalsWithCollar = useMemo(() => animals.filter((a) => a.animalCollars?.length > 0), [animals]);
 
-  // Extract Farm Polygon (Grandparent boundary for background context)
-  const farmPolygon = useMemo<[number, number][]>(() => {
-    if (!activeFarm || !(activeFarm as unknown as { polygonCoordinates?: unknown }).polygonCoordinates) return [];
-    try {
-      const raw = (activeFarm as unknown as { polygonCoordinates: unknown }).polygonCoordinates;
-      const coords = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      return Array.isArray(coords) ? coords : [];
-    } catch {
-      return [];
-    }
-  }, [activeFarm]);
-
-  // Map center calculation
+  const farmProvince = activeFarm?.province;
   const mapCenter = useMemo<[number, number]>(() => {
-    if (zonePolygon.length > 0) return zonePolygon[0];
     if (farmPolygon.length > 0) return farmPolygon[0];
-    if (activeFarm?.province) {
-      const provCenter = getProvinceCenter(activeFarm.province);
+    if (farmProvince) {
+      const provCenter = getProvinceCenter(farmProvince);
       if (provCenter) return provCenter;
     }
     return [-34.6037, -58.3816];
-  }, [zonePolygon, farmPolygon, activeFarm?.province]);
-
-  const drawnFenceAreaHa = useMemo(() => calculatePolygonAreaHa(newPoints), [newPoints]);
+  }, [farmPolygon, farmProvince]);
 
   const toggleAnimal = (animalId: string) => {
     setSelectedAnimalIds((prev) =>
@@ -153,59 +103,48 @@ function CercosHubContent() {
   };
 
   const handleSelectAllAnimals = () => {
-    if (selectedAnimalIds.length === animals.length) {
+    if (selectedAnimalIds.length === animalsWithCollar.length) {
       setSelectedAnimalIds([]);
     } else {
-      setSelectedAnimalIds(animals.map((a) => a.id));
+      setSelectedAnimalIds(animalsWithCollar.map((a) => a.id));
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeZoneId) {
-      toast.warning('Seleccioná una zona antes de trazar un cerco.');
-      return;
-    }
-    if (!name.trim()) {
-      toast.warning('Ingresá un nombre para el cerco eléctrico.');
-      return;
-    }
-    if (newPoints.length < 3) {
-      setError('Un cerco eléctrico debe tener al menos 3 vértices dibujados en el mapa.');
-      return;
-    }
+  const openCreateModal = () => {
+    setPastureType('');
+    setSelectedAnimalIds([]);
+    setFenceModal({ mode: 'create' });
+  };
 
-    // Strict containment validation: fence must be 100% inside the zone polygon
-    if (zonePolygon.length >= 3) {
-      const containment = isPolygonInsideBoundary(newPoints as LatLngTuple[], zonePolygon as LatLngTuple[]);
-      if (!containment.isInside) {
-        const msg = `El cerco contiene ${containment.outsideCount} punto(s) fuera de los límites de la zona "${activeZone?.name}". Debe ubicarse dentro del área verde.`;
-        setError(msg);
-        toast.error(msg);
-        return;
-      }
-    }
+  const openEditModal = (fence: Geofence) => {
+    setPastureType(fence.pastureType || '');
+    setFenceModal({ mode: 'edit', fence });
+  };
 
-    setError(null);
-    try {
+  const handleSaveFence = async ({ name, points }: { name: string; points: [number, number][] }) => {
+    if (!activeFarmId || !fenceModal) return;
+
+    if (fenceModal.mode === 'edit') {
+      await updateGeofence({
+        id: fenceModal.fence.id,
+        name,
+        pastureType: pastureType.trim() || null,
+        polygonCoordinates: points,
+      });
+      toast.success(`Cerco "${name}" actualizado`);
+    } else {
       await createGeofence({
-        zoneId: activeZoneId,
-        name: name.trim(),
-        polygonCoordinates: newPoints,
+        farmId: activeFarmId,
+        name,
+        pastureType: pastureType.trim() || undefined,
+        polygonCoordinates: points,
         animalIds: selectedAnimalIds,
       });
-
-      toast.success(`Cerco eléctrico "${name}" activado exitosamente.`);
-      setName('');
-      setNewPoints([]);
-      setSelectedVertexIndex(null);
+      toast.success(`Cerco "${name}" activado`);
       setSelectedAnimalIds([]);
-      refetchGeofences();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al crear el cerco eléctrico';
-      setError(msg);
-      toast.error(msg);
     }
+    setFenceModal(null);
+    refetchGeofences();
   };
 
   const handleDeactivate = async (id: string, fenceName: string) => {
@@ -245,496 +184,364 @@ function CercosHubContent() {
 
   return (
     <div className="p-6 md:p-8 space-y-6">
-      {/* Header with Navigation Links */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      {/* Header: título a la izquierda, selector de campo compacto a la derecha */}
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link
-              href={activeFarmId ? `/zonas?farmId=${activeFarmId}` : '/zonas'}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Volver a Zonas</span>
-            </Link>
-            <span className="text-zinc-300 dark:text-zinc-700">&bull;</span>
-            <Link
-              href="/farms"
-              className="text-xs font-semibold text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
-            >
-              Ver Campos
-            </Link>
-          </div>
+          <Link
+            href="/farms"
+            className="inline-flex items-center gap-1.5 mb-1 text-xs font-semibold text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Volver a Campos</span>
+          </Link>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Zap className="w-6 h-6 text-cyan-600 dark:text-cyan-500" />
-            Gestión de Cercos Eléctricos Virtuales
+            Cercos
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-0.5">
-            Nivel 3: Delimitá subdivisiones de contención virtual sobre la zona activa y asigná hacienda con collares
-            LoRa.
+            Dibujá cercos virtuales dentro del campo para contener a la hacienda con collar.
           </p>
         </div>
-      </div>
 
-      {/* Cascading Selectors: 1. Campo -> 2. Zona */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-xs">
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1.5 flex items-center gap-1.5">
-            <Tractor className="w-3.5 h-3.5" />
-            <span>1. Establecimiento (Campo)</span>
-          </label>
+        <div className="w-full sm:w-64 shrink-0">
           <Select
+            size="sm"
             value={activeFarmId}
             onChange={(val) => {
               setSelectedFarmId(val);
-              setSelectedZoneId('');
-              setNewPoints([]);
+              setFenceModal(null);
               setSelectedAnimalIds([]);
             }}
             options={farms.map((f) => ({
               value: f.id,
               label: f.name || 'Sin nombre',
-              description: f.location || f.province || 'Argentina',
+              description: `${f.location || f.province || 'Argentina'}${f.totalAreaHa ? ` · ${f.totalAreaHa} Ha` : ''}`,
               icon: Tractor,
             }))}
+            searchable={farms.length > 3}
             searchPlaceholder="Buscar campo..."
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-green-700 dark:text-green-400 mb-1.5 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5" />
-            <span>2. Zona Activa (Potrero)</span>
-          </label>
-          <Select
-            value={activeZoneId}
-            onChange={(val) => {
-              setSelectedZoneId(val);
-              setNewPoints([]);
-              setSelectedAnimalIds([]);
-            }}
-            options={zones.map((z) => {
-              const hasPoly = Boolean(
-                z.polygonCoordinates &&
-                (typeof z.polygonCoordinates === 'string'
-                  ? (z.polygonCoordinates as string).length > 2
-                  : Array.isArray(z.polygonCoordinates) && (z.polygonCoordinates as unknown[]).length > 0)
-              );
-              return {
-                value: z.id,
-                label: z.name,
-                description: z.pastureType ? `Pastura: ${z.pastureType}` : 'Sin pastura definida',
-                badge: hasPoly ? 'Perímetro definido' : 'Sin mapa',
-                icon: Layers,
-              };
-            })}
-            disabled={zones.length === 0}
-            placeholder={zones.length === 0 ? 'Este campo no tiene zonas' : 'Seleccioná una zona...'}
-            searchPlaceholder="Buscar zona..."
           />
         </div>
       </div>
 
-      {/* View Tabs: Cercos Eléctricos vs Rotación de Pastoreo (CU012) */}
-      {zones.length > 0 && activeZone && (
+      {/* Cercos vs Pastoreo rotativo (CU012) — oculto hasta habilitar FEATURES.grazingRotation */}
+      {FEATURES.grazingRotation && (
         <div className="flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-zinc-200 dark:border-zinc-700 w-fit">
           <button
             type="button"
             onClick={() => setActiveTab('fences')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'fences'
                 ? 'bg-white dark:bg-zinc-900 text-cyan-700 dark:text-cyan-400 shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Cercos Eléctricos ({geofences.length})</span>
+            <span>Cercos ({geofences.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('rotation')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'rotation'
-                ? 'bg-white dark:bg-zinc-900 text-orange-650 dark:text-orange-400 shadow-xs'
+                ? 'bg-white dark:bg-zinc-900 text-orange-600 dark:text-orange-400 shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
             <RotateCw className="w-3.5 h-3.5" />
-            <span>Rotación de Perímetros (Pastoreo Rotativo)</span>
+            <span>Pastoreo rotativo</span>
           </button>
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2.5 shadow-xs">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Main Workspace */}
-      {zones.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-10 text-center space-y-4 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-            <Layers className="w-6 h-6" />
-          </div>
-          <div className="space-y-1 max-w-md mx-auto">
-            <h3 className="font-bold text-base text-zinc-900 dark:text-white">Este campo no tiene zonas registradas</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Para trazar un cerco eléctrico virtual (Nivel 3), primero debés registrar y delimitar al menos una zona o
-              potrero (Nivel 2).
-            </p>
-          </div>
-          <Link
-            href={`/zonas?farmId=${activeFarmId}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs shadow-xs transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Crear Zona en este Campo</span>
-          </Link>
-        </div>
-      ) : activeTab === 'rotation' && activeZone ? (
-        <ZoneRotationView
-          zone={activeZone}
+      {FEATURES.grazingRotation && activeTab === 'rotation' && activeFarm ? (
+        <RotationView
+          farm={activeFarm}
           geofences={geofences}
           animals={animals}
           onRefreshGeofences={refetchGeofences}
+          readOnly={!canEdit}
         />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left / Center: Interactive Map */}
-          <div className="xl:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
-                <div>
-                  <h3 className="font-bold text-base text-zinc-900 dark:text-white flex items-center gap-2">
-                    <span>Mapa del Cerco</span>
-                    {activeZone && <span className="text-xs font-normal text-zinc-500">— Zona: {activeZone.name}</span>}
-                  </h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    {zonePolygon.length > 0
-                      ? 'Límites de la zona en verde. El cerco debe estar 100% contenido en este potrero.'
-                      : 'La zona no tiene límites dibujados; podés trazar el cerco sobre el mapa.'}
-                  </p>
-                </div>
+        <>
+          {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
+            {activeFarm && <FarmMapView farm={activeFarm} geofences={geofences} />}
+          </div>
 
-                <div className="text-right shrink-0">
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-full font-semibold inline-flex items-center gap-1.5 ${
-                      newPoints.length > 0
-                        ? 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/40'
-                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                    }`}
-                  >
-                    {newPoints.length > 0 ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse"></span>
-                        Trazando cerco: {newPoints.length} pts ({drawnFenceAreaHa} Ha)
-                      </>
-                    ) : (
-                      'Listo para trazar cerco'
-                    )}
+          {/* Listado de Cercos */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs p-6 space-y-4">
+            <div className="flex justify-between items-center gap-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
+                  Cercos en {activeFarm?.name || 'este campo'}
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                    {geofences.length}
                   </span>
-                </div>
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5">
+                  {canEdit
+                    ? 'Cada cerco tiene que quedar dentro del perímetro del campo.'
+                    : 'Modo solo lectura: para crear o desactivar cercos, hablá con el administrador del campo.'}
+                </p>
               </div>
-
-              <ZoneMap
-                zonePolygon={zonePolygon}
-                farmPolygon={farmPolygon}
-                geofences={geofences}
-                newPoints={newPoints}
-                onChangePoints={setNewPoints}
-                onAddPoint={(p, msg) => {
-                  setNewPoints((prev) => [...prev, p]);
-                  if (msg) toast.info(msg);
-                }}
-                onPointRejected={(_pt, msg) => {
-                  toast.warning(msg);
-                }}
-                center={mapCenter}
-                boundaryType="zone"
-                boundaryLabel={`de la zona "${activeZone?.name || ''}"`}
-                selectedVertexIndex={selectedVertexIndex}
-                onSelectVertex={setSelectedVertexIndex}
-              />
-            </div>
-
-            {/* Listado de Cercos Eléctricos Registrados */}
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs p-6 space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Cercos Eléctricos en esta Zona</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    Subdivisiones de contención activas en {activeZone?.name || 'esta zona'}.
-                  </p>
-                </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-                  {geofences.length} cerco(s)
-                </span>
-              </div>
-
-              {fetchingGeofences ? (
-                <div className="py-10 text-center text-xs text-zinc-400">Cargando cercos...</div>
-              ) : geofences.length === 0 ? (
-                <div className="text-center py-10 px-4 space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mx-auto">
-                    <Zap className="w-6 h-6" />
-                  </div>
-                  <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">
-                    No hay cercos eléctricos configurados en esta zona.
-                  </p>
-                  <p className="text-zinc-400 dark:text-zinc-500 text-xs">
-                    Trazá los vértices sobre el mapa y asigná animales en el panel lateral para activar el primer cerco.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider">
-                        <th className="pb-3 pr-4">Estado</th>
-                        <th className="pb-3 px-4">Nombre del Cerco</th>
-                        <th className="pb-3 px-4">Superficie</th>
-                        <th className="pb-3 px-4">Animales Asignados</th>
-                        <th className="pb-3 pl-4 text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {geofences.map((fence) => {
-                        let coords: [number, number][] = [];
-                        try {
-                          coords =
-                            typeof fence.polygonCoordinates === 'string'
-                              ? JSON.parse(fence.polygonCoordinates as string)
-                              : (fence.polygonCoordinates as [number, number][]) || [];
-                        } catch {
-                          coords = [];
-                        }
-                        const fenceArea = calculatePolygonAreaHa(coords);
-                        const assignedCount = fence.animalGeofences?.length || 0;
-
-                        return (
-                          <tr
-                            key={fence.id}
-                            className="text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
-                          >
-                            <td className="py-4 pr-4">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                  fence.active
-                                    ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/60'
-                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
-                                }`}
-                              >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    fence.active ? 'bg-cyan-500 animate-pulse' : 'bg-zinc-400'
-                                  }`}
-                                ></span>
-                                {fence.active ? 'Activo' : 'Desactivado'}
-                              </span>
-                            </td>
-
-                            <td className="py-4 px-4 font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                              <Zap className="w-3.5 h-3.5 text-cyan-500" />
-                              <span>{fence.name}</span>
-                            </td>
-
-                            <td className="py-4 px-4 text-xs">
-                              {fenceArea > 0 ? (
-                                <span className="font-medium text-zinc-900 dark:text-white">
-                                  {fenceArea} Ha{' '}
-                                  <span className="text-[11px] text-zinc-400">({coords.length} pts)</span>
-                                </span>
-                              ) : (
-                                <span className="text-zinc-400 italic text-[11px]">Sin polígono</span>
-                              )}
-                            </td>
-
-                            <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400">
-                              <span className="font-semibold text-zinc-900 dark:text-white">{assignedCount}</span>{' '}
-                              animal(es)
-                            </td>
-
-                            <td className="py-4 pl-4 text-right">
-                              {fence.active && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeactivate(fence.id, fence.name)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
-                                  title="Desactivar cerco eléctrico"
-                                >
-                                  <Power className="w-3 h-3" />
-                                  <span>Desactivar</span>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Nuevo cerco
+                </button>
               )}
             </div>
+
+            {fetchingGeofences ? (
+              <div className="py-10 text-center text-xs text-zinc-400">Cargando cercos...</div>
+            ) : geofences.length === 0 ? (
+              <div className="text-center py-10 px-4 space-y-3">
+                <div className="w-12 h-12 rounded-full bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mx-auto">
+                  <Zap className="w-6 h-6" />
+                </div>
+                <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium">
+                  Este campo todavía no tiene cercos.
+                </p>
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={openCreateModal}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Crear el primer cerco
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider">
+                      <th className="pb-3 pr-4">Cerco</th>
+                      <th className="pb-3 px-4">Pastura</th>
+                      <th className="pb-3 px-4">Estado</th>
+                      <th className="pb-3 px-4">Superficie</th>
+                      <th className="pb-3 px-4">Animales</th>
+                      <th className="pb-3 pl-4 text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {geofences.map((fence) => {
+                      const fenceArea = calculatePolygonAreaHa(parsePolygon(fence.polygonCoordinates));
+                      const assignedCount = fence.animalGeofences?.length || 0;
+
+                      return (
+                        <tr
+                          key={fence.id}
+                          className="text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
+                        >
+                          <td className="py-4 pr-4">
+                            <span className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
+                              <Zap className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                              {fence.name}
+                            </span>
+                          </td>
+
+                          <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400">
+                            {fence.pastureType || <span className="text-zinc-400">—</span>}
+                          </td>
+
+                          <td className="py-4 px-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                fence.active
+                                  ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/60'
+                                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${fence.active ? 'bg-cyan-500' : 'bg-zinc-400'}`}
+                              ></span>
+                              {fence.active ? 'Activo' : 'Desactivado'}
+                            </span>
+                          </td>
+
+                          <td className="py-4 px-4 text-xs">
+                            {fenceArea > 0 ? (
+                              <span className="font-medium text-zinc-900 dark:text-white">{fenceArea} Ha</span>
+                            ) : (
+                              <span className="text-zinc-400 italic text-[11px]">Sin polígono</span>
+                            )}
+                          </td>
+
+                          <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400">
+                            <Link
+                              href={`/animals?farmId=${activeFarmId}&geofenceId=${fence.id}`}
+                              className="hover:text-cyan-700 dark:hover:text-cyan-400 transition-colors"
+                              title="Ver la hacienda de este cerco"
+                            >
+                              <span className="font-semibold text-zinc-900 dark:text-white">{assignedCount}</span>{' '}
+                              cabezas
+                            </Link>
+                          </td>
+
+                          <td className="py-4 pl-4 text-right whitespace-nowrap space-x-1.5">
+                            {canEdit && fence.active && (
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(fence)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-cyan-700 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+                                title="Editar nombre, pastura o perímetro del cerco"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                                <span>Editar</span>
+                              </button>
+                            )}
+                            {canEdit && fence.active && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeactivate(fence.id, fence.name)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
+                                title="Desactivar cerco eléctrico"
+                              >
+                                <Power className="w-3 h-3" />
+                                <span>Desactivar</span>
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {fenceModal && activeFarm && (
+        <PolygonFormModal
+          icon={fenceModal.mode === 'edit' ? Edit3 : Zap}
+          accent="cyan"
+          title={
+            fenceModal.mode === 'edit'
+              ? `Editar ${fenceModal.fence.name}`
+              : `Nuevo cerco en ${activeFarm.name || 'el campo'}`
+          }
+          subtitle={
+            fenceModal.mode === 'edit'
+              ? 'Arrastrá los puntos para ajustar el perímetro o cambiá los datos.'
+              : 'Marcá las esquinas del cerco dentro del perímetro del campo.'
+          }
+          nameLabel="Nombre del cerco"
+          initialName={
+            fenceModal.mode === 'edit'
+              ? fenceModal.fence.name
+              : suggestNextName(
+                  'Cerco',
+                  geofences.map((g) => g.name)
+                )
+          }
+          initialPoints={fenceModal.mode === 'edit' ? parsePolygon(fenceModal.fence.polygonCoordinates) : []}
+          mapContext={{
+            farmId: activeFarmId,
+            farmPolygon,
+            // Al editar, el cerco propio se dibuja como trazado editable, no como cerco existente
+            geofences: fenceModal.mode === 'edit' ? geofences.filter((g) => g.id !== fenceModal.fence.id) : geofences,
+            boundaryLabel: `del campo "${activeFarm.name || ''}"`,
+            center: mapCenter,
+          }}
+          submitLabel={fenceModal.mode === 'edit' ? 'Guardar cambios' : 'Activar cerco'}
+          submitting={submitting || updating}
+          onClose={() => setFenceModal(null)}
+          onSubmit={handleSaveFence}
+        >
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="fence-pasture"
+              className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider"
+            >
+              Pastura <span className="normal-case font-normal text-zinc-400">(opcional)</span>
+            </label>
+            <input
+              id="fence-pasture"
+              type="text"
+              value={pastureType}
+              onChange={(e) => setPastureType(e.target.value)}
+              placeholder="Ej: Alfalfa, Trébol, Pasto natural"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-600 text-sm"
+            />
           </div>
 
-          {/* Right Panel: Creation Form */}
-          <div className="space-y-6">
-            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-5 sticky top-6">
-              <div className="border-b border-zinc-100 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-                  <Zap className="w-4 h-4" />
-                  <span>Nuevo Cerco Virtual</span>
-                </div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white mt-1">
-                  Crear Cerco en {activeZone?.name}
-                </h3>
+          {fenceModal.mode === 'create' && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Radio className="w-3.5 h-3.5 text-cyan-500" />
+                  Hacienda{' '}
+                  <span className="normal-case font-normal text-zinc-400">
+                    ({selectedAnimalIds.length} de {animalsWithCollar.length})
+                  </span>
+                </span>
+                {animalsWithCollar.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAllAnimals}
+                    className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                  >
+                    {selectedAnimalIds.length === animalsWithCollar.length ? 'Quitar todos' : 'Elegir todos'}
+                  </button>
+                )}
               </div>
 
-              <form onSubmit={handleCreate} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-1.5">
-                    Nombre del Cerco *
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej: Parcela A - Pastoreo Rotativo"
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    required
-                  />
-                </div>
-
-                {/* Drawn Vertices Preview Card */}
-                <div className="bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs uppercase tracking-wider text-cyan-700 dark:text-cyan-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-cyan-600" />
-                      Vértices ({newPoints.length})
-                    </span>
-                    {newPoints.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNewPoints([]);
-                          setSelectedVertexIndex(null);
-                        }}
-                        className="text-red-500 hover:text-red-600 text-xs font-semibold cursor-pointer"
+              {animalsWithCollar.length === 0 ? (
+                <p className="text-xs text-zinc-400 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  No hay animales con collar en este campo. Podés crear el cerco igual y asignarlos después desde
+                  Hacienda.
+                </p>
+              ) : (
+                <div className="max-h-40 overflow-y-auto space-y-1 p-1.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                  {animalsWithCollar.map((a) => {
+                    const isSelected = selectedAnimalIds.includes(a.id);
+                    return (
+                      <label
+                        key={a.id}
+                        className={`flex items-center gap-2.5 p-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/15 text-cyan-900 dark:text-cyan-200 font-semibold'
+                            : 'hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300'
+                        }`}
                       >
-                        Reiniciar
-                      </button>
-                    )}
-                  </div>
-
-                  {newPoints.length === 0 ? (
-                    <div className="text-xs text-zinc-400 italic bg-white/60 dark:bg-zinc-900/60 p-3 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-800 text-center">
-                      Hacé clics sobre el mapa dentro del área verde para trazar los vértices del cerco.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-zinc-500">Superficie estimada:</span>
-                        <strong className="font-mono text-cyan-600 dark:text-cyan-400 text-sm">
-                          {drawnFenceAreaHa} Ha
-                        </strong>
-                      </div>
-                      <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                        {newPoints.map((pt, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex justify-between items-center text-[11px] p-1.5 rounded border transition-colors ${
-                              selectedVertexIndex === idx
-                                ? 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 font-bold text-amber-900 dark:text-amber-200'
-                                : 'bg-white dark:bg-zinc-900 border-zinc-200/60 dark:border-zinc-800 text-zinc-500'
-                            }`}
-                          >
-                            <span>
-                              #{idx + 1}: [{pt[0].toFixed(5)}, {pt[1].toFixed(5)}]
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewPoints((prev) => prev.filter((_, i) => i !== idx));
-                                if (selectedVertexIndex === idx) setSelectedVertexIndex(null);
-                              }}
-                              className="text-zinc-400 hover:text-red-500 ml-2 cursor-pointer"
-                              title="Eliminar este vértice"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleAnimal(a.id)}
+                          className="accent-cyan-600 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="truncate flex-1">
+                          {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}
+                          {a.breed && <span className="text-[10px] text-zinc-400 font-normal"> · {a.breed}</span>}
+                        </span>
+                        {a.animalGeofences?.[0]?.geofence && (
+                          <span className="text-[10px] text-zinc-400 font-normal truncate max-w-24">
+                            en {a.animalGeofences[0].geofence.name}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
-
-                {/* Animal Assignment Selector */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-cyan-500" />
-                      <span>Asignar Hacienda ({selectedAnimalIds.length})</span>
-                    </label>
-                    {animals.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleSelectAllAnimals}
-                        className="text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
-                      >
-                        {selectedAnimalIds.length === animals.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                      </button>
-                    )}
-                  </div>
-
-                  {animals.length === 0 ? (
-                    <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
-                      No hay animales registrados en esta zona. Podés crear el cerco ahora y asignar animales después.
-                    </div>
-                  ) : (
-                    <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                      {animals.map((a) => {
-                        const isSelected = selectedAnimalIds.includes(a.id);
-                        return (
-                          <div
-                            key={a.id}
-                            onClick={() => toggleAnimal(a.id)}
-                            className={`flex items-center justify-between p-2 rounded-lg text-xs transition-colors cursor-pointer ${
-                              isSelected
-                                ? 'bg-cyan-500/15 border border-cyan-500/40 text-cyan-900 dark:text-cyan-200 font-semibold'
-                                : 'hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300 border border-transparent'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="w-2 h-2 rounded-full bg-cyan-500"></span>
-                              <span className="truncate">
-                                {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}
-                              </span>
-                              {a.breed && <span className="text-[10px] text-zinc-400">({a.breed})</span>}
-                            </div>
-                            <span className="text-[10px] font-mono text-zinc-400">
-                              {a.collarId ? '⚡ Collar vinculado' : 'Sin collar'}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting || newPoints.length < 3 || !name.trim()}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>{submitting ? 'Activando cerco...' : 'Activar Cerco Virtual'}</span>
-                </button>
-              </form>
+              )}
+              {animals.length > animalsWithCollar.length && (
+                <p className="text-[11px] text-zinc-400">
+                  {animals.length - animalsWithCollar.length} animal(es) sin collar no se pueden encerrar.
+                </p>
+              )}
             </div>
-          </div>
-        </div>
+          )}
+        </PolygonFormModal>
       )}
     </div>
   );

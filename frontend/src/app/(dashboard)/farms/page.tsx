@@ -8,6 +8,7 @@ import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { useToast } from '@/context/ToastContext';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
@@ -19,7 +20,7 @@ import {
   Plus,
   Edit3,
   Trash2,
-  Layers,
+  Zap,
   Users,
   MapPin,
   Ruler,
@@ -28,26 +29,19 @@ import {
   RotateCcw,
   Save,
   AlertTriangle,
-  Map as MapIcon,
+  Check,
+  Flame,
+  Route,
 } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
-
-const RENSPA_FORMAT = /^\d{2}\.\d{3}\.\d\.\d{5}\/\d{2}$/;
-
-function formatRenspa(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 13);
-  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 6), digits.slice(6, 11), digits.slice(11, 13)];
-  let result = parts[0];
-  if (parts[1]) result += `.${parts[1]}`;
-  if (parts[2]) result += `.${parts[2]}`;
-  if (parts[3]) result += `.${parts[3]}`;
-  if (parts[4]) result += `/${parts[4]}`;
-  return result;
-}
+const HeatmapModal = dynamic(() => import('@/components/farms/HeatmapModal'), { ssr: false });
+const TrajectoriesModal = dynamic(() => import('@/components/farms/TrajectoriesModal'), { ssr: false });
 
 export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
+  const { role: lowestFarmRole } = useFarmPermissions();
   const { toast } = useToast();
 
   const {
@@ -61,6 +55,10 @@ export default function FarmsPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Mapas de análisis: calor de uso y recorridos de la hacienda
+  const [heatmapFarm, setHeatmapFarm] = useState<Farm | null>(null);
+  const [trajectoriesFarm, setTrajectoriesFarm] = useState<Farm | null>(null);
+
   // Rigid Perimeter Map Modal State
   const [perimeterModalFarm, setPerimeterModalFarm] = useState<Farm | null>(null);
   const [editPolygonPoints, setEditPolygonPoints] = useState<[number, number][]>([]);
@@ -70,7 +68,6 @@ export default function FarmsPage() {
   const [editingFarm, setEditingFarm] = useState<Farm | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
-    renspa: '',
     province: '',
     department: '',
     address: '',
@@ -94,8 +91,10 @@ export default function FarmsPage() {
     if (!user) return false;
     // SuperAdmin without emulation has no tenant farm creation capability
     if (user.globalRole === 'SUPER_ADMIN' && !emulatedUser) return false;
-    return true;
-  }, [user, emulatedUser]);
+    // Operadores y lectores no crean establecimientos (el backend también lo rechaza):
+    // solo administradores de granja o productores que todavía no tienen ninguna.
+    return lowestFarmRole === null || lowestFarmRole === 'ADMIN';
+  }, [user, emulatedUser, lowestFarmRole]);
 
   // Filtered farms list
   const filteredFarms = useMemo(() => {
@@ -105,7 +104,6 @@ export default function FarmsPage() {
       (f) =>
         f.name?.toLowerCase().includes(q) ||
         f.province?.toLowerCase().includes(q) ||
-        f.renspa?.toLowerCase().includes(q) ||
         f.location?.toLowerCase().includes(q) ||
         f.address?.toLowerCase().includes(q)
     );
@@ -182,23 +180,22 @@ export default function FarmsPage() {
     setEditingFarm(farm);
     setEditFormData({
       name: farm.name || '',
-      renspa: farm.renspa || '',
       province: farm.province || '',
       department: farm.location || '',
       address: farm.address || '',
     });
   };
 
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    if (name === 'renspa') {
-      setEditFormData((prev) => ({ ...prev, renspa: formatRenspa(value) }));
-    } else if (name === 'province') {
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    handleEditFieldChange(e.target.name, e.target.value);
+
+  function handleEditFieldChange(name: string, value: string) {
+    if (name === 'province') {
       setEditFormData((prev) => ({ ...prev, province: value, department: '' }));
     } else {
       setEditFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,17 +205,12 @@ export default function FarmsPage() {
       toast.warning('Ingresá el nombre del campo.');
       return;
     }
-    if (editFormData.renspa && !RENSPA_FORMAT.test(editFormData.renspa)) {
-      toast.warning('El RENSPA debe tener el formato XX.XXX.X.XXXXX/XX o dejarse vacío.');
-      return;
-    }
 
     try {
       await updateFarm(editingFarm.id, {
         name: editFormData.name.trim(),
         province: editFormData.province || undefined,
         address: editFormData.address.trim() || undefined,
-        renspa: editFormData.renspa || undefined,
       });
 
       toast.success('Establecimiento actualizado con éxito');
@@ -287,7 +279,7 @@ export default function FarmsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por nombre, RENSPA o ubicación..."
+              placeholder="Buscar por nombre o ubicación..."
               className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-9 pr-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
             />
           </div>
@@ -318,40 +310,14 @@ export default function FarmsPage() {
               <thead className="bg-zinc-50 dark:bg-zinc-950/60 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-100 dark:border-zinc-800">
                 <tr>
                   <th className="px-5 py-3.5">Establecimiento</th>
-                  <th className="px-5 py-3.5">RENSPA</th>
                   <th className="px-5 py-3.5">Ubicación</th>
                   <th className="px-5 py-3.5">Superficie</th>
-                  <th className="px-5 py-3.5">Perímetro</th>
-                  <th className="px-5 py-3.5">Recursos</th>
                   <th className="px-5 py-3.5 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                 {filteredFarms.map((farm) => {
-                  const hasCoordinates = Boolean(
-                    farm.polygonCoordinates &&
-                    (typeof farm.polygonCoordinates === 'string'
-                      ? farm.polygonCoordinates.length > 2
-                      : (farm.polygonCoordinates as unknown[]).length > 0)
-                  );
-
-                  let pointsCount = 0;
-                  if (hasCoordinates) {
-                    try {
-                      const pts =
-                        typeof farm.polygonCoordinates === 'string'
-                          ? JSON.parse(farm.polygonCoordinates)
-                          : farm.polygonCoordinates;
-                      if (Array.isArray(pts)) pointsCount = pts.length;
-                    } catch {
-                      pointsCount = 0;
-                    }
-                  }
-
                   const isAdmin = canManageFarm(farm);
-                  const animalsCount = farm._count?.animals ?? 0;
-                  const zonesCount = farm._count?.zones ?? 0;
-                  const usersCount = farm._count?.farmUsers ?? 0;
 
                   return (
                     <tr key={farm.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
@@ -364,17 +330,6 @@ export default function FarmsPage() {
                             {new Date(farm.createdAt).toLocaleDateString()}
                           </div>
                         </div>
-                      </td>
-
-                      {/* RENSPA */}
-                      <td className="px-5 py-4 font-mono">
-                        {farm.renspa ? (
-                          <span className="inline-block px-2.5 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold">
-                            {farm.renspa}
-                          </span>
-                        ) : (
-                          <span className="text-zinc-400 dark:text-zinc-500 italic text-[11px]">Sin registrar</span>
-                        )}
                       </td>
 
                       {/* Ubicación */}
@@ -396,47 +351,6 @@ export default function FarmsPage() {
                         </div>
                       </td>
 
-                      {/* Perímetro */}
-                      <td className="px-5 py-4">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPerimeterModal(farm)}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${
-                            hasCoordinates
-                              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 hover:bg-amber-500/20'
-                              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-200'
-                          }`}
-                          title="Abrir mapa de delimitación perimetral"
-                        >
-                          <MapIcon className="w-3.5 h-3.5 shrink-0" />
-                          <span>{hasCoordinates ? `Delimitado (${pointsCount} pts)` : 'Sin trazar'}</span>
-                        </button>
-                      </td>
-
-                      {/* Recursos */}
-                      <td className="px-5 py-4">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40 text-[11px] font-semibold"
-                            title={`${animalsCount} animales registrados en este campo`}
-                          >
-                            🐾 {animalsCount}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 text-[11px] font-semibold"
-                            title={`${zonesCount} zonas o potreros delimitados`}
-                          >
-                            ▦ {zonesCount}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40 text-[11px] font-semibold"
-                            title={`${usersCount} usuarios con acceso asignado`}
-                          >
-                            👥 {usersCount}
-                          </span>
-                        </div>
-                      </td>
-
                       {/* Acciones */}
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
@@ -450,23 +364,46 @@ export default function FarmsPage() {
                             <Ruler className="w-4 h-4" />
                           </button>
 
-                          {/* Botón Zonas */}
+                          {/* Botón Cercos */}
                           <Link
-                            href={`/zonas?farmId=${farm.id}`}
-                            className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:hover:text-green-400 rounded-lg transition-colors cursor-pointer"
-                            title="Gestionar potreros y zonas internas"
+                            href={`/cercos?farmId=${farm.id}`}
+                            className="p-1.5 text-zinc-500 hover:text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Gestionar los cercos del campo"
                           >
-                            <Layers className="w-4 h-4" />
+                            <Zap className="w-4 h-4" />
                           </Link>
 
-                          {/* Botón Usuarios / Equipo */}
-                          <Link
-                            href={`/farms/${farm.id}/users`}
-                            className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:hover:text-green-400 rounded-lg transition-colors cursor-pointer"
-                            title="Gestionar personal y accesos a este campo"
+                          {/* Botón Mapa de calor */}
+                          <button
+                            type="button"
+                            onClick={() => setHeatmapFarm(farm)}
+                            className="p-1.5 text-zinc-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Ver mapa de calor: dónde pasó más tiempo la hacienda"
                           >
-                            <Users className="w-4 h-4" />
-                          </Link>
+                            <Flame className="w-4 h-4" />
+                          </button>
+
+                          {/* Botón Recorridos */}
+                          <button
+                            type="button"
+                            onClick={() => setTrajectoriesFarm(farm)}
+                            className="p-1.5 text-zinc-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors cursor-pointer"
+                            title="Ver recorridos de los animales"
+                          >
+                            <Route className="w-4 h-4" />
+                          </button>
+
+                          {/* Botón Usuarios / Equipo: solo el administrador de la granja gestiona el personal */}
+                          {isAdmin && (
+                            <Link
+                              href={`/farms/${farm.id}/users`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
+                              title="Gestionar personal y accesos a este campo"
+                            >
+                              <Users className="w-4 h-4" />
+                              <span className="hidden lg:inline">Personal</span>
+                            </Link>
+                          )}
 
                           {/* Acciones exclusivas de Administrador / Productor */}
                           {isAdmin && (
@@ -571,6 +508,7 @@ export default function FarmsPage() {
                 fillColor="#fbbf24"
                 selectedVertexIndex={selectedVertexIndex}
                 onSelectVertex={setSelectedVertexIndex}
+                farmId={perimeterModalFarm?.id}
               />
             </div>
 
@@ -655,59 +593,38 @@ export default function FarmsPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-                  RENSPA (SENASA)
-                </label>
-                <input
-                  type="text"
-                  name="renspa"
-                  value={editFormData.renspa}
-                  onChange={handleEditChange}
-                  placeholder="XX.XXX.X.XXXXX/XX"
-                  maxLength={17}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-600 text-sm"
-                />
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                     Provincia
                   </label>
-                  <select
+                  <Select
                     name="province"
                     value={editFormData.province}
-                    onChange={handleEditChange}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-500"
-                  >
-                    <option value="">Seleccionar Provincia</option>
-                    {provincesList.map((prov) => (
-                      <option key={prov} value={prov}>
-                        {prov}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => handleEditFieldChange('province', v)}
+                    placeholder="Seleccionar Provincia"
+                    size="sm"
+                    searchable
+                    searchPlaceholder="Buscar..."
+                    options={provincesList.map((x) => ({ value: x, label: x }))}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                     Departamento
                   </label>
-                  <select
+                  <Select
                     name="department"
                     value={editFormData.department}
-                    onChange={handleEditChange}
+                    onChange={(v) => handleEditFieldChange('department', v)}
                     disabled={!editFormData.province}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-zinc-900 dark:text-white text-xs cursor-pointer focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-40"
-                  >
-                    <option value="">Seleccionar Depto</option>
-                    {availableDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Seleccionar Depto"
+                    size="sm"
+                    searchable
+                    searchPlaceholder="Buscar..."
+                    options={availableDepartments.map((x) => ({ value: x, label: x }))}
+                  />
                 </div>
               </div>
 
@@ -804,9 +721,9 @@ export default function FarmsPage() {
                     </strong>
                   </div>
                   <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900 text-center">
-                    <span className="text-[11px] text-zinc-500 block">Zonas y potreros</span>
+                    <span className="text-[11px] text-zinc-500 block">Cercos</span>
                     <strong className="text-lg font-bold text-red-600 dark:text-red-400">
-                      {deletingTargetFarm._count?.zones ?? 0}
+                      {deletingTargetFarm._count?.geofences ?? 0}
                     </strong>
                   </div>
                 </div>
@@ -814,7 +731,7 @@ export default function FarmsPage() {
                 <p className="text-[11px] text-zinc-700 dark:text-zinc-300">Al confirmar la baja:</p>
                 <ul className="list-disc list-inside text-[11px] space-y-1 text-zinc-700 dark:text-zinc-300">
                   <li>
-                    Se eliminarán todas las <strong>zonas y cercos virtuales</strong> del campo.
+                    Se eliminarán todos los <strong>cercos virtuales</strong> del campo.
                   </li>
                   <li>
                     Los collares asignados al campo serán <strong>liberados</strong> para su reutilización.
@@ -859,6 +776,9 @@ export default function FarmsPage() {
           </div>
         </div>
       )}
+
+      {heatmapFarm && <HeatmapModal farm={heatmapFarm} onClose={() => setHeatmapFarm(null)} />}
+      {trajectoriesFarm && <TrajectoriesModal farm={trajectoriesFarm} onClose={() => setTrajectoriesFarm(null)} />}
     </div>
   );
 }

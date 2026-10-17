@@ -14,6 +14,18 @@ export class FarmsService {
       throw new NotFoundException('User record not found in system database');
     }
 
+    // Solo crean granjas el superadmin, los administradores de granja o un productor nuevo que
+    // todavía no pertenece a ninguna. Un OPERATOR/VIEWER no puede crearse una granja propia para
+    // escalar a ADMIN ni saltear la regla de "un usuario, una granja" de los sub-usuarios.
+    if (dbUser.globalRole !== GlobalRole.SUPER_ADMIN) {
+      const nonAdminMembership = await this.prisma.farmUser.findFirst({
+        where: { userId: dbUser.id, isActive: true, role: { name: { not: 'ADMIN' } } },
+      });
+      if (nonAdminMembership) {
+        throw new ForbiddenException('Solo el administrador de la granja puede crear establecimientos.');
+      }
+    }
+
     let adminRole = await this.prisma.role.findUnique({ where: { name: 'ADMIN' } });
     if (!adminRole) {
       adminRole = await this.prisma.role.create({ data: { name: 'ADMIN' } });
@@ -64,7 +76,7 @@ export class FarmsService {
         _count: {
           select: {
             animals: { where: { isArchived: false } },
-            zones: true,
+            geofences: true,
             farmUsers: { where: { isActive: true } },
           },
         },
@@ -94,7 +106,9 @@ export class FarmsService {
 
     // Suspension check: if the farm has an owner and that owner is inactive, block access
     if (farm.user && !farm.user.isActive) {
-      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
+      throw new ForbiddenException(
+        'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'
+      );
     }
 
     // Owner check
@@ -146,41 +160,41 @@ export class FarmsService {
     ) {
       const newFarmCoords = updateFarmDto.polygonCoordinates as [number, number][];
 
-      // Validate that all existing zones assigned to this farm remain inside the new farm geometry
-      const existingZones = await this.prisma.zone.findMany({
-        where: { farmId: id },
+      // Validate that all active geofences of this farm remain inside the new farm geometry
+      const existingGeofences = await this.prisma.geofence.findMany({
+        where: { farmId: id, active: true },
         select: { id: true, name: true, polygonCoordinates: true },
       });
 
-      const conflictingZones: string[] = [];
-      for (const zone of existingZones) {
-        if (!zone.polygonCoordinates) continue;
-        let zoneCoords: [number, number][] = [];
+      const conflictingGeofences: string[] = [];
+      for (const geofence of existingGeofences) {
+        if (!geofence.polygonCoordinates) continue;
+        let geofenceCoords: [number, number][] = [];
         try {
-          zoneCoords =
-            typeof zone.polygonCoordinates === 'string'
-              ? JSON.parse(zone.polygonCoordinates as string)
-              : (zone.polygonCoordinates as [number, number][]);
+          geofenceCoords =
+            typeof geofence.polygonCoordinates === 'string'
+              ? JSON.parse(geofence.polygonCoordinates as string)
+              : (geofence.polygonCoordinates as [number, number][]);
         } catch {
-          zoneCoords = [];
+          geofenceCoords = [];
         }
 
-        if (Array.isArray(zoneCoords) && zoneCoords.length >= 3) {
-          const hasPointsOutside = zoneCoords.some((pt) => {
+        if (Array.isArray(geofenceCoords) && geofenceCoords.length >= 3) {
+          const hasPointsOutside = geofenceCoords.some((pt) => {
             if (!Array.isArray(pt) || pt.length !== 2) return false;
             return !isPointInPolygon([pt[0], pt[1]], newFarmCoords);
           });
 
           if (hasPointsOutside) {
-            conflictingZones.push(`"${zone.name}"`);
+            conflictingGeofences.push(`"${geofence.name}"`);
           }
         }
       }
 
-      if (conflictingZones.length > 0) {
-        const zoneNames = conflictingZones.join(', ');
+      if (conflictingGeofences.length > 0) {
+        const geofenceNames = conflictingGeofences.join(', ');
         throw new BadRequestException(
-          `No se puede reducir el perímetro del campo: las siguientes zonas quedarían fuera de sus nuevos límites: ${zoneNames}. Modificá o eliminá las zonas en conflicto antes de achicar el establecimiento.`
+          `No se puede reducir el perímetro del campo: los siguientes cercos quedarían fuera de sus nuevos límites: ${geofenceNames}. Modificá o desactivá los cercos en conflicto antes de achicar el establecimiento.`
         );
       }
     }
@@ -204,7 +218,9 @@ export class FarmsService {
         where: { farmId: id, userId, isActive: true, role: { name: 'ADMIN' } },
       });
       if (!member) {
-        throw new ForbiddenException('Solo el propietario o un administrador de la granja puede dar de baja el establecimiento');
+        throw new ForbiddenException(
+          'Solo el propietario o un administrador de la granja puede dar de baja el establecimiento'
+        );
       }
     }
 
@@ -227,7 +243,7 @@ export class FarmsService {
         });
         await tx.animal.updateMany({
           where: { farmId: id },
-          data: { isArchived: true, zoneId: null },
+          data: { isArchived: true },
         });
       }
 
@@ -237,11 +253,8 @@ export class FarmsService {
         data: { farmId: null },
       });
 
-      // 3. Eliminar geocercas y zonas de la granja
+      // 3. Eliminar geocercas de la granja
       await tx.geofence.deleteMany({
-        where: { zone: { farmId: id } },
-      });
-      await tx.zone.deleteMany({
         where: { farmId: id },
       });
 

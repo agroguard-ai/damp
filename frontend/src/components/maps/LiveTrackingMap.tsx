@@ -1,71 +1,18 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import {
-  MapContainer,
-  TileLayer,
-  Polygon,
-  Marker,
-  Popup,
-  Polyline,
-  CircleMarker,
-  useMap,
-  useMapEvents,
-} from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import MapActionControls from './controls/MapActionControls';
+import MapActionControls, { type AnimalsToggleControl } from './controls/MapActionControls';
+import AnimalMarkersLayer, { type MapAnimal } from './AnimalMarkersLayer';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
 import type { TrajectoryPoint, HeatmapPoint } from '@/types';
 
-// Ícono para animales: verde si está en línea, rojo con pulso si tiene alerta de escape,
-// y ámbar con badge de reloj si la señal tiene más de 6 horas (desactualizada).
-const createAnimalIcon = (label: string, hasAlert: boolean, isStale = false) => {
-  let bg = 'linear-gradient(135deg, #22c55e, #15803d)';
-  if (hasAlert) {
-    bg = 'linear-gradient(135deg, #ef4444, #b91c1c)';
-  } else if (isStale) {
-    bg = 'linear-gradient(135deg, #f59e0b, #b45309)';
-  }
-
-  const fontSize = label.length > 2 ? '13px' : '18px';
-  return new L.DivIcon({
-    className: 'animal-cluster-badge',
-    html: `
-      <div style="position:relative;width:38px;height:38px;">
-        <div style="
-          width: 38px;
-          height: 38px;
-          background: ${bg};
-          color: white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 800;
-          font-size: ${fontSize};
-          border: 2.5px solid white;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.35);
-          letter-spacing: -0.5px;
-        ">${label}</div>
-        ${
-          hasAlert
-            ? '<div style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid white;animation:pulse-alert 1s ease-in-out infinite;"></div>'
-            : isStale
-              ? '<div style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;background:#f59e0b;border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;font-size:8px;color:white;font-weight:bold;" title="Señal desactualizada">⏱</div>'
-              : ''
-        }
-      </div>
-    `,
-    iconSize: [38, 38],
-    iconAnchor: [19, 19],
-  });
-};
-
-const createTrajectoryEndpointIcon = (type: 'start' | 'end') => {
+const createTrajectoryEndpointIcon = (type: 'start' | 'end', color: string) => {
   const isStart = type === 'start';
-  const bg = isStart ? '#16a34a' : '#2563eb';
+  const bg = isStart ? '#16a34a' : color;
   const icon = isStart ? '🟢' : '🏁';
   return new L.DivIcon({
     className: 'trajectory-endpoint-icon',
@@ -91,29 +38,6 @@ const createTrajectoryEndpointIcon = (type: 'start' | 'end') => {
   });
 };
 
-interface Zone {
-  id: string;
-  name: string;
-  polygonCoordinates: unknown;
-}
-
-interface AnimalLocation {
-  id: string;
-  tag: string | null;
-  breed: string;
-  weightKg: number;
-  status: string;
-  hasActiveAlert?: boolean;
-  animalType: { name: string; species: string } | null;
-  zone: { name: string } | null;
-  latestReading: {
-    latitude: number;
-    longitude: number;
-    temperature: number;
-    timestamp: string;
-  } | null;
-}
-
 interface Geofence {
   id: string;
   name: string;
@@ -121,15 +45,30 @@ interface Geofence {
   polygonCoordinates: unknown;
 }
 
+export interface MapTrajectory {
+  id: string;
+  name: string;
+  color: string;
+  points: TrajectoryPoint[];
+}
+
 export interface LiveTrackingMapProps {
-  zones: Zone[];
+  /** Perímetro del campo (se dibuja como referencia y para encuadrar el mapa). */
+  farmPolygon?: [number, number][];
   geofences: Geofence[];
-  animals: AnimalLocation[];
-  trajectory?: TrajectoryPoint[] | null;
-  trajectoryAnimalName?: string | null;
+  /** Hacienda a dibujar (vacío si la capa de animales está apagada). */
+  animals: MapAnimal[];
+  /** Hora de la consulta de posiciones, para marcar señales desactualizadas. */
+  animalsReferenceTime?: number;
+  /** Botón "Animales" de los controles del mapa. */
+  animalsToggle?: AnimalsToggleControl;
+  /** Recorridos a dibujar (uno por animal, cada uno con su color). */
+  trajectories?: MapTrajectory[];
   heatmapPoints?: HeatmapPoint[] | null;
   showHeatmap?: boolean;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
+  /** Clases de altura del contenedor (por defecto 550px). */
+  heightClassName?: string;
 }
 
 function parsePolygon(raw: unknown): [number, number][] {
@@ -143,41 +82,44 @@ function parsePolygon(raw: unknown): [number, number][] {
 }
 
 function MapAutoBounds({
-  zones,
+  farmPolygon,
   geofences,
   animals,
-  trajectory,
+  trajectories,
   recenterTick,
 }: {
-  zones: Zone[];
+  farmPolygon: [number, number][];
   geofences: Geofence[];
-  animals: AnimalLocation[];
-  trajectory?: TrajectoryPoint[] | null;
+  animals: MapAnimal[];
+  trajectories: MapTrajectory[];
   recenterTick: number;
 }) {
   const map = useMap();
   const didInitialFit = useRef(false);
   const lastRecenterTick = useRef(recenterTick);
-  const prevTrajectoryLen = useRef(trajectory?.length ?? 0);
+  const trajectoryKey = trajectories.map((t) => `${t.id}:${t.points.length}`).join('|');
+  const prevTrajectoryKey = useRef(trajectoryKey);
 
   useEffect(() => {
     const manualRecenter = recenterTick !== lastRecenterTick.current;
     lastRecenterTick.current = recenterTick;
 
-    const trajectoryChanged = (trajectory?.length ?? 0) !== prevTrajectoryLen.current;
-    prevTrajectoryLen.current = trajectory?.length ?? 0;
+    const trajectoryChanged = trajectoryKey !== prevTrajectoryKey.current;
+    prevTrajectoryKey.current = trajectoryKey;
 
-    // Si hay un recorrido activo recién cargado o el usuario pide recentrarlo
-    if (trajectory && trajectory.length > 0 && (trajectoryChanged || manualRecenter)) {
-      const coords: [number, number][] = trajectory.map((p) => [p.latitude, p.longitude]);
-      map.fitBounds(coords, { padding: [50, 50] });
+    // Si hay recorridos recién cargados o el usuario pide recentrar, se encuadran todos
+    const trajectoryCoords: [number, number][] = trajectories.flatMap((t) =>
+      t.points.map((p) => [p.latitude, p.longitude] as [number, number])
+    );
+    if (trajectoryCoords.length > 0 && (trajectoryChanged || manualRecenter)) {
+      map.fitBounds(trajectoryCoords, { padding: [50, 50] });
       return;
     }
 
     if (didInitialFit.current && !manualRecenter) return;
 
     const coords: [number, number][] = [];
-    zones.forEach((zone) => coords.push(...parsePolygon(zone.polygonCoordinates)));
+    coords.push(...farmPolygon);
     geofences.forEach((geofence) => coords.push(...parsePolygon(geofence.polygonCoordinates)));
 
     animals.forEach((animal) => {
@@ -190,196 +132,9 @@ function MapAutoBounds({
       map.fitBounds(coords, { padding: [40, 40] });
       didInitialFit.current = true;
     }
-  }, [zones, geofences, animals, trajectory, map, recenterTick]);
+  }, [farmPolygon, geofences, animals, trajectories, trajectoryKey, map, recenterTick]);
 
   return null;
-}
-
-interface ClusterGroup {
-  id: string;
-  lat: number;
-  lng: number;
-  animals: AnimalLocation[];
-  hasAlert: boolean;
-  allStale: boolean;
-}
-
-function ClusteredAnimalMarkers({
-  animals,
-  onSelectAnimalForTrajectory,
-}: {
-  animals: AnimalLocation[];
-  onSelectAnimalForTrajectory?: (animalId: string) => void;
-}) {
-  const map = useMap();
-  const [zoom, setZoom] = useState(map.getZoom());
-
-  useMapEvents({
-    zoomend() {
-      setZoom(map.getZoom());
-    },
-  });
-
-  const clusters: ClusterGroup[] = useMemo(() => {
-    const validAnimals = animals.filter((a) => a.latestReading !== null);
-    const now = Date.now();
-    const staleThreshold = 6 * 60 * 60 * 1000; // 6 horas
-
-    if (zoom >= 16) {
-      return validAnimals.map((a) => {
-        const isStale = now - new Date(a.latestReading!.timestamp).getTime() > staleThreshold;
-        return {
-          id: a.id,
-          lat: a.latestReading!.latitude,
-          lng: a.latestReading!.longitude,
-          animals: [a],
-          hasAlert: !!a.hasActiveAlert,
-          allStale: isStale,
-        };
-      });
-    }
-
-    const gridSize = zoom <= 12 ? 0.015 : zoom <= 14 ? 0.006 : 0.0025;
-    const groups: Map<string, ClusterGroup> = new Map();
-
-    validAnimals.forEach((animal) => {
-      const lat = animal.latestReading!.latitude;
-      const lng = animal.latestReading!.longitude;
-      const key = `${Math.round(lat / gridSize)}_${Math.round(lng / gridSize)}`;
-      const isStale = now - new Date(animal.latestReading!.timestamp).getTime() > staleThreshold;
-
-      if (groups.has(key)) {
-        const group = groups.get(key)!;
-        group.animals.push(animal);
-        if (animal.hasActiveAlert) group.hasAlert = true;
-        if (!isStale) group.allStale = false;
-      } else {
-        groups.set(key, {
-          id: key,
-          lat,
-          lng,
-          animals: [animal],
-          hasAlert: !!animal.hasActiveAlert,
-          allStale: isStale,
-        });
-      }
-    });
-
-    return Array.from(groups.values());
-  }, [animals, zoom]);
-
-  const staleThreshold = 6 * 60 * 60 * 1000;
-
-  return (
-    <>
-      {clusters.map((cluster) => {
-        if (cluster.animals.length === 1) {
-          const animal = cluster.animals[0];
-          const { latitude, longitude, temperature, timestamp } = animal.latestReading!;
-          const isStale = Date.now() - new Date(timestamp).getTime() > staleThreshold;
-
-          return (
-            <Marker
-              key={animal.id}
-              position={[latitude, longitude]}
-              icon={createAnimalIcon('🐄', !!animal.hasActiveAlert, isStale)}
-            >
-              <Popup>
-                <div className="p-2 space-y-2 text-xs min-w-50 text-zinc-900">
-                  {animal.hasActiveAlert && (
-                    <div className="bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
-                      <span className="text-red-600 font-bold text-[11px]">⚠ ALERTA: Fuera de geocerca</span>
-                    </div>
-                  )}
-
-                  {isStale && !animal.hasActiveAlert && (
-                    <div className="bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-1">
-                      <span className="text-amber-800 font-bold text-[11px]">⚠️ Ubicación desactualizada</span>
-                      <p className="text-[10px] text-amber-700">Sin señal reciente (&gt; 6 horas)</p>
-                    </div>
-                  )}
-
-                  <div className="border-b pb-1">
-                    <h4 className="font-bold text-zinc-900 text-sm">{animal.tag || 'Animal Sin Identificador'}</h4>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">
-                      {animal.animalType?.name || 'Sin Clasificar'} &bull; {animal.breed}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500">Temperatura:</span>
-                      <span className="font-semibold text-zinc-800">🌡️ {temperature.toFixed(1)} °C</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500">Zona actual:</span>
-                      <span className="font-semibold text-zinc-800">{animal.zone?.name || 'Campo Abierto'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-500">Última señal:</span>
-                      <span className="font-medium text-zinc-700 text-[10px]">
-                        {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t flex flex-col gap-1.5">
-                    {onSelectAnimalForTrajectory && (
-                      <button
-                        type="button"
-                        onClick={() => onSelectAnimalForTrajectory(animal.id)}
-                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2.5 rounded-lg text-[11px] transition-colors shadow-xs"
-                      >
-                        📍 Ver recorrido histórico
-                      </button>
-                    )}
-                    <a
-                      href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
-                      className="block text-center text-green-700 dark:text-green-600 hover:underline text-[11px] font-medium"
-                    >
-                      Ver ficha completa &rarr;
-                    </a>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        }
-
-        // Render Cluster Badge
-        return (
-          <Marker
-            key={cluster.id}
-            position={[cluster.lat, cluster.lng]}
-            icon={createAnimalIcon(String(cluster.animals.length), cluster.hasAlert, cluster.allStale)}
-            eventHandlers={{
-              click: () => {
-                map.setView([cluster.lat, cluster.lng], Math.min(zoom + 2, 18));
-              },
-            }}
-          >
-            <Popup>
-              <div className="p-2 space-y-2 text-xs min-w-50 text-zinc-900">
-                <h4 className="font-bold text-zinc-900 border-b pb-1">
-                  Grupo de Hacienda ({cluster.animals.length} animales)
-                </h4>
-                <div className="max-h-35 overflow-y-auto space-y-1 pr-1">
-                  {cluster.animals.map((a) => (
-                    <div key={a.id} className="flex justify-between text-[11px] border-b border-zinc-100 pb-1">
-                      <span className="font-semibold">{a.tag || a.id.slice(0, 5)}</span>
-                      <span className="text-zinc-500">{a.breed}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-green-600 font-semibold text-center pt-1 cursor-pointer">
-                  Hacé clic para ampliar zona
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </>
-  );
 }
 
 function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
@@ -456,7 +211,15 @@ function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
   );
 }
 
-function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; animalName?: string | null }) {
+function TrajectoryLayer({
+  points,
+  animalName,
+  color,
+}: {
+  points: TrajectoryPoint[];
+  animalName: string;
+  color: string;
+}) {
   if (!points || points.length === 0) return null;
 
   const positions: [number, number][] = points.map((p) => [p.latitude, p.longitude]);
@@ -472,20 +235,23 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
       <Polyline
         positions={positions}
         pathOptions={{
-          color: '#2563eb',
+          color,
           weight: 4,
           opacity: 0.85,
         }}
       />
 
       {/* Start Point */}
-      <Marker position={[startPoint.latitude, startPoint.longitude]} icon={createTrajectoryEndpointIcon('start')}>
+      <Marker
+        position={[startPoint.latitude, startPoint.longitude]}
+        icon={createTrajectoryEndpointIcon('start', color)}
+      >
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
             <span className="inline-block bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
               🟢 Punto de Partida
             </span>
-            <h4 className="font-bold">{animalName || 'Animal'}</h4>
+            <h4 className="font-bold">{animalName}</h4>
             <p className="text-zinc-600">Fecha: {new Date(startPoint.timestamp).toLocaleString()}</p>
             <p className="text-zinc-600">Temp: {startPoint.temperature.toFixed(1)} °C</p>
           </div>
@@ -499,15 +265,17 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
           center={[pt.latitude, pt.longitude]}
           radius={4}
           pathOptions={{
-            color: '#1d4ed8',
-            fillColor: '#60a5fa',
+            color,
+            fillColor: color,
             fillOpacity: 0.9,
             weight: 1.5,
           }}
         >
           <Popup>
             <div className="p-1.5 text-xs text-zinc-900">
-              <p className="font-semibold text-blue-600">Punto intermedio</p>
+              <p className="font-semibold" style={{ color }}>
+                {animalName} · punto intermedio
+              </p>
               <p className="text-[11px] text-zinc-600">Hora: {new Date(pt.timestamp).toLocaleString()}</p>
               <p className="text-[11px] text-zinc-600">Temp: {pt.temperature.toFixed(1)} °C</p>
             </div>
@@ -517,13 +285,13 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
 
       {/* End Point */}
       {points.length > 1 && (
-        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end')}>
+        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end', color)}>
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
               <span className="inline-block bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
                 🏁 Fin / Posición más reciente
               </span>
-              <h4 className="font-bold">{animalName || 'Animal'}</h4>
+              <h4 className="font-bold">{animalName}</h4>
               <p className="text-zinc-600">Fecha: {new Date(endPoint.timestamp).toLocaleString()}</p>
               <p className="text-zinc-600">Temp: {endPoint.temperature.toFixed(1)} °C</p>
             </div>
@@ -535,14 +303,16 @@ function TrajectoryLayer({ points, animalName }: { points: TrajectoryPoint[]; an
 }
 
 export default function LiveTrackingMap({
-  zones,
+  farmPolygon = [],
   geofences,
   animals,
-  trajectory,
-  trajectoryAnimalName,
+  animalsReferenceTime = 0,
+  animalsToggle,
+  trajectories = [],
   heatmapPoints,
   showHeatmap = false,
   onSelectAnimalForTrajectory,
+  heightClassName = 'h-137.5',
 }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
@@ -555,7 +325,7 @@ export default function LiveTrackingMap({
   return (
     <div
       ref={containerRef}
-      className="w-full h-137.5 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group"
+      className={`w-full ${heightClassName} rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 relative z-10 shadow-inner group`}
     >
       <MapActionControls
         targetRef={containerRef}
@@ -564,6 +334,7 @@ export default function LiveTrackingMap({
         showLabels={showLabels}
         onToggleLabels={() => setShowLabels((prev) => !prev)}
         onRecenter={() => setRecenterTick((t) => t + 1)}
+        animalsToggle={animalsToggle}
       />
 
       <MapContainer center={center} zoom={13} className="w-full h-full">
@@ -592,18 +363,13 @@ export default function LiveTrackingMap({
           />
         )}
 
-        {/* Límite del potrero (Zone) */}
-        {zones.map((zone) => {
-          const coords = parsePolygon(zone.polygonCoordinates);
-          if (coords.length === 0) return null;
-          return (
-            <Polygon
-              key={zone.id}
-              positions={coords}
-              pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }}
-            />
-          );
-        })}
+        {/* Perímetro del campo */}
+        {farmPolygon.length >= 3 && (
+          <Polygon
+            positions={farmPolygon}
+            pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 0.06, weight: 2, interactive: false }}
+          />
+        )}
 
         {/* Cerco virtual (Geofence) */}
         {geofences.map((geofence) => {
@@ -615,11 +381,11 @@ export default function LiveTrackingMap({
               key={geofence.id}
               positions={coords}
               pathOptions={{
-                color: '#f97316',
-                fillColor: '#f97316',
-                fillOpacity: 0.06,
-                weight: 3,
-                dashArray: '10 6',
+                color: '#06b6d4',
+                fillColor: '#22d3ee',
+                fillOpacity: 0.15,
+                weight: 2.5,
+                dashArray: '5, 5',
               }}
             >
               <Popup>
@@ -633,20 +399,24 @@ export default function LiveTrackingMap({
         {showHeatmap && heatmapPoints && heatmapPoints.length > 0 && <HeatmapLayer points={heatmapPoints} />}
 
         {/* Capa de recorrido histórico si está cargada */}
-        {trajectory && trajectory.length > 0 && (
-          <TrajectoryLayer points={trajectory} animalName={trajectoryAnimalName} />
-        )}
+        {trajectories.map((t) => (
+          <TrajectoryLayer key={t.id} points={t.points} animalName={t.name} color={t.color} />
+        ))}
 
         {/* Marcadores de animales (ocultos o mostrados según contexto) */}
-        {(!trajectory || trajectory.length === 0) && (
-          <ClusteredAnimalMarkers animals={animals} onSelectAnimalForTrajectory={onSelectAnimalForTrajectory} />
+        {trajectories.length === 0 && (
+          <AnimalMarkersLayer
+            animals={animals}
+            referenceTime={animalsReferenceTime}
+            onSelectAnimalForTrajectory={onSelectAnimalForTrajectory}
+          />
         )}
 
         <MapAutoBounds
-          zones={zones}
+          farmPolygon={farmPolygon}
           geofences={geofences}
           animals={animals}
-          trajectory={trajectory}
+          trajectories={trajectories}
           recenterTick={recenterTick}
         />
       </MapContainer>

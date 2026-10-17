@@ -2,7 +2,7 @@
  * ============================================================
  *  IoT Escape Test Simulator
  *  --------------------------
- *  Simulates a collar that starts INSIDE a paddock (zone) and
+ *  Simulates a collar that starts INSIDE a virtual fence and
  *  then drifts OUTSIDE, triggering a geofencing ESCAPE alert.
  *
  *  Usage:
@@ -191,7 +191,7 @@ console.log(`║  Collar MAC: ${MAC_ID.padEnd(44)}║`);
 console.log('║                                                              ║');
 console.log('║  This script simulates an animal escaping its paddock.      ║');
 console.log('║  Watch the console for phase changes:                       ║');
-console.log('║    🟢 INSIDE  → Animal grazing normally inside zone         ║');
+console.log('║    🟢 INSIDE  → Animal grazing normally inside fence        ║');
 console.log('║    🟡 CROSSING → Animal drifting toward boundary            ║');
 console.log('║    🔴 OUTSIDE → Animal escaped! Alert should fire!          ║');
 console.log('║                                                              ║');

@@ -1,13 +1,17 @@
-import { IsString, IsNotEmpty, IsArray, ArrayMinSize } from 'class-validator';
+import { IsString, IsNotEmpty, IsArray, ArrayMinSize, IsOptional } from 'class-validator';
 
 export class CreateGeofenceDto {
   @IsString()
   @IsNotEmpty()
-  zoneId: string;
+  farmId: string;
 
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsOptional()
+  @IsString()
+  pastureType?: string;
 
   @IsArray()
   @ArrayMinSize(3)

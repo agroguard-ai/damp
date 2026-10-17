@@ -11,7 +11,7 @@ export const gatewaysApi = {
   /** GET /api/gateways/:id/api-key — retrieves gateway API key */
   getApiKey: (id: string): Promise<{ apiKey: string }> => apiFetch<{ apiKey: string }>(`/api/gateways/${id}/api-key`),
 
-  /** POST /api/gateways — registers a new gateway associated to a farm and zone */
+  /** POST /api/gateways — registers a new gateway associated to a farm */
   create: (data: CreateGatewayPayload): Promise<Gateway> =>
     apiFetch<Gateway>('/api/gateways', {
       method: 'POST',

@@ -10,28 +10,18 @@ import { Button } from '@/components/ui/Button';
 import { GoogleAddressSearch, type AddressSearchResult } from '@/components/farms/GoogleAddressSearch';
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import { MapPin, Ruler, ChevronDown, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
+import { MapPin, Ruler, ShieldCheck, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
+import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
+import { Select } from '@/components/ui/Select';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 
-const RENSPA_FORMAT = /^\d{2}\.\d{3}\.\d\.\d{5}\/\d{2}$/;
-
-/** Autoformatea a medida que se tipea: XX.XXX.X.XXXXX/XX (Registro Nacional Sanitario, SENASA). */
-function formatRenspa(input: string): string {
-  const digits = input.replace(/\D/g, '').slice(0, 13);
-  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 6), digits.slice(6, 11), digits.slice(11, 13)];
-  let result = parts[0];
-  if (parts[1]) result += `.${parts[1]}`;
-  if (parts[2]) result += `.${parts[2]}`;
-  if (parts[3]) result += `.${parts[3]}`;
-  if (parts[4]) result += `/${parts[4]}`;
-  return result;
-}
-
 export default function NewFarmPage() {
   const { user, emulatedUser } = useAuth();
+  const farmPerms = useFarmPermissions();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,7 +35,6 @@ export default function NewFarmPage() {
     province: '',
     department: '',
     totalAreaHa: '',
-    renspa: '',
   });
 
   const [mapCenter, setMapCenter] = useState<[number, number]>([-38.4161, -63.6167]); // Default Argentina center
@@ -56,8 +45,10 @@ export default function NewFarmPage() {
   const provincesList = getProvinces();
   const availableDepartments = getDepartments(formData.province);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    handleFieldChange(e.target.name, e.target.value);
+
+  function handleFieldChange(name: string, value: string) {
     if (name === 'province') {
       const center = getProvinceCenter(value);
       if (center && !hasCustomCoords) {
@@ -68,7 +59,7 @@ export default function NewFarmPage() {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }
 
   const handleSelectSearchResult = (result: AddressSearchResult) => {
     setMapCenter([result.lat, result.lng]);
@@ -97,10 +88,6 @@ export default function NewFarmPage() {
     }
     if (!formData.province) {
       toast.warning('Por favor seleccioná una provincia.');
-      return;
-    }
-    if (formData.renspa && !RENSPA_FORMAT.test(formData.renspa)) {
-      toast.warning('El RENSPA está incompleto. Dejalo vacío o completalo entero (formato XX.XXX.X.XXXXX/XX).');
       return;
     }
 
@@ -145,14 +132,13 @@ export default function NewFarmPage() {
         province: formData.province,
         totalAreaHa: Number(formData.totalAreaHa),
         polygonCoordinates: polygonPoints.length > 0 ? polygonPoints : undefined,
-        renspa: formData.renspa || undefined,
       });
 
       toast.success('Establecimiento registrado con éxito');
       // Item 3.1.4 del análisis UX/UI: redirigir directo a alta de animal era un salto abrupto
-      // — sin zonas ni cercos todavía, no hay dónde asignar el animal. El paso lógico siguiente
-      // es delimitar zonas/lotes.
-      router.push(farm ? `/zonas?farmId=${farm.id}` : '/zonas');
+      // — sin cercos todavía, no hay dónde contener al animal. El paso lógico siguiente
+      // es dibujar los cercos del campo.
+      router.push(farm ? `/cercos?farmId=${farm.id}` : '/cercos');
     } catch {
       // Error handled by mutation state
     }
@@ -160,6 +146,12 @@ export default function NewFarmPage() {
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
     return <EmulationRequiredState title="el Alta y Gestión de Campos" />;
+  }
+
+  if (!farmPerms.loading && farmPerms.role !== null && farmPerms.role !== 'ADMIN') {
+    return (
+      <AccessDeniedState description="Solo el administrador de la granja puede registrar nuevos establecimientos." />
+    );
   }
 
   return (
@@ -271,23 +263,16 @@ export default function NewFarmPage() {
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Provincia *
                 </label>
-                <div className="relative">
-                  <select
-                    required
-                    name="province"
-                    value={formData.province}
-                    onChange={handleTextChange}
-                    className="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer"
-                  >
-                    <option value="">Seleccioná una Provincia</option>
-                    {provincesList.map((prov) => (
-                      <option key={prov} value={prov}>
-                        {prov}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <Select
+                  name="province"
+                  value={formData.province}
+                  onChange={(v) => handleFieldChange('province', v)}
+                  required
+                  placeholder="Seleccioná una Provincia"
+                  searchable
+                  searchPlaceholder="Buscar..."
+                  options={provincesList.map((x) => ({ value: x, label: x }))}
+                />
               </div>
 
               {/* Selector de Departamento / Partido */}
@@ -295,45 +280,17 @@ export default function NewFarmPage() {
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Departamento / Partido
                 </label>
-                <div className="relative">
-                  <select
-                    name="department"
-                    value={formData.department}
-                    onChange={handleTextChange}
-                    disabled={!formData.province}
-                    className="w-full appearance-none bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-4 pr-10 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm cursor-pointer disabled:opacity-50"
-                  >
-                    <option value="">Seleccioná un Departamento</option>
-                    {availableDepartments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-zinc-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <Select
+                  name="department"
+                  value={formData.department}
+                  onChange={(v) => handleFieldChange('department', v)}
+                  disabled={!formData.province}
+                  placeholder="Seleccioná un Departamento"
+                  searchable
+                  searchPlaceholder="Buscar..."
+                  options={availableDepartments.map((x) => ({ value: x, label: x }))}
+                />
               </div>
-            </div>
-
-            {/* RENSPA (SENASA) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                RENSPA (Opcional)
-              </label>
-              <input
-                type="text"
-                name="renspa"
-                inputMode="numeric"
-                value={formData.renspa}
-                onChange={(e) => setFormData((prev) => ({ ...prev, renspa: formatRenspa(e.target.value) }))}
-                placeholder="01.001.0.00001/00"
-                maxLength={18}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-mono"
-              />
-              <p className="text-[11px] text-zinc-400">
-                Registro Nacional Sanitario de Productores Agropecuarios — necesario para trazabilidad ganadera y
-                Documentos de Tránsito Electrónico.
-              </p>
             </div>
           </div>
 
@@ -556,9 +513,6 @@ export default function NewFarmPage() {
                     {formData.department ? `${formData.department}, ` : ''}
                     {formData.province || 'Argentina'}
                   </div>
-                  {formData.renspa && (
-                    <div className="font-mono text-[11px] text-zinc-400">RENSPA: {formData.renspa}</div>
-                  )}
                 </div>
               </div>
             </div>

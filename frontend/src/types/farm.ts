@@ -6,7 +6,6 @@ export interface Farm {
   location: string | null;
   totalAreaHa: number;
   polygonCoordinates?: [number, number][] | string | null;
-  renspa?: string | null;
   userId: string;
   createdAt: string;
   isActive?: boolean;
@@ -20,7 +19,7 @@ export interface Farm {
   }>;
   _count?: {
     animals: number;
-    zones: number;
+    geofences: number;
     farmUsers: number;
   };
 }
@@ -31,5 +30,4 @@ export interface CreateFarmPayload {
   province: string;
   totalAreaHa: number;
   polygonCoordinates?: [number, number][];
-  renspa?: string;
 }

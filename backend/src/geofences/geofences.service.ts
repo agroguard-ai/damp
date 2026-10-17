@@ -1,56 +1,58 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CreateGeofenceDto } from './dto/create-geofence.dto';
+import { UpdateGeofenceDto } from './dto/update-geofence.dto';
+import type { Farm } from '@generated/prisma';
 import { isPointInPolygon } from '@/iot/utils/geofencing.utils';
 
 @Injectable()
 export class GeofencesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async getOwnedZone(zoneId: string, userId: string) {
-    const zone = await this.prisma.zone.findUnique({
-      where: { id: zoneId },
-      include: { farm: true },
-    });
-    if (!zone) {
-      throw new NotFoundException('Zone not found');
+  private async getOwnedFarm(farmId: string, userId: string) {
+    const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
+    if (!farm) {
+      throw new NotFoundException('Farm not found');
     }
-    if (zone.farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this zone');
+    if (farm.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this farm');
     }
-    return zone;
+    return farm;
   }
 
-  async create(dto: CreateGeofenceDto, userId: string) {
-    const zone = await this.getOwnedZone(dto.zoneId, userId);
+  /** Valida que el polígono del cerco quede 100% dentro del perímetro del campo (si el campo lo tiene). */
+  private assertInsideFarm(farm: Farm, polygon: [number, number][]) {
+    if (!farm.polygonCoordinates || !Array.isArray(polygon) || polygon.length < 3) return;
 
-    // Validate that the geofence coordinates are strictly within the zone polygon boundary
-    if (dto.polygonCoordinates && Array.isArray(dto.polygonCoordinates) && dto.polygonCoordinates.length >= 3) {
-      if (zone.polygonCoordinates) {
-        let zoneCoords: [number, number][] = [];
-        try {
-          zoneCoords =
-            typeof zone.polygonCoordinates === 'string'
-              ? JSON.parse(zone.polygonCoordinates)
-              : (zone.polygonCoordinates as [number, number][]);
-        } catch {
-          zoneCoords = [];
-        }
+    let farmCoords: [number, number][] = [];
+    try {
+      farmCoords =
+        typeof farm.polygonCoordinates === 'string'
+          ? JSON.parse(farm.polygonCoordinates)
+          : (farm.polygonCoordinates as [number, number][]);
+    } catch {
+      farmCoords = [];
+    }
 
-        if (Array.isArray(zoneCoords) && zoneCoords.length >= 3) {
-          for (const pt of dto.polygonCoordinates) {
-            if (Array.isArray(pt) && pt.length === 2) {
-              const inside = isPointInPolygon([pt[0], pt[1]], zoneCoords);
-              if (!inside) {
-                throw new BadRequestException(
-                  `La coordenada [${pt[0].toFixed(5)}, ${pt[1].toFixed(5)}] del cerco eléctrico está fuera de los límites de la zona "${zone.name}". El cerco debe estar completamente contenido dentro del perímetro de la zona.`
-                );
-              }
-            }
-          }
+    if (!Array.isArray(farmCoords) || farmCoords.length < 3) return;
+
+    for (const pt of polygon) {
+      if (Array.isArray(pt) && pt.length === 2) {
+        const inside = isPointInPolygon([pt[0], pt[1]], farmCoords);
+        if (!inside) {
+          throw new BadRequestException(
+            `La coordenada [${pt[0].toFixed(5)}, ${pt[1].toFixed(5)}] del cerco eléctrico está fuera de los límites del campo "${farm.name ?? ''}". El cerco debe estar completamente contenido dentro del perímetro del campo.`
+          );
         }
       }
     }
+  }
+
+  async create(dto: CreateGeofenceDto, userId: string) {
+    const farm = await this.getOwnedFarm(dto.farmId, userId);
+
+    // Validate that the geofence coordinates are strictly within the farm polygon boundary
+    this.assertInsideFarm(farm, dto.polygonCoordinates);
 
     if (dto.animalIds.length > 0) {
       const animals = await this.prisma.animal.findMany({
@@ -64,10 +66,10 @@ export class GeofencesService {
       if (animals.length !== dto.animalIds.length) {
         throw new NotFoundException('One or more animals were not found');
       }
-      const outsideZone = animals.filter((a) => a.zoneId !== dto.zoneId);
-      if (outsideZone.length > 0) {
+      const outsideFarm = animals.filter((a) => a.farmId !== dto.farmId);
+      if (outsideFarm.length > 0) {
         throw new BadRequestException(
-          `Animals not assigned to this zone: ${outsideZone.map((a) => a.tag ?? a.id).join(', ')}`
+          `Animals not assigned to this farm: ${outsideFarm.map((a) => a.tag ?? a.id).join(', ')}`
         );
       }
       const withoutCollar = animals.filter((a) => a.animalCollars.length === 0);
@@ -90,8 +92,9 @@ export class GeofencesService {
 
     const createdGeofence = await this.prisma.geofence.create({
       data: {
-        zoneId: dto.zoneId,
+        farmId: dto.farmId,
         name: dto.name,
+        pastureType: dto.pastureType?.trim() || null,
         polygonCoordinates: dto.polygonCoordinates as any,
         active: true,
         activatedAt: now,
@@ -128,11 +131,11 @@ export class GeofencesService {
     return createdGeofence;
   }
 
-  async findAllByZone(zoneId: string, userId: string) {
-    await this.getOwnedZone(zoneId, userId);
+  async findAllByFarm(farmId: string, userId: string) {
+    await this.getOwnedFarm(farmId, userId);
 
     return this.prisma.geofence.findMany({
-      where: { zoneId },
+      where: { farmId },
       orderBy: { createdAt: 'desc' },
       include: {
         animalGeofences: {
@@ -143,15 +146,67 @@ export class GeofencesService {
     });
   }
 
-  async deactivate(id: string, userId: string) {
+  /**
+   * Edita nombre, pastura y/o polígono de un cerco. Si cambia el polígono, los collares
+   * de los animales que contiene quedan pendientes de recibir las coordenadas nuevas.
+   */
+  async update(id: string, dto: UpdateGeofenceDto, userId: string) {
     const geofence = await this.prisma.geofence.findUnique({
       where: { id },
-      include: { zone: { include: { farm: true } } },
+      include: { farm: true },
     });
     if (!geofence) {
       throw new NotFoundException('Geofence not found');
     }
-    if (geofence.zone.farm.userId !== userId) {
+    if (geofence.farm.userId !== userId) {
+      throw new ForbiddenException('You do not have access to this geofence');
+    }
+
+    if (dto.polygonCoordinates) {
+      this.assertInsideFarm(geofence.farm, dto.polygonCoordinates);
+    }
+
+    const updated = await this.prisma.geofence.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
+        ...(dto.pastureType !== undefined ? { pastureType: dto.pastureType?.trim() || null } : {}),
+        ...(dto.polygonCoordinates ? { polygonCoordinates: dto.polygonCoordinates as any } : {}),
+      },
+      include: {
+        animalGeofences: {
+          where: { endAt: null },
+          include: { animal: true },
+        },
+      },
+    });
+
+    if (dto.polygonCoordinates && updated.animalGeofences.length > 0) {
+      const activeAnimalCollars = await this.prisma.animalCollar.findMany({
+        where: { animalId: { in: updated.animalGeofences.map((ag) => ag.animalId) }, endAt: null },
+        select: { collarId: true },
+      });
+      const collarIds = activeAnimalCollars.map((ac) => ac.collarId);
+      if (collarIds.length > 0) {
+        await this.prisma.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { fenceNotificationPending: true },
+        });
+      }
+    }
+
+    return updated;
+  }
+
+  async deactivate(id: string, userId: string) {
+    const geofence = await this.prisma.geofence.findUnique({
+      where: { id },
+      include: { farm: true },
+    });
+    if (!geofence) {
+      throw new NotFoundException('Geofence not found');
+    }
+    if (geofence.farm.userId !== userId) {
       throw new ForbiddenException('You do not have access to this geofence');
     }
 

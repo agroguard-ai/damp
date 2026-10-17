@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
-import { zonesApi } from '@/lib/api/zones';
 import { gatewaysApi } from '@/lib/api/gateways';
 import { useToast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmDialogContext';
@@ -18,7 +18,6 @@ import {
   Check,
   AlertTriangle,
   Building2,
-  MapPin,
   Trash2,
   Edit3,
   X,
@@ -37,6 +36,7 @@ import {
   Layers,
 } from 'lucide-react';
 import type { GatewayStatus, Gateway } from '@/types';
+import { Select } from '@/components/ui/Select';
 
 const STATUS_LABELS: Record<GatewayStatus, string> = {
   ONLINE: 'En línea',
@@ -47,10 +47,8 @@ const STATUS_LABELS: Record<GatewayStatus, string> = {
 const STATUS_CLASSES: Record<GatewayStatus, string> = {
   ONLINE:
     'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/40',
-  OFFLINE:
-    'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40',
-  NO_DATA:
-    'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/40',
+  OFFLINE: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/40',
+  NO_DATA: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/40',
 };
 
 function generateRandomApiKey(): string {
@@ -78,6 +76,8 @@ interface FarmOption {
 export default function GatewaysPage() {
   const { user, emulatedUser } = useAuth();
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN' && !emulatedUser;
+  // La API Key y el setup del ESP32 son solo para ADMIN/OPERATOR del campo (el backend rechaza a VIEWER).
+  const { canEditIn } = useFarmPermissions();
 
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -98,7 +98,7 @@ export default function GatewaysPage() {
   // Mutations
   const { mutate: createGateway, loading: creating } = useMutation(gatewaysApi.create);
   const { mutate: updateGateway, loading: updating } = useMutation(
-    (params: { id: string; data: { name?: string; apiKey?: string; farmId?: string | null; zoneId?: string | null } }) =>
+    (params: { id: string; data: { name?: string; apiKey?: string; farmId?: string | null } }) =>
       gatewaysApi.update(params.id, params.data)
   );
   const { mutate: deleteGateway } = useMutation(gatewaysApi.delete);
@@ -111,8 +111,6 @@ export default function GatewaysPage() {
   const [createAssignMode, setCreateAssignMode] = useState<'STOCK' | 'ASSIGN'>('STOCK');
   const [createUserId, setCreateUserId] = useState('');
   const [createFarmId, setCreateFarmId] = useState('');
-  const [createZoneId, setCreateZoneId] = useState('');
-  const [createFarmZones, setCreateFarmZones] = useState<Array<{ id: string; name: string }>>([]);
 
   // Modal: Edit / Reassign Gateway state
   const [editingGateway, setEditingGateway] = useState<Gateway | null>(null);
@@ -122,8 +120,6 @@ export default function GatewaysPage() {
   const [editAssignMode, setEditAssignMode] = useState<'STOCK' | 'ASSIGN'>('STOCK');
   const [editUserId, setEditUserId] = useState('');
   const [editFarmId, setEditFarmId] = useState('');
-  const [editZoneId, setEditZoneId] = useState('');
-  const [editFarmZones, setEditFarmZones] = useState<Array<{ id: string; name: string }>>([]);
 
   // Modal: Hardware Setup & Credentials guide
   const [setupModalGateway, setSetupModalGateway] = useState<{
@@ -153,12 +149,19 @@ export default function GatewaysPage() {
             const data = await farmsRes.json();
             const list = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
             setAllFarms(
-              list.map((f: { id: string; name?: string | null; userId?: string | null; user?: { id: string; name: string | null; email: string } | null }) => ({
-                id: f.id,
-                name: f.name || 'Sin nombre',
-                userId: f.userId || null,
-                user: f.user || null,
-              }))
+              list.map(
+                (f: {
+                  id: string;
+                  name?: string | null;
+                  userId?: string | null;
+                  user?: { id: string; name: string | null; email: string } | null;
+                }) => ({
+                  id: f.id,
+                  name: f.name || 'Sin nombre',
+                  userId: f.userId || null,
+                  user: f.user || null,
+                })
+              )
             );
           }
 
@@ -192,42 +195,6 @@ export default function GatewaysPage() {
     void loadData();
   }, [isSuperAdmin]);
 
-  // Load zones for Create Modal when createFarmId changes
-  useEffect(() => {
-    async function loadCreateZones() {
-      if (!createFarmId) {
-        setCreateFarmZones([]);
-        setCreateZoneId('');
-        return;
-      }
-      try {
-        const zones = await zonesApi.getByFarm(createFarmId);
-        setCreateFarmZones(zones.map((z) => ({ id: z.id, name: z.name })));
-      } catch {
-        setCreateFarmZones([]);
-      }
-    }
-    void loadCreateZones();
-  }, [createFarmId]);
-
-  // Load zones for Edit Modal when editFarmId changes
-  useEffect(() => {
-    async function loadEditZones() {
-      if (!editFarmId) {
-        setEditFarmZones([]);
-        setEditZoneId('');
-        return;
-      }
-      try {
-        const zones = await zonesApi.getByFarm(editFarmId);
-        setEditFarmZones(zones.map((z) => ({ id: z.id, name: z.name })));
-      } catch {
-        setEditFarmZones([]);
-      }
-    }
-    void loadEditZones();
-  }, [editFarmId]);
-
   // Open Create Modal handler
   const handleOpenCreateModal = () => {
     setCreateName('');
@@ -236,7 +203,6 @@ export default function GatewaysPage() {
     setCreateAssignMode('STOCK');
     setCreateUserId('');
     setCreateFarmId('');
-    setCreateZoneId('');
     setIsCreateModalOpen(true);
   };
 
@@ -253,12 +219,10 @@ export default function GatewaysPage() {
       const ownerId = farm?.userId || g.farm?.userId || farm?.user?.id || '';
       setEditUserId(ownerId);
       setEditFarmId(g.farmId);
-      setEditZoneId(g.zoneId || '');
     } else {
       setEditAssignMode('STOCK');
       setEditUserId('');
       setEditFarmId('');
-      setEditZoneId('');
     }
 
     // If apiKey wasn't loaded in g, fetch it in background
@@ -284,14 +248,12 @@ export default function GatewaysPage() {
     }
 
     const farmIdToAssign = createAssignMode === 'ASSIGN' && createFarmId ? createFarmId : undefined;
-    const zoneIdToAssign = createAssignMode === 'ASSIGN' && createZoneId ? createZoneId : undefined;
 
     try {
       const created = await createGateway({
         name: createName.trim(),
         apiKey: createApiKey.trim() || undefined,
         farmId: farmIdToAssign,
-        zoneId: zoneIdToAssign,
       });
 
       if (!created) return;
@@ -325,7 +287,6 @@ export default function GatewaysPage() {
     }
 
     const farmIdToAssign = editAssignMode === 'ASSIGN' && editFarmId ? editFarmId : null;
-    const zoneIdToAssign = editAssignMode === 'ASSIGN' && editZoneId ? editZoneId : null;
 
     try {
       const updated = await updateGateway({
@@ -334,7 +295,6 @@ export default function GatewaysPage() {
           name: editName.trim(),
           apiKey: editApiKey.trim() || undefined,
           farmId: farmIdToAssign,
-          zoneId: zoneIdToAssign,
         },
       });
 
@@ -479,13 +439,12 @@ export default function GatewaysPage() {
         const q = searchQuery.toLowerCase().trim();
         const matchName = g.name.toLowerCase().includes(q);
         const matchFarm = g.farm?.name?.toLowerCase().includes(q);
-        const matchZone = g.zone?.name?.toLowerCase().includes(q);
         const farmObj = allFarms.find((f) => f.id === g.farmId);
         const matchOwnerName = (g.farm?.user?.name || farmObj?.user?.name || '').toLowerCase().includes(q);
         const matchOwnerEmail = (g.farm?.user?.email || farmObj?.user?.email || '').toLowerCase().includes(q);
         const matchApiKey = (g.apiKey || revealedKeys[g.id] || '').toLowerCase().includes(q);
 
-        return matchName || matchFarm || matchZone || matchOwnerName || matchOwnerEmail || matchApiKey;
+        return matchName || matchFarm || matchOwnerName || matchOwnerEmail || matchApiKey;
       }
 
       return true;
@@ -589,68 +548,82 @@ export default function GatewaysPage() {
           {/* 2. Filter by User / Productor (SuperAdmin only) */}
           {isSuperAdmin && (
             <div>
-              <select
+              <Select
                 value={selectedUserFilter}
-                onChange={(e) => {
-                  setSelectedUserFilter(e.target.value);
+                onChange={(v) => {
+                  setSelectedUserFilter(v);
                   setSelectedFarmFilter('ALL'); // Reset farm filter when changing user
                 }}
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-              >
-                <option value="ALL">👤 Todos los Productores ({usersList.length})</option>
-                <option value="UNASSIGNED">📦 Stock Libre (Sin asignar)</option>
-                {usersList.map((u) => {
-                  const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
-                  return (
-                    <option key={u.id} value={u.id}>
-                      {u.name || u.email} ({userFarmsCount} {userFarmsCount === 1 ? 'campo' : 'campos'})
-                    </option>
-                  );
-                })}
-              </select>
+                size="sm"
+                searchable={usersList.length > 5}
+                searchPlaceholder="Buscar productor..."
+                options={[
+                  { value: 'ALL', label: `👤 Todos los Productores (${usersList.length})` },
+                  { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
+                  ...usersList.map((u) => {
+                    const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
+                    return {
+                      value: u.id,
+                      label: u.name || u.email,
+                      description: `${userFarmsCount} ${userFarmsCount === 1 ? 'campo' : 'campos'}`,
+                    };
+                  }),
+                ]}
+              />
             </div>
           )}
 
           {/* 3. Filter by Field / Campo (Filtered by selected user) */}
           <div>
-            <select
+            <Select
               disabled={selectedUserFilter === 'UNASSIGNED'}
               value={selectedFarmFilter}
-              onChange={(e) => setSelectedFarmFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer disabled:opacity-50"
-            >
-              <option value="ALL">
-                🏢 {selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED' ? 'Todos los campos del productor' : 'Todos los Campos'} (
-                {farmsForFilterToolbar.length})
-              </option>
-              {isSuperAdmin && selectedUserFilter === 'ALL' && (
-                <option value="UNASSIGNED">📦 Sin campo asignado</option>
-              )}
-              {farmsForFilterToolbar.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} {f.user?.name ? `(${f.user.name})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSelectedFarmFilter(v)}
+              size="sm"
+              searchable={farmsForFilterToolbar.length > 5}
+              searchPlaceholder="Buscar campo..."
+              options={[
+                {
+                  value: 'ALL',
+                  label: `🏢 ${
+                    selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
+                      ? 'Todos los campos del productor'
+                      : 'Todos los Campos'
+                  } (${farmsForFilterToolbar.length})`,
+                },
+                ...(isSuperAdmin && selectedUserFilter === 'ALL'
+                  ? [{ value: 'UNASSIGNED', label: '📦 Sin campo asignado' }]
+                  : []),
+                ...farmsForFilterToolbar.map((f) => ({
+                  value: f.id,
+                  label: f.name || 'Sin nombre',
+                  description: f.user?.name ?? undefined,
+                })),
+              ]}
+            />
           </div>
 
           {/* 4. Filter by Status */}
           <div>
-            <select
+            <Select
               value={selectedStatusFilter}
-              onChange={(e) => setSelectedStatusFilter(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-            >
-              <option value="ALL">📡 Todos los Estados</option>
-              <option value="ONLINE">🟢 En línea ({onlineCount})</option>
-              <option value="OFFLINE">🔴 Fuera de línea ({offlineCount})</option>
-              <option value="NO_DATA">⚪ Sin datos</option>
-            </select>
+              onChange={(v) => setSelectedStatusFilter(v)}
+              options={[
+                { value: 'ALL', label: '📡 Todos los Estados' },
+                { value: 'ONLINE', label: `🟢 En línea (${onlineCount})` },
+                { value: 'OFFLINE', label: `🔴 Fuera de línea (${offlineCount})` },
+                { value: 'NO_DATA', label: '⚪ Sin datos' },
+              ]}
+              size="sm"
+            />
           </div>
         </div>
 
         {/* Clear filters pill if any is applied */}
-        {(searchQuery || selectedUserFilter !== 'ALL' || selectedFarmFilter !== 'ALL' || selectedStatusFilter !== 'ALL') && (
+        {(searchQuery ||
+          selectedUserFilter !== 'ALL' ||
+          selectedFarmFilter !== 'ALL' ||
+          selectedStatusFilter !== 'ALL') && (
           <div className="flex items-center justify-between pt-1">
             <span className="text-xs text-zinc-500">
               Mostrando <strong>{filteredGateways.length}</strong> de <strong>{gateways.length}</strong> gateways
@@ -715,9 +688,7 @@ export default function GatewaysPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-zinc-900 dark:text-white text-base">
-                          {g.name}
-                        </span>
+                        <span className="font-bold text-zinc-900 dark:text-white text-base">{g.name}</span>
                         <span
                           className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${STATUS_CLASSES[g.status]}`}
                         >
@@ -757,71 +728,68 @@ export default function GatewaysPage() {
                         Stock Libre Central (Sin asignar)
                       </span>
                     )}
-
-                    {g.zone?.name && (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 font-medium">
-                        <MapPin className="w-3 h-3" />
-                        Zona: {g.zone.name}
-                      </span>
-                    )}
                   </div>
 
                   {/* API Key Box */}
-                  <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-2.5 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
-                        <KeyRound className="w-3 h-3 text-green-600 dark:text-green-500" />
-                        API Key (Header X-API-Key)
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => void handleToggleRevealKey(g)}
-                          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
-                          title={isKeyVisible ? 'Ocultar clave' : 'Mostrar clave'}
-                        >
-                          {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                            const keyToCopy = currentKey || g.apiKey;
-                            if (keyToCopy) {
-                              void handleCopyKey(keyToCopy, g.id);
-                            } else {
-                              void handleToggleRevealKey(g).then(() => {
-                                const fetched = revealedKeys[g.id];
-                                if (fetched) void handleCopyKey(fetched, g.id);
-                              });
-                            }
-                          }}
-                          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
-                          title="Copiar API Key"
-                        >
-                          {copiedKeyId === g.id ? (
-                            <Check className="w-3.5 h-3.5 text-green-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                  {canEditIn(g.farmId) && (
+                    <div className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl p-2.5 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                          <KeyRound className="w-3 h-3 text-green-600 dark:text-green-500" />
+                          API Key (Header X-API-Key)
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => void handleToggleRevealKey(g)}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
+                            title={isKeyVisible ? 'Ocultar clave' : 'Mostrar clave'}
+                          >
+                            {isKeyVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => {
+                              const keyToCopy = currentKey || g.apiKey;
+                              if (keyToCopy) {
+                                void handleCopyKey(keyToCopy, g.id);
+                              } else {
+                                void handleToggleRevealKey(g).then(() => {
+                                  const fetched = revealedKeys[g.id];
+                                  if (fetched) void handleCopyKey(fetched, g.id);
+                                });
+                              }
+                            }}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded cursor-pointer"
+                            title="Copiar API Key"
+                          >
+                            {copiedKeyId === g.id ? (
+                              <Check className="w-3.5 h-3.5 text-green-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-xs text-zinc-700 dark:text-zinc-300 break-all select-all">
+                        {isKeyVisible && currentKey ? currentKey : '••••••••••••••••••••••••••••••••••••••••••••••••'}
                       </div>
                     </div>
-
-                    <div className="font-mono text-xs text-zinc-700 dark:text-zinc-300 break-all select-all">
-                      {isKeyVisible && currentKey
-                        ? currentKey
-                        : '••••••••••••••••••••••••••••••••••••••••••••••••'}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Card Action Buttons */}
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => void handleOpenSetupModal(g)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
-                  >
-                    <Wifi className="w-3.5 h-3.5" />
-                    Setup ESP32
-                  </button>
+                  {canEditIn(g.farmId) ? (
+                    <button
+                      onClick={() => void handleOpenSetupModal(g)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 transition-colors cursor-pointer"
+                    >
+                      <Wifi className="w-3.5 h-3.5" />
+                      Setup ESP32
+                    </button>
+                  ) : (
+                    <span />
+                  )}
 
                   <div className="flex items-center gap-1">
                     {isSuperAdmin && (
@@ -961,7 +929,6 @@ export default function GatewaysPage() {
                       setCreateAssignMode('STOCK');
                       setCreateUserId('');
                       setCreateFarmId('');
-                      setCreateZoneId('');
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       createAssignMode === 'STOCK'
@@ -1005,26 +972,26 @@ export default function GatewaysPage() {
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                         1. Seleccionar Productor *
                       </label>
-                      <select
+                      <Select
                         required
                         value={createUserId}
-                        onChange={(e) => {
-                          setCreateUserId(e.target.value);
+                        onChange={(v) => {
+                          setCreateUserId(v);
                           setCreateFarmId('');
-                          setCreateZoneId('');
                         }}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                      >
-                        <option value="">Seleccioná un productor ({usersList.length} disponibles)...</option>
-                        {usersList.map((u) => {
+                        size="sm"
+                        searchable={usersList.length > 5}
+                        searchPlaceholder="Buscar productor..."
+                        placeholder={`Seleccioná un productor (${usersList.length} disponibles)...`}
+                        options={usersList.map((u) => {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
-                          return (
-                            <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount} {farmCount === 1 ? 'campo' : 'campos'}
-                            </option>
-                          );
+                          return {
+                            value: u.id,
+                            label: u.name || u.email,
+                            description: `${u.name ? `${u.email} · ` : ''}${farmCount} ${farmCount === 1 ? 'campo' : 'campos'}`,
+                          };
                         })}
-                      </select>
+                      />
                     </div>
 
                     {/* Selector de Campo del Productor */}
@@ -1041,42 +1008,21 @@ export default function GatewaysPage() {
                           Este productor no tiene ningún campo registrado aún.
                         </div>
                       ) : (
-                        <select
+                        <Select
+                          value={String(createFarmId)}
+                          onChange={(v) => setCreateFarmId(v)}
+                          options={[
+                            {
+                              value: '',
+                              label: `Seleccioná el campo (${farmsForCreateModal.length} de este usuario)...`,
+                            },
+                            ...farmsForCreateModal.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                          ]}
+                          size="sm"
                           required
-                          value={createFarmId}
-                          onChange={(e) => setCreateFarmId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Seleccioná el campo ({farmsForCreateModal.length} de este usuario)...</option>
-                          {farmsForCreateModal.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       )}
                     </div>
-
-                    {/* Selector de Zona del Campo (Opcional) */}
-                    {createFarmId && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
-                          3. Zona del Campo (Opcional)
-                        </label>
-                        <select
-                          value={createZoneId}
-                          onChange={(e) => setCreateZoneId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Sin zona asignada (Todo el campo)</option>
-                          {createFarmZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1115,9 +1061,7 @@ export default function GatewaysPage() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-150 my-8">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                  Editar / Reasignar Gateway
-                </h3>
+                <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Editar / Reasignar Gateway</h3>
                 <p className="text-xs text-zinc-500">
                   Modificá el nombre, la API Key o transferí este dispositivo a otro productor o campo.
                 </p>
@@ -1204,7 +1148,6 @@ export default function GatewaysPage() {
                       setEditAssignMode('STOCK');
                       setEditUserId('');
                       setEditFarmId('');
-                      setEditZoneId('');
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       editAssignMode === 'STOCK'
@@ -1242,26 +1185,26 @@ export default function GatewaysPage() {
                       <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
                         1. Productor / Dueño *
                       </label>
-                      <select
+                      <Select
                         required
                         value={editUserId}
-                        onChange={(e) => {
-                          setEditUserId(e.target.value);
+                        onChange={(v) => {
+                          setEditUserId(v);
                           setEditFarmId('');
-                          setEditZoneId('');
                         }}
-                        className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                      >
-                        <option value="">Seleccionar productor ({usersList.length})...</option>
-                        {usersList.map((u) => {
+                        size="sm"
+                        searchable={usersList.length > 5}
+                        searchPlaceholder="Buscar productor..."
+                        placeholder={`Seleccionar productor (${usersList.length})...`}
+                        options={usersList.map((u) => {
                           const farmCount = allFarms.filter((f) => f.userId === u.id).length;
-                          return (
-                            <option key={u.id} value={u.id}>
-                              {u.name ? `${u.name} (${u.email})` : u.email} — {farmCount} {farmCount === 1 ? 'campo' : 'campos'}
-                            </option>
-                          );
+                          return {
+                            value: u.id,
+                            label: u.name || u.email,
+                            description: `${u.name ? `${u.email} · ` : ''}${farmCount} ${farmCount === 1 ? 'campo' : 'campos'}`,
+                          };
                         })}
-                      </select>
+                      />
                     </div>
 
                     <div className="space-y-1.5">
@@ -1277,41 +1220,18 @@ export default function GatewaysPage() {
                           Este productor no tiene campos registrados.
                         </div>
                       ) : (
-                        <select
+                        <Select
+                          value={String(editFarmId)}
+                          onChange={(v) => setEditFarmId(v)}
+                          options={[
+                            { value: '', label: `Seleccionar campo (${farmsForEditModal.length})...` },
+                            ...farmsForEditModal.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                          ]}
+                          size="sm"
                           required
-                          value={editFarmId}
-                          onChange={(e) => setEditFarmId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Seleccionar campo ({farmsForEditModal.length})...</option>
-                          {farmsForEditModal.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       )}
                     </div>
-
-                    {editFarmId && (
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider block">
-                          3. Zona del Campo (Opcional)
-                        </label>
-                        <select
-                          value={editZoneId}
-                          onChange={(e) => setEditZoneId(e.target.value)}
-                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
-                        >
-                          <option value="">Sin zona asignada (Todo el campo)</option>
-                          {editFarmZones.map((z) => (
-                            <option key={z.id} value={z.id}>
-                              {z.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
@@ -1349,9 +1269,7 @@ export default function GatewaysPage() {
                   <KeyRound className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Credenciales & Setup ESP32
-                  </h3>
+                  <h3 className="font-bold text-lg text-zinc-900 dark:text-white">Credenciales & Setup ESP32</h3>
                   <p className="text-xs text-zinc-500">
                     Dispositivo: <strong>{setupModalGateway.name}</strong>
                   </p>
@@ -1423,7 +1341,8 @@ export default function GatewaysPage() {
                   Pegá esta <strong>API Key</strong> en el campo del portal y configurá la red WiFi o 4G del campo.
                 </li>
                 <li>
-                  El gateway comenzará a emitir telemetría al endpoint <code>POST /api/iot/telemetry</code> y se pondrá en línea automáticamente.
+                  El gateway comenzará a emitir telemetría al endpoint <code>POST /api/iot/telemetry</code> y se pondrá
+                  en línea automáticamente.
                 </li>
               </ol>
             </div>

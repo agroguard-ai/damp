@@ -13,9 +13,4 @@ export class UpdateGatewayDto {
   @IsString()
   @IsOptional()
   farmId?: string | null;
-
-  @IsString()
-  @IsOptional()
-  zoneId?: string | null;
 }
-

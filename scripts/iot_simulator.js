@@ -26,7 +26,7 @@ console.log(`Simulating collars:`, MAC_IDS);
 if (startLat !== null && startLng !== null) {
   console.log(`Explicit start coordinates: ${startLat}, ${startLng}`);
 } else {
-  console.log(`No starting coordinates specified. Will auto-snap to the farm's zone coordinates returned by the server.`);
+  console.log(`No starting coordinates specified. Will auto-snap to the fence coordinates returned by the server.`);
 }
 console.log('Press Ctrl+C to stop simulation.');
 

@@ -13,6 +13,7 @@ export class FarmUsersController {
   constructor(private readonly farmUsersService: FarmUsersService) {}
 
   @Get()
+  @RequireFarmRole('ADMIN')
   findAllInFarm(@Param('farmId') farmId: string) {
     return this.farmUsersService.findAllInFarm(farmId);
   }

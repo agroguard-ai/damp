@@ -16,6 +16,13 @@ celo — entrenar o inferir con esas columnas ausentes obligaría a rellenarlas
 con un valor constante, lo que sesga las predicciones de forma impredecible
 en vez de simplemente degradarlas (ver damp-ml-api/README.md).
 
+Formato de entrada: el modelo se entrenó con UNA lectura por bloque de 30 min, en hora
+local del campo. El backend agrupa la telemetría cruda en esos bloques antes de llamar
+(ver damp/backend/src/iot/ml-window.ts) y manda, por bloque, la temperatura promedio,
+los metros recorridos (`distance_m`) y el inicio del bloque con su offset horario
+(p. ej. "2026-10-13T08:30:00-03:00"). Si `distance_m` no viene, se aproxima con
+Haversine contra el bloque anterior (compatibilidad con clientes viejos).
+
 Endpoint:
   POST /predict/health
 """
@@ -44,16 +51,19 @@ app = FastAPI(
 # ── Schemas ──────────────────────────────────────────────────────
 
 class TelemetryReading(BaseModel):
+    """Un bloque de 30 min de telemetría (ver docstring del módulo)."""
     temperature: float
     lat: float
     lng: float
-    timestamp: str  # ISO 8601
+    timestamp: str  # ISO 8601 con offset horario local del campo (la hora local define es_noche y hour_sin/cos)
+    distance_m: Optional[float] = None  # metros recorridos en el bloque; si falta, Haversine contra el anterior
 
 
 class PredictionRequest(BaseModel):
     animal_id: str
     sex: Optional[str] = None  # "MALE" | "FEMALE" (enum Sex del backend), afecta sexo_num
-    readings: list[TelemetryReading]  # orden cronológico, idealmente las últimas `lookback` lecturas
+    readings: list[TelemetryReading]  # orden cronológico, idealmente los últimos `lookback` bloques
+    include_features: bool = False  # devolver las features que vio el modelo (para explicar la predicción)
 
 
 class EventPrediction(BaseModel):
@@ -62,12 +72,19 @@ class EventPrediction(BaseModel):
     detected: bool
 
 
+class FeatureRow(BaseModel):
+    """Features sin escalar de un bloque, tal como entraron al modelo."""
+    timestamp: str
+    values: dict[str, float]
+
+
 class PredictionResponse(BaseModel):
     animal_id: str
     ready: bool
     window_size: int
     required_window_size: int
     events: dict[str, EventPrediction] = {}
+    features: Optional[list[FeatureRow]] = None
 
 
 # ── Carga del modelo entrenado (falla explícito si no está disponible) ──
@@ -127,12 +144,13 @@ def build_feature_matrix(readings: list[TelemetryReading], sex: Optional[str]) -
     for r in readings:
         ts = datetime.fromisoformat(r.timestamp.replace("Z", "+00:00"))
 
-        # distancia_rodeo: el collar todavía no manda este dato directo (ver docstring del módulo);
-        # se aproxima con la distancia Haversine contra la lectura anterior. Cuando agroguard-firmware
-        # empiece a mandar la distancia nativa de los últimos 5 minutos, reemplazar esta línea por
-        # el valor recibido directamente — mismo tipo de magnitud (metros recorridos), no debería
-        # requerir reentrenar, pero sí verificar que la distribución sea comparable.
-        distancia = 0.0 if prev is None else haversine_meters(prev.lat, prev.lng, r.lat, r.lng)
+        # distancia_rodeo: metros recorridos en el bloque de 30 min. El backend la calcula sumando
+        # los tramos entre todas las lecturas crudas del bloque (distance_m). Si no viene, se
+        # aproxima con Haversine contra el bloque anterior (subestima: solo mide desplazamiento neto).
+        if r.distance_m is not None:
+            distancia = r.distance_m
+        else:
+            distancia = 0.0 if prev is None else haversine_meters(prev.lat, prev.lng, r.lat, r.lng)
         prev = r
 
         bloque_horario = (ts.hour * 60 + ts.minute) // BLOCK_MINUTES
@@ -176,6 +194,13 @@ def predict_health(request: PredictionRequest) -> PredictionResponse:
 
     raw_preds = bundle.model.predict(X_scaled, verbose=0)
 
+    features = None
+    if request.include_features:
+        features = [
+            FeatureRow(timestamp=r.timestamp, values={col: round(float(v), 4) for col, v in zip(bundle.feature_cols, row)})
+            for r, row in zip(window, X)
+        ]
+
     events = {}
     for name in bundle.event_labels:
         prob = float(np.asarray(raw_preds[name]).ravel()[0])
@@ -188,6 +213,7 @@ def predict_health(request: PredictionRequest) -> PredictionResponse:
         window_size=window_size,
         required_window_size=bundle.lookback,
         events=events,
+        features=features,
     )
 
 

@@ -3,15 +3,14 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { SidebarLink } from '@/components/layout/SidebarLink';
+import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import {
   Hexagon,
   Menu,
   LayoutDashboard,
   Tractor,
-  Map,
   Zap,
   ClipboardList,
-  MapPin,
   Tags,
   Radio,
   Router,
@@ -25,6 +24,7 @@ import {
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, emulatedUser } = useAuth();
+  const { adminFarmId } = useFarmPermissions();
 
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
   const isEmulating = isSuperAdmin && !!emulatedUser;
@@ -144,12 +144,6 @@ export default function Sidebar() {
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
-                href="/zonas"
-                label="Zonas"
-                logo={<Map className="opacity-70" />}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarLink
                 href="/cercos"
                 label="Cercos"
                 logo={<Zap className="opacity-70" />}
@@ -159,12 +153,6 @@ export default function Sidebar() {
                 href="/animals"
                 label="Hacienda"
                 logo={<ClipboardList className="opacity-70" />}
-                isCollapsed={isCollapsed}
-              />
-              <SidebarLink
-                href="/geolocalizacion"
-                label="Geolocalización"
-                logo={<MapPin className="opacity-70" />}
                 isCollapsed={isCollapsed}
               />
               <SidebarLink
@@ -186,16 +174,23 @@ export default function Sidebar() {
           <div className="space-y-1.5">
             <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
             <SidebarLink href="/farms" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
-            <SidebarLink href="/zonas" label="Zonas" logo={<Map />} isCollapsed={isCollapsed} />
             <SidebarLink href="/cercos" label="Cercos" logo={<Zap />} isCollapsed={isCollapsed} />
             <SidebarLink href="/animals" label="Hacienda" logo={<ClipboardList />} isCollapsed={isCollapsed} />
-            <SidebarLink href="/geolocalizacion" label="Geolocalización" logo={<MapPin />} isCollapsed={isCollapsed} />
             {/* Collares: solo collares contratados */}
             <SidebarLink href="/collares" label="Collares" logo={<Radio />} isCollapsed={isCollapsed} />
             {/* Gateways: solo de este campo */}
             <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
             <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
             <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
+            {/* Personal: gestión de usuarios internos, exclusiva del administrador de la granja (CU018) */}
+            {adminFarmId && (
+              <SidebarLink
+                href={`/farms/${adminFarmId}/users`}
+                label="Personal"
+                logo={<Users />}
+                isCollapsed={isCollapsed}
+              />
+            )}
           </div>
         )}
       </nav>

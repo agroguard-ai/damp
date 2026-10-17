@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { Alert, AlertsQueryParams } from '@/types';
+import type { Alert, AlertsQueryParams, AnimalMlRisk, MlServiceStatus, PredictionInputs } from '@/types';
 
 export const alertsApi = {
   /** GET /api/alerts — returns alerts for the authenticated user, optionally filtered */
@@ -38,4 +38,15 @@ export const alertsApi = {
   /** GET /api/alerts/ml-metrics — gets field accuracy and false positive metrics for the farm */
   getMlMetrics: (farmId: string): Promise<any> =>
     apiFetch<any>(`/api/alerts/ml-metrics?farmId=${encodeURIComponent(farmId)}`),
+
+  /** GET /api/alerts/ml-status — si el servicio de IA está online y con el modelo cargado */
+  getMlStatus: (): Promise<MlServiceStatus> => apiFetch<MlServiceStatus>('/api/alerts/ml-status'),
+
+  /** GET /api/alerts/predictions/[id]/inputs — ventana de 24 h que analizó el modelo */
+  getPredictionInputs: (predictionId: string): Promise<PredictionInputs> =>
+    apiFetch<PredictionInputs>(`/api/alerts/predictions/${predictionId}/inputs`),
+
+  /** GET /api/alerts/predictions/current-risk — eventos detectados recientemente, por animal */
+  getCurrentMlRisk: (farmId: string): Promise<AnimalMlRisk[]> =>
+    apiFetch<AnimalMlRisk[]>(`/api/alerts/predictions/current-risk?farmId=${encodeURIComponent(farmId)}`),
 };

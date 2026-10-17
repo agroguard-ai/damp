@@ -38,7 +38,7 @@ const features = [
     icon: BarChart3,
     title: 'Reportes y exportaciones',
     description:
-      'Generá reportes de salud, movimiento y alertas por animal, zona o campo, listos para exportar cuando los necesites.',
+      'Generá reportes de salud, movimiento y alertas por animal, cerco o campo, listos para exportar cuando los necesites.',
   },
 ];
 

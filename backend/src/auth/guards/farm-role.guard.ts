@@ -29,17 +29,10 @@ type FarmIdResolver = (prisma: PrismaClient, resourceId: string) => Promise<stri
 const FARM_ID_RESOLVERS: Record<FarmIdResource, FarmIdResolver> = {
   animal: async (prisma, id) =>
     (await prisma.animal.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  zone: async (prisma, id) =>
-    (await prisma.zone.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
   gateway: async (prisma, id) =>
     (await prisma.gateway.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
-  geofence: async (prisma, id) => {
-    const geofence = await prisma.geofence.findUnique({
-      where: { id },
-      select: { zone: { select: { farmId: true } } },
-    });
-    return geofence?.zone.farmId ?? null;
-  },
+  geofence: async (prisma, id) =>
+    (await prisma.geofence.findUnique({ where: { id }, select: { farmId: true } }))?.farmId ?? null,
   alert: async (prisma, id) => {
     const alert = await prisma.alert.findUnique({ where: { id }, select: { animal: { select: { farmId: true } } } });
     return alert?.animal.farmId ?? null;
@@ -93,26 +86,31 @@ export class FarmRoleGuard implements CanActivate {
     const rawFarmId = params?.farmId ?? body?.farmId ?? query?.farmId;
     let farmId = typeof rawFarmId === 'string' ? rawFarmId : undefined;
 
-    if (!farmId) {
-      const resolveFrom = this.reflector.getAllAndOverride<ResolveFarmIdFromOptions>(RESOLVE_FARM_ID_FROM_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]);
+    const resolveFrom = this.reflector.getAllAndOverride<ResolveFarmIdFromOptions>(RESOLVE_FARM_ID_FROM_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
-      if (resolveFrom) {
-        const idKey = resolveFrom.idKey ?? 'id';
-        const rawResourceId = params?.[idKey] ?? body?.[idKey] ?? query?.[idKey];
-        const resourceId = typeof rawResourceId === 'string' ? rawResourceId : undefined;
+    // Si la ruta declara @ResolveFarmIdFrom, manda la granja del recurso, no un farmId que venga
+    // en la request: si no, alguien podría mandar ?farmId=<granja donde es ADMIN> y pasar el
+    // chequeo de rol para modificar un recurso de otra granja donde no tiene ese rol.
+    if (resolveFrom) {
+      const idKey = resolveFrom.idKey ?? 'id';
+      const rawResourceId = params?.[idKey] ?? body?.[idKey] ?? query?.[idKey];
+      const resourceId = typeof rawResourceId === 'string' ? rawResourceId : undefined;
 
-        if (!resourceId) {
-          throw new BadRequestException(`Missing "${idKey}" to resolve the farm for this request`);
-        }
+      if (resourceId) {
+        const resourceFarmId = await FARM_ID_RESOLVERS[resolveFrom.resource](this.prisma, resourceId);
 
-        farmId = (await FARM_ID_RESOLVERS[resolveFrom.resource](this.prisma, resourceId)) ?? undefined;
-
-        if (!farmId) {
+        if (!resourceFarmId) {
           throw new NotFoundException(`${resolveFrom.resource} "${resourceId}" not found`);
         }
+        if (farmId && farmId !== resourceFarmId) {
+          throw new ForbiddenException('El recurso no pertenece al establecimiento indicado');
+        }
+        farmId = resourceFarmId;
+      } else if (!farmId) {
+        throw new BadRequestException(`Missing "${idKey}" to resolve the farm for this request`);
       }
     }
 
@@ -146,7 +144,9 @@ export class FarmRoleGuard implements CanActivate {
     // Cascada de suspensión: si el dueño de la granja está suspendido,
     // se inhabilita el acceso para todos los miembros de esa granja
     if (farmUser.farm?.user && !farmUser.farm.user.isActive) {
-      throw new ForbiddenException('El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.');
+      throw new ForbiddenException(
+        'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'
+      );
     }
 
     request.farmUser = farmUser;

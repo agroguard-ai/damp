@@ -70,6 +70,70 @@ class TestBuildFeatureMatrix:
         X = ml_main.build_feature_matrix(readings, sex=None)
         assert X[0, 2] == 0.0
 
+    def test_uses_distance_m_from_backend_when_present(self):
+        readings = [
+            ml_main.TelemetryReading(temperature=38.5, lat=0.0, lng=0.0, timestamp="2026-08-25T10:00:00-03:00", distance_m=12.0),
+            ml_main.TelemetryReading(temperature=38.5, lat=1.0, lng=0.0, timestamp="2026-08-25T10:30:00-03:00", distance_m=340.5),
+        ]
+        X = ml_main.build_feature_matrix(readings, sex=None)
+        assert X[0, 1] == pytest.approx(12.0)
+        assert X[1, 1] == pytest.approx(340.5)  # no usa Haversine (serían ~111 km)
+
+    def test_local_offset_defines_night(self):
+        # 23:00 hora local argentina = 02:00 UTC del día siguiente: tiene que contar como noche
+        # por la hora local (el dataset de entrenamiento está en hora local)
+        readings = [_reading(38.5, 0.0, 0.0, "2026-08-25T23:00:00-03:00")]
+        X = ml_main.build_feature_matrix(readings, sex=None)
+        assert X[0, 2] == 1.0
+        # 12:00 local (15:00 UTC) no es de noche
+        X = ml_main.build_feature_matrix([_reading(38.5, 0.0, 0.0, "2026-08-25T12:00:00-03:00")], sex=None)
+        assert X[0, 2] == 0.0
+
+
+class _FakeModel:
+    def predict(self, X, verbose=0):
+        return {"fiebre": np.array([[0.8]]), "celo": np.array([[0.1]])}
+
+
+class _IdentityScaler:
+    def transform(self, X):
+        return X
+
+
+class TestPredictHealthWithFakeModel:
+    @pytest.fixture(autouse=True)
+    def fake_bundle(self, monkeypatch):
+        monkeypatch.setattr(ml_main.bundle, "load_error", None)
+        monkeypatch.setattr(ml_main.bundle, "lookback", 2)
+        monkeypatch.setattr(ml_main.bundle, "model", _FakeModel())
+        monkeypatch.setattr(ml_main.bundle, "scaler", _IdentityScaler())
+        monkeypatch.setattr(ml_main.bundle, "thresholds", {"fiebre": 0.5, "celo": 0.5})
+        monkeypatch.setattr(ml_main.bundle, "event_labels", ["fiebre", "celo"])
+        monkeypatch.setattr(ml_main.bundle, "feature_cols",
+                            ["temp_corporal", "distancia_rodeo", "es_noche", "sexo_num", "hour_sin", "hour_cos"])
+
+    def _request(self, include_features):
+        readings = [
+            ml_main.TelemetryReading(temperature=39.8, lat=0.0, lng=0.0, timestamp="2026-08-25T10:00:00-03:00", distance_m=50.0),
+            ml_main.TelemetryReading(temperature=40.1, lat=0.0, lng=0.0, timestamp="2026-08-25T10:30:00-03:00", distance_m=20.0),
+        ]
+        return ml_main.PredictionRequest(animal_id="a1", sex="FEMALE", readings=readings, include_features=include_features)
+
+    def test_detects_events_over_threshold(self):
+        response = ml_main.predict_health(self._request(False))
+        assert response.ready is True
+        assert response.events["fiebre"].detected is True
+        assert response.events["celo"].detected is False
+        assert response.features is None
+
+    def test_returns_unscaled_features_when_requested(self):
+        response = ml_main.predict_health(self._request(True))
+        assert len(response.features) == 2
+        last = response.features[-1]
+        assert last.timestamp == "2026-08-25T10:30:00-03:00"
+        assert last.values["temp_corporal"] == pytest.approx(40.1)
+        assert last.values["distancia_rodeo"] == pytest.approx(20.0)
+
 
 class TestPredictHealthWithoutModel:
     def test_returns_503_when_model_failed_to_load(self, monkeypatch):
