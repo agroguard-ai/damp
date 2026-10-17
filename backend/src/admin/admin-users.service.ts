@@ -206,7 +206,7 @@ export class AdminUsersService {
               animals: true,
               geofences: true,
               gateways: true,
-              farmUsers: true,
+              farmUsers: { where: { isActive: true } },
             },
           },
         },

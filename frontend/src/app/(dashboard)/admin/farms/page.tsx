@@ -98,9 +98,9 @@ export default function AdminFarmsPage() {
             Todas las Granjas
           </h1>
         </div>
-        <div className="bg-purple-100 text-purple-800 text-xs font-semibold px-3 py-1.5 rounded-full border border-purple-200">
-          Total Granjas: {meta ? meta.totalItems : farms.length}
-        </div>
+        <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
+          Total: {meta ? meta.totalItems : farms.length}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -118,7 +118,7 @@ export default function AdminFarmsPage() {
                   </h3>
                 </div>
 
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
+                <div className="text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-4 gap-y-1">
                   {(f.location || f.province) && (
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
@@ -135,9 +135,6 @@ export default function AdminFarmsPage() {
 
                 {/* Administrador de la granja */}
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                  <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">
-                    Administrador Único:
-                  </span>
                   {adminMember ? (
                     <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/40 p-2 rounded-lg border border-purple-100 dark:border-purple-900/50">
                       <ShieldCheck className="w-4 h-4 text-purple-600 shrink-0" />
