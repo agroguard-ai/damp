@@ -8,6 +8,7 @@ import { useNavIsDark } from '@/context/NavThemeContext';
 
 const navLinks = [
   { href: '#producto', label: 'Producto' },
+  { href: '#collar', label: 'El collar' },
   { href: '#como-funciona', label: 'Cómo funciona' },
   { href: '#arquitectura', label: 'Arquitectura' },
   { href: '#planes', label: 'Planes' },

@@ -27,3 +27,27 @@
   border: none !important;
   box-shadow: none !important;
 }
+
+/* ─── Lenis (scroll suave de la landing, ver components/landing/SmoothScroll.tsx) ───
+ * Equivale a lenis/dist/lenis.css, menos la regla que desactiva los iframes
+ * mientras se scrollea: el diagrama de arquitectura de la landing es un iframe
+ * interactivo y tiene que seguir respondiendo. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+/* El scroll-behavior: smooth nativo (styles/base.css) pelea con Lenis. */
+html.lenis {
+  scroll-behavior: auto;
+}
+
+.lenis:not(.lenis-autoToggle).lenis-stopped {
+  overflow: clip;
+}
+
+.lenis [data-lenis-prevent],
+.lenis [data-lenis-prevent-wheel],
+.lenis [data-lenis-prevent-touch] {
+  overscroll-behavior: contain;
+}
