@@ -59,11 +59,6 @@ export function PaginationControls({
     return (page - 1) * limit + 1;
   }, [page, limit, totalItems]);
 
-  const showingTo = useMemo(() => {
-    if (!totalItems || totalItems === 0) return 0;
-    return Math.min(page * limit, totalItems);
-  }, [page, limit, totalItems]);
-
   return (
     <div
       className={`flex flex-col sm:flex-row items-center justify-between gap-4 py-3 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm ${className}`}
@@ -72,8 +67,7 @@ export function PaginationControls({
       <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
         {showItemRange && totalItems !== undefined && (
           <span>
-            Mostrando <strong className="font-semibold text-slate-900 dark:text-slate-100">{showingFrom}</strong> a{' '}
-            <strong className="font-semibold text-slate-900 dark:text-slate-100">{showingTo}</strong> de{' '}
+            Mostrando <strong className="font-semibold text-slate-900 dark:text-slate-100">{showingFrom}</strong> de{' '}
             <strong className="font-semibold text-slate-900 dark:text-slate-100">{totalItems}</strong> resultados
           </span>
         )}

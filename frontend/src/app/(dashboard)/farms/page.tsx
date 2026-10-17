@@ -119,7 +119,7 @@ export default function FarmsPage() {
       if (provCenter) return provCenter;
     }
     return [-34.6037, -58.3816];
-  }, [editPolygonPoints, perimeterModalFarm?.province]);
+  }, [editPolygonPoints, perimeterModalFarm]);
 
   // Real-time calculated area during perimeter editing
   const liveEditingHa = useMemo(() => {
@@ -320,19 +320,14 @@ export default function FarmsPage() {
                   const isAdmin = canManageFarm(farm);
 
                   return (
-                    <tr key={farm.id} className="hover:bg-zinc-50/70 dark:hover:bg-zinc-850/40 transition-colors">
+                    <tr key={farm.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
                       {/* Establecimiento */}
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 flex items-center justify-center shrink-0 border border-green-200 dark:border-green-800/40">
-                            <Tractor className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-zinc-900 dark:text-white text-sm">{farm.name}</div>
-                            <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                              {farm.address ? farm.address : 'Sin dirección especificada'} &bull; Alta:{' '}
-                              {new Date(farm.createdAt).toLocaleDateString()}
-                            </div>
+                        <div>
+                          <div className="font-bold text-zinc-900 dark:text-white text-sm">{farm.name}</div>
+                          <div className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                            {farm.address ? farm.address : 'Sin dirección especificada'} &bull; Alta:{' '}
+                            {new Date(farm.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </td>
@@ -363,7 +358,7 @@ export default function FarmsPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenPerimeterModal(farm)}
-                            className="p-1.5 text-zinc-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:hover:text-green-400 rounded-lg transition-colors cursor-pointer"
                             title={isAdmin ? 'Editar perímetro en el mapa' : 'Ver perímetro en el mapa'}
                           >
                             <Ruler className="w-4 h-4" />
@@ -416,7 +411,7 @@ export default function FarmsPage() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenEdit(farm)}
-                                className="p-1.5 text-zinc-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:hover:text-green-400 rounded-lg transition-colors cursor-pointer"
                                 title="Editar datos del establecimiento"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -425,7 +420,7 @@ export default function FarmsPage() {
                               <button
                                 type="button"
                                 onClick={() => setDeletingTargetFarm(farm)}
-                                className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:hover:text-red-400 rounded-lg transition-colors cursor-pointer"
                                 title="Eliminar / Dar de baja este campo"
                               >
                                 <Trash2 className="w-4 h-4" />
