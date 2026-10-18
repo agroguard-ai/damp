@@ -226,13 +226,75 @@ export function createCollarScene(
     );
     (shell.material as THREE.Material).userData.baseOpacity = 0.3;
     g.add(shell);
+    const logoTex = track(
+      canvasTexture(256, 256, (ctx) => {
+        ctx.clearRect(0, 0, 256, 256);
+        const cx = 128;
+        const cy = 128;
+        const drawHex = (r: number, width: number, alpha: number) => {
+          ctx.beginPath();
+          for (let i = 0; i < 6; i++) {
+            const a = -Math.PI / 2 + (i * Math.PI) / 3;
+            const x = cx + r * Math.cos(a);
+            const y = cy + r * Math.sin(a);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.strokeStyle = `rgba(74, 222, 128, ${alpha})`;
+          ctx.lineWidth = width;
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+        };
+
+        // Hexágono exterior e interior
+        drawHex(112, 8, 0.95);
+        drawHex(90, 3.5, 0.45);
+
+        // Dos círculos punteados concéntricos
+        ctx.strokeStyle = 'rgba(74, 222, 128, 0.65)';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([8, 10]);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 70, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 48, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Círculo sólido interior verde
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(74, 222, 128, 0.95)';
+        ctx.lineWidth = 6.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 27, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Punto amarillo central
+        ctx.fillStyle = '#ffc107';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+        ctx.fill();
+      })
+    );
     const logo = new THREE.Mesh(
-      geo(new THREE.RingGeometry(0.42, 0.54, 6)),
-      mat(std({ color: '#4ade80', emissive: '#22c55e', emissiveIntensity: 1.4, side: THREE.DoubleSide }))
+      geo(new THREE.PlaneGeometry(1.5, 1.5)),
+      mat(
+        std({
+          map: logoTex,
+          emissive: '#ffffff',
+          emissiveMap: logoTex,
+          emissiveIntensity: 0.9,
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      )
     );
     logo.rotation.x = -Math.PI / 2;
-    logo.rotation.z = Math.PI / 6;
-    logo.position.y = 1.205;
+    logo.position.y = 1.206;
     g.add(logo);
     const screwMat = mat(std({ color: '#c9cfd4', metalness: 1, roughness: 0.3 }));
     for (const [x, z] of [
@@ -573,12 +635,13 @@ export function createCollarScene(
 
     // Cámara: órbita suave con el scroll; se aleja al abrirse y sigue a la pieza activa.
     const aspect = width / height;
-    const fit = aspect < 1 ? 1.1 / aspect : aspect < 1.3 ? 1.25 : 1;
+    const isPortrait = aspect < 1;
+    const fit = isPortrait ? Math.min(1.65, 0.88 / Math.max(aspect, 0.45)) : aspect < 1.3 ? 1.25 : 1;
     const radius = lerp(24, 29, explode) * fit;
     const azimuth = isStatic ? -0.55 : lerp(-0.85, 0.55, p) + Math.sin(t * 0.25) * 0.03;
     const elevation = lerp(0.5, 0.42, explode);
     target.set(0, lerp(1.1, 0.4, explode), 0);
-    target.y = lerp(target.y, focusY + 0.4, focus * 0.28);
+    target.y = lerp(target.y, focusY + (isPortrait ? 0.15 : 0.4), focus * (isPortrait ? 0.65 : 0.28));
     camera.position.set(
       target.x + radius * Math.cos(elevation) * Math.sin(azimuth),
       target.y + radius * Math.sin(elevation),
@@ -612,8 +675,8 @@ export function createCollarScene(
       height = Math.max(1, h);
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
-      // En pantallas verticales el texto ocupa la parte de abajo: subimos el collar.
-      if (width / height < 1) camera.setViewOffset(width, height, 0, height * 0.17, width, height);
+      // En pantallas verticales el texto ocupa la parte de abajo: subimos el collar sin chocar con el header superior.
+      if (width / height < 1) camera.setViewOffset(width, height, 0, height * 0.11, width, height);
       else camera.clearViewOffset();
       camera.updateProjectionMatrix();
     },

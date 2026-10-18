@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { AUTH_COOKIE_NAME } from '@/lib/proxy';
+import { DampLogo } from '@/components/landing/Brand';
 import {
-  Hexagon,
   ArrowLeft,
   Maximize2,
   ExternalLink,
@@ -40,7 +40,7 @@ export default async function ArquitecturaPage() {
             </Link>
             <div className="h-4 w-px bg-border hidden sm:block" />
             <Link href="/" className="inline-flex items-center gap-2 font-bold tracking-tight">
-              <Hexagon className="w-6 h-6 text-primary-600 fill-primary-600/10 shrink-0" />
+              <DampLogo className="w-7 h-7" />
               <span>
                 DAMP <span className="text-primary-700">Agro</span>
               </span>
@@ -276,7 +276,7 @@ export default async function ArquitecturaPage() {
       <footer className="border-t border-border mt-auto">
         <div className="mx-auto max-w-7xl px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted">
           <div className="flex items-center gap-2 font-bold">
-            <Hexagon className="w-4 h-4 text-primary-600 shrink-0" />
+            <DampLogo className="w-5 h-5" />
             <span>DAMP Agro</span>
           </div>
           <p>© {new Date().getFullYear()} DAMP Agro. Documentación y arquitectura técnica del sistema.</p>

@@ -23,8 +23,8 @@ export default async function LandingPage() {
   return (
     <NavThemeProvider>
       <SmoothScroll />
-      <div className="min-h-screen bg-background text-foreground">
-        <div className="bg-primary-950 px-6 py-2 text-center text-sm font-medium text-white">
+      <div className="min-h-screen bg-background text-foreground overflow-x-clip">
+        <div className="bg-primary-950 px-4 sm:px-6 py-2 text-center text-xs sm:text-sm font-medium text-white">
           Prototipo en desarrollo · Buscamos campos para prueba piloto
         </div>
         <Nav isSignedIn={isSignedIn} />

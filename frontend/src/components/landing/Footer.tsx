@@ -6,7 +6,7 @@ const navSectionLinks = [
   { href: '#collar', label: 'El collar' },
   { href: '#como-funciona', label: 'Cómo funciona' },
   { href: '#arquitectura', label: 'Arquitectura' },
-  { href: '#planes', label: 'Planes' },
+  { href: '#contratacion', label: 'Contratación' },
   { href: '#equipo', label: 'Equipo' },
   { href: '#preguntas-frecuentes', label: 'Preguntas' },
 ];
@@ -20,11 +20,11 @@ const secondaryLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-12">
+    <footer className="border-t border-border py-12 overflow-hidden">
       <div className="mx-auto max-w-7xl px-6">
-        <div className="flex justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <Brand className="text-base text-foreground shrink-0" />
-          <div className="flex items-center gap-8 text-sm font-medium text-muted">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 text-sm font-medium text-muted">
             {navSectionLinks.map((link) => (
               <a key={link.href} href={link.href} className="hover:text-foreground transition-colors">
                 {link.label}
