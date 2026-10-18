@@ -118,6 +118,7 @@ export function CollarExplode() {
     const host = pinRef.current;
     if (!canvas || !host) return;
     let cancelled = false;
+    let loading = false;
     let lastActive = -2;
 
     const onFrame = (info: FrameInfo) => {
@@ -134,20 +135,24 @@ export function CollarExplode() {
       tag.style.transform = `translate3d(${Math.min(info.x, Math.max(0, maxX))}px, ${info.y}px, 0)`;
     };
 
-    import('./collar/scene')
-      .then(({ createCollarScene }) => {
-        if (cancelled) return;
-        try {
-          const scene = createCollarScene(canvas, { onFrame, staticProgress: reduced ? 0.5 : undefined });
-          sceneRef.current = scene;
-          const rect = canvas.getBoundingClientRect();
-          scene.resize(rect.width, rect.height);
-          ScrollTrigger.refresh();
-        } catch {
-          setWebglFailed(true);
-        }
-      })
-      .catch(() => setWebglFailed(true));
+    const loadScene = () => {
+      if (loading || sceneRef.current || cancelled) return;
+      loading = true;
+      import('./collar/scene')
+        .then(({ createCollarScene }) => {
+          if (cancelled) return;
+          try {
+            const scene = createCollarScene(canvas, { onFrame, staticProgress: reduced ? 0.5 : undefined });
+            sceneRef.current = scene;
+            const rect = canvas.getBoundingClientRect();
+            scene.resize(rect.width, rect.height);
+            ScrollTrigger.refresh();
+          } catch {
+            setWebglFailed(true);
+          }
+        })
+        .catch(() => setWebglFailed(true));
+    };
 
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
@@ -155,9 +160,19 @@ export function CollarExplode() {
     });
     ro.observe(canvas);
 
-    const io = new IntersectionObserver(([entry]) => sceneRef.current?.setRunning(entry.isIntersecting), {
-      rootMargin: '200px 0px',
-    });
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadScene();
+          sceneRef.current?.setRunning(true);
+        } else {
+          sceneRef.current?.setRunning(false);
+        }
+      },
+      {
+        rootMargin: '400px 0px',
+      }
+    );
     io.observe(host);
 
     return () => {
