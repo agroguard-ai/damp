@@ -67,13 +67,14 @@ function canvasTexture(width: number, height: number, draw: (ctx: CanvasRenderin
   if (ctx) draw(ctx);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 8;
+  texture.anisotropy = 4;
   return texture;
 }
 
 /** Pistas de cobre, vías y serigrafía para la cara superior de una placa. */
 function pcbTexture(label: string, seed: number) {
-  return canvasTexture(1024, 700, (ctx) => {
+  return canvasTexture(512, 350, (ctx) => {
+    ctx.scale(0.5, 0.5);
     const rand = seeded(seed);
     ctx.clearRect(0, 0, 1024, 700);
     ctx.lineCap = 'round';
@@ -380,7 +381,8 @@ export function createCollarScene(
       mat(
         std({
           map: track(
-            canvasTexture(720, 300, (ctx) => {
+            canvasTexture(360, 150, (ctx) => {
+              ctx.scale(0.5, 0.5);
               ctx.fillStyle = '#141917';
               ctx.fillRect(0, 0, 720, 300);
               ctx.fillStyle = '#ecf2ee';
@@ -429,7 +431,8 @@ export function createCollarScene(
     }
     strapGeo.computeVertexNormals();
     const strapTex = track(
-      canvasTexture(2048, 380, (ctx) => {
+      canvasTexture(1024, 190, (ctx) => {
+        ctx.scale(0.5, 0.5);
         ctx.fillStyle = '#17191b';
         ctx.fillRect(0, 0, 2048, 380);
         ctx.strokeStyle = 'rgba(255,255,255,0.035)';
@@ -524,8 +527,8 @@ export function createCollarScene(
   const isStatic = options.staticProgress !== undefined;
 
   function frame() {
-    raf = requestAnimationFrame(frame);
     if (!running) return;
+    raf = requestAnimationFrame(frame);
     const now = performance.now();
     const t = (now - start) / 1000;
     const dt = Math.min(0.1, (now - last) / 1000);
@@ -615,9 +618,18 @@ export function createCollarScene(
       camera.updateProjectionMatrix();
     },
     setRunning(r: boolean) {
+      if (running === r) return;
       running = r;
+      if (running) {
+        last = performance.now();
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(frame);
+      } else {
+        cancelAnimationFrame(raf);
+      }
     },
     dispose() {
+      running = false;
       cancelAnimationFrame(raf);
       for (const d of disposables) d.dispose();
       renderer.dispose();

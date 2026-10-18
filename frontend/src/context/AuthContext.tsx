@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 export interface AuthUser {
@@ -44,6 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const refreshUser = useCallback(async () => {
+    // Si no hay cookie de autenticación y ya no estamos cargando, no tiene sentido consultar
+    if (typeof document !== 'undefined' && !document.cookie.includes('damp_token=') && !user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
@@ -61,8 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return;
         }
-        setUser(data.user || null);
-        setEmulatedUser(data.emulatedUser || null);
+        setUser((prev) => {
+          const next = data.user || null;
+          if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+          return next;
+        });
+        setEmulatedUser((prev) => {
+          const next = data.emulatedUser || null;
+          if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+          return next;
+        });
       } else if (res.status === 401 || res.status === 403) {
         setUser((prevUser) => {
           if (prevUser && typeof window !== 'undefined') {
@@ -81,34 +95,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     void refreshUser();
 
+    // Solo hacemos polling si hay un usuario logueado o token presente
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return; // No saturar mientras la pestaña esté en segundo plano
+      }
+      if (typeof document !== 'undefined' && !document.cookie.includes('damp_token=') && !user) {
+        return; // No consultar si el usuario no tiene sesión
+      }
       void refreshUser();
-    }, 10000);
+    }, 45000); // 45 segundos en vez de 10s para evitar saturar memoria y CPU
 
     const onFocus = () => {
-      void refreshUser();
+      if (typeof document !== 'undefined' && (document.cookie.includes('damp_token=') || user)) {
+        void refreshUser();
+      }
     };
 
     if (typeof window !== 'undefined') {
       window.addEventListener('focus', onFocus);
+      document.addEventListener('visibilitychange', onFocus);
     }
 
     return () => {
       clearInterval(interval);
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus', onFocus);
+        document.removeEventListener('visibilitychange', onFocus);
       }
     };
-  }, [refreshUser]);
+  }, [refreshUser, user]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const login = async (email: string, pass: string) => {
+  const login = useCallback(async (email: string, pass: string) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,9 +152,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/dashboard');
     }
     router.refresh();
-  };
+  }, [router]);
 
-  const changePassword = async (newPassword: string) => {
+  const changePassword = useCallback(async (newPassword: string) => {
     const res = await fetch('/api/auth/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,9 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
     router.push('/dashboard');
     router.refresh();
-  };
+  }, [router]);
 
-  const setEmulation = async (userId: string | null, redirectTo?: string) => {
+  const setEmulation = useCallback(async (userId: string | null, redirectTo?: string) => {
     try {
       const res = await fetch('/api/auth/emulate', {
         method: 'POST',
@@ -168,9 +193,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error toggling emulation:', err);
       throw err;
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
     } finally {
@@ -179,21 +204,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push('/sign-in');
       router.refresh();
     }
-  };
+  }, [router]);
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      emulatedUser,
+      loading,
+      login,
+      changePassword,
+      setEmulation,
+      logout,
+      refreshUser,
+    }),
+    [user, emulatedUser, loading, login, changePassword, setEmulation, logout, refreshUser]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        emulatedUser,
-        loading,
-        login,
-        changePassword,
-        setEmulation,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

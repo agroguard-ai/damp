@@ -35,6 +35,7 @@ export function SidebarLink({ href, label, logo, isCollapsed }: SidebarLinkProps
   return (
     <Link
       href={href}
+      prefetch={false}
       className={`flex items-center py-2.5 rounded-r-lg rounded-l-none text-sm font-medium transition-all pl-2 ${
         isCollapsed ? 'pr-2' : 'pr-3'
       } ${isActive ? activeClasses : inactiveClasses}`}
