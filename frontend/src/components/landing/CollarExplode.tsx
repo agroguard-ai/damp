@@ -14,7 +14,6 @@ interface Part {
   name: string;
   title: string;
   text: string;
-  specs: string[];
   tone: Tone;
 }
 
@@ -24,49 +23,42 @@ const PARTS: Part[] = [
     name: 'Carcasa',
     title: 'Una cáscara para el campo',
     text: 'Protege la electrónica del agua, el barro y los golpes, y deja pasar la señal de radio y del GPS.',
-    specs: ['En diseño', 'Plástico: deja pasar la señal'],
     tone: 'green',
   },
   {
     name: 'GPS',
     title: 'Dónde está el animal',
     text: 'La antena cerámica mira al cielo y calcula latitud y longitud con los satélites que ve.',
-    specs: ['NEO-6M', 'Primer fix 30–60 s'],
     tone: 'green',
   },
   {
     name: 'Radio LoRa',
     title: 'Habla sin internet',
     text: 'Manda los datos por radio al gateway de la base y escucha 1 segundo por si llegan coordenadas nuevas del cerco.',
-    specs: ['915 MHz', '2–5 km en campo abierto', 'Cada 5 min'],
     tone: 'green',
   },
   {
     name: 'Cerebro',
     title: 'Quién decide',
     text: 'Lee los sensores, arma el mensaje, guarda el cerco virtual y calcula si el animal está adentro o afuera.',
-    specs: ['ESP32-S3', '21 × 17,5 mm', 'Cerco de hasta 20 vértices'],
     tone: 'green',
   },
   {
     name: 'Buzzer + LED',
     title: 'Avisa en el momento',
     text: 'Si el animal sale del cerco, el buzzer pita y el LED parpadea ahí mismo, sin esperar al servidor.',
-    specs: ['Buzzer 2000 Hz', 'LED verde'],
-    tone: 'amber',
+    tone: 'green',
   },
   {
     name: 'Batería',
     title: 'De qué vive',
     text: 'Una batería LiPo alimenta todo. Hoy dura unas 7–8 horas; el próximo paso es dormir el collar entre envíos.',
-    specs: ['LiPo 3,7 V', '~7–8 h hoy', 'Deep sleep ~7 µA'],
-    tone: 'amber',
+    tone: 'green',
   },
   {
     name: 'Sensor',
-    title: 'Cómo se siente',
+    title: 'Cómo se mide',
     text: 'Una cápsula de acero en la correa toca el cuello y mide la temperatura para detectar fiebre o hipotermia.',
-    specs: ['DS18B20', '±0,5 °C', 'Fiebre ≥ 39,5 °C'],
     tone: 'green',
   },
 ];
@@ -81,7 +73,6 @@ function stepFromProgress(p: number) {
 }
 
 const toneText: Record<Tone, string> = { green: 'text-primary-400', amber: 'text-accent-400' };
-const toneBorder: Record<Tone, string> = { green: 'border-primary-500/40', amber: 'border-accent-500/40' };
 
 /**
  * "El collar por dentro": sección fija (pin) de la landing. Mientras se
@@ -341,7 +332,7 @@ export function CollarExplode() {
                 {PARTS.map((part, i) => (
                   <StepPanel key={part.name} visible={step === i + 1}>
                     <p className={`font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
-                      {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')} · {part.name}
+                      {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
                     </p>
                     <h3 className="mt-1.5 sm:mt-3 font-display text-2xl sm:text-4xl font-bold tracking-tight text-balance">
                       {part.title}
@@ -349,16 +340,6 @@ export function CollarExplode() {
                     <p className="mt-2 sm:mt-4 max-w-md text-sm sm:text-lg leading-snug sm:leading-relaxed text-neutral-400">
                       {part.text}
                     </p>
-                    <ul className="mt-3.5 sm:mt-6 flex flex-wrap gap-1.5 sm:gap-2">
-                      {part.specs.map((spec) => (
-                        <li
-                          key={spec}
-                          className={`rounded-md border bg-white/3 px-2 sm:px-2.5 py-0.5 sm:py-1 font-mono text-[11px] sm:text-xs text-neutral-200 tabular-nums ${toneBorder[part.tone]}`}
-                        >
-                          {spec}
-                        </li>
-                      ))}
-                    </ul>
                   </StepPanel>
                 ))}
 
@@ -420,7 +401,7 @@ function PartsList() {
       {PARTS.map((part, i) => (
         <li key={part.name} className="rounded-xl border border-white/10 bg-white/3 p-5">
           <p className={`font-mono text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
-            {String(i + 1).padStart(2, '0')} · {part.name}
+            {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
           </p>
           <h3 className="mt-2 font-display text-xl font-bold">{part.title}</h3>
           <p className="mt-2 text-sm leading-relaxed text-neutral-400">{part.text}</p>
