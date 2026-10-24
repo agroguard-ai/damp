@@ -12,7 +12,7 @@ import FarmMapModal from './FarmMapModal';
 
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
 
-const HEATMAP_RANGES = [7, 15, 30] as const;
+const HEATMAP_RANGES = [7, 15, 30, 90] as const;
 
 const HEATMAP_LEGEND = [
   { color: 'bg-lime-500', label: 'Poco' },
@@ -29,6 +29,8 @@ interface HeatmapModalProps {
 /** Mapa de calor de uso del campo: dónde pasó más tiempo la hacienda en los últimos días. */
 export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
   const [days, setDays] = useState<number>(7);
+  // Peso / intensidad que aporta cada lectura a la sumatoria (en %, de 10% a 150%, por defecto 50%)
+  const [intensityPct, setIntensityPct] = useState<number>(50);
   const farmPolygon = useMemo(() => parsePolygon(farm.polygonCoordinates), [farm.polygonCoordinates]);
 
   const fetchHeatmap = useCallback(() => animalsApi.getHeatmap(farm.id, { days }), [farm.id, days]);
@@ -80,6 +82,33 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
           </span>
         </div>
 
+        {/* Control deslizante (Slider) para graduar el peso/intensidad de cada punto */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">Peso por punto (detalle):</span>
+            <span className="text-[11px] text-zinc-500 dark:text-zinc-400 hidden sm:inline">
+              Menor valor exige más lecturas acumuladas para llegar al rojo
+            </span>
+          </div>
+          <div className="flex items-center gap-2.5 flex-1 sm:max-w-xs min-w-48">
+            <span className="text-[10px] text-zinc-400 shrink-0">Más detalle</span>
+            <input
+              type="range"
+              min="10"
+              max="140"
+              step="5"
+              value={intensityPct}
+              onChange={(e) => setIntensityPct(Number(e.target.value))}
+              className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              title="Graduar cuánto aporta cada lectura a la sumatoria del mapa de calor"
+            />
+            <span className="text-[10px] text-zinc-400 shrink-0">Más intenso</span>
+            <span className="font-mono font-bold text-[11px] text-orange-600 dark:text-orange-400 w-10 text-right shrink-0">
+              {intensityPct}%
+            </span>
+          </div>
+        </div>
+
         {!loading && (heatmap?.totalPoints ?? 0) === 0 && (
           <p className="text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2">
             No hay posiciones registradas en los últimos {days} días. Probá con un período más largo.
@@ -92,6 +121,7 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
           animals={[]}
           heatmapPoints={heatmap?.points ?? null}
           showHeatmap
+          heatmapIntensity={intensityPct / 100}
           heightClassName="h-[60vh] min-h-96"
         />
       </div>

@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapActionControls, { type AnimalsToggleControl } from './controls/MapActionControls';
 import AnimalMarkersLayer, { type MapAnimal } from './AnimalMarkersLayer';
+import HeatmapCanvasLayer from './HeatmapCanvasLayer';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
 import type { TrajectoryPoint, HeatmapPoint } from '@/types';
@@ -50,6 +51,8 @@ export interface MapTrajectory {
   name: string;
   color: string;
   points: TrajectoryPoint[];
+  /** Índice hasta donde se visualiza el recorrido en animación/playback (opcional) */
+  progressIndex?: number;
 }
 
 export interface LiveTrackingMapProps {
@@ -66,6 +69,8 @@ export interface LiveTrackingMapProps {
   trajectories?: MapTrajectory[];
   heatmapPoints?: HeatmapPoint[] | null;
   showHeatmap?: boolean;
+  /** Sensibilidad / peso de cada lectura en el mapa de calor (ej. 0.1 a 1.5). */
+  heatmapIntensity?: number;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
   /** Clases de altura del contenedor (por defecto 550px). */
   heightClassName?: string;
@@ -137,98 +142,36 @@ function MapAutoBounds({
   return null;
 }
 
-function HeatmapLayer({ points }: { points: HeatmapPoint[] }) {
-  const data = useMemo(() => {
-    if (!points || points.length === 0) return { cells: [], maxCount: 1 };
-    // Spatial grid binning (~0.0005 deg ~ 50 meters)
-    const binSize = 0.0005;
-    const grid = new Map<string, { lat: number; lng: number; count: number }>();
-    let max = 1;
-
-    points.forEach((p) => {
-      const bLat = Math.round(p.latitude / binSize) * binSize;
-      const bLng = Math.round(p.longitude / binSize) * binSize;
-      const key = `${bLat.toFixed(5)}_${bLng.toFixed(5)}`;
-      const existing = grid.get(key);
-      if (existing) {
-        existing.count += 1;
-        if (existing.count > max) max = existing.count;
-      } else {
-        grid.set(key, { lat: bLat, lng: bLng, count: 1 });
-      }
-    });
-
-    return {
-      cells: Array.from(grid.values()),
-      maxCount: max,
-    };
-  }, [points]);
-
-  if (data.cells.length === 0) return null;
-
-  return (
-    <>
-      {data.cells.map((cell, idx) => {
-        const ratio = cell.count / data.maxCount;
-        let color = '#84cc16'; // Pastoreo leve
-        let intensityLabel = 'Pastoreo bajo / moderado';
-        if (ratio > 0.7) {
-          color = '#ef4444'; // Intensivo
-          intensityLabel = 'Pastoreo intensivo (máxima permanencia)';
-        } else if (ratio > 0.4) {
-          color = '#f97316'; // Alto
-          intensityLabel = 'Pastoreo frecuente';
-        } else if (ratio > 0.2) {
-          color = '#eab308'; // Medio
-          intensityLabel = 'Pastoreo regular';
-        }
-
-        const radius = Math.min(35, Math.max(16, 16 + ratio * 20));
-
-        return (
-          <CircleMarker
-            key={`heat-${idx}`}
-            center={[cell.lat, cell.lng]}
-            radius={radius}
-            pathOptions={{
-              fillColor: color,
-              fillOpacity: 0.35 + ratio * 0.3,
-              stroke: false,
-            }}
-          >
-            <Popup>
-              <div className="p-1.5 text-xs text-zinc-900">
-                <p className="font-bold">{intensityLabel}</p>
-                <p className="text-[11px] text-zinc-600 mt-0.5">
-                  Frecuencia: <b>{cell.count}</b> lecturas detectadas ({Math.round(ratio * 100)}% de intensidad)
-                </p>
-              </div>
-            </Popup>
-          </CircleMarker>
-        );
-      })}
-    </>
-  );
-}
-
 function TrajectoryLayer({
   points,
   animalName,
   color,
+  progressIndex,
 }: {
   points: TrajectoryPoint[];
   animalName: string;
   color: string;
+  progressIndex?: number;
 }) {
   if (!points || points.length === 0) return null;
 
-  const positions: [number, number][] = points.map((p) => [p.latitude, p.longitude]);
-  const startPoint = points[0];
-  const endPoint = points[points.length - 1];
+  const effectiveEndIdx =
+    typeof progressIndex === 'number'
+      ? Math.max(0, Math.min(points.length - 1, progressIndex))
+      : points.length - 1;
+
+  const visiblePoints = points.slice(0, effectiveEndIdx + 1);
+  if (visiblePoints.length === 0) return null;
+
+  const positions: [number, number][] = visiblePoints.map((p) => [p.latitude, p.longitude]);
+  const startPoint = visiblePoints[0];
+  const currentPoint = visiblePoints[visiblePoints.length - 1];
 
   // Intermediary sample points (hasta 20 hitos para no saturar el mapa)
-  const step = Math.max(1, Math.floor(points.length / 20));
-  const samples = points.filter((_, i) => i > 0 && i < points.length - 1 && i % step === 0);
+  const step = Math.max(1, Math.floor(visiblePoints.length / 20));
+  const samples = visiblePoints.filter((_, i) => i > 0 && i < visiblePoints.length - 1 && i % step === 0);
+
+  const isAnimatedInProgress = typeof progressIndex === 'number' && progressIndex < points.length - 1;
 
   return (
     <>
@@ -283,17 +226,25 @@ function TrajectoryLayer({
         </CircleMarker>
       ))}
 
-      {/* End Point */}
-      {points.length > 1 && (
-        <Marker position={[endPoint.latitude, endPoint.longitude]} icon={createTrajectoryEndpointIcon('end', color)}>
+      {/* End Point / Posición en Reproducción */}
+      {visiblePoints.length > 1 && (
+        <Marker
+          position={[currentPoint.latitude, currentPoint.longitude]}
+          icon={createTrajectoryEndpointIcon('end', color)}
+        >
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
-              <span className="inline-block bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
-                🏁 Fin / Posición más reciente
+              <span className={`inline-block font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+              }`}>
+                {isAnimatedInProgress ? '⏱️ Progreso / En movimiento' : '🏁 Fin / Posición más reciente'}
               </span>
               <h4 className="font-bold">{animalName}</h4>
-              <p className="text-zinc-600">Fecha: {new Date(endPoint.timestamp).toLocaleString()}</p>
-              <p className="text-zinc-600">Temp: {endPoint.temperature.toFixed(1)} °C</p>
+              <p className="text-zinc-600">Fecha: {new Date(currentPoint.timestamp).toLocaleString()}</p>
+              <p className="text-zinc-600">Temp: {currentPoint.temperature.toFixed(1)} °C</p>
+              <p className="text-zinc-500 text-[10px]">
+                Punto {effectiveEndIdx + 1} de {points.length}
+              </p>
             </div>
           </Popup>
         </Marker>
@@ -311,6 +262,7 @@ export default function LiveTrackingMap({
   trajectories = [],
   heatmapPoints,
   showHeatmap = false,
+  heatmapIntensity,
   onSelectAnimalForTrajectory,
   heightClassName = 'h-137.5',
 }: LiveTrackingMapProps) {
@@ -395,12 +347,20 @@ export default function LiveTrackingMap({
           );
         })}
 
-        {/* Capa de calor de pastoreo */}
-        {showHeatmap && heatmapPoints && heatmapPoints.length > 0 && <HeatmapLayer points={heatmapPoints} />}
+        {/* Capa de calor de pastoreo (nebulosa continua en Canvas) */}
+        {showHeatmap && heatmapPoints && heatmapPoints.length > 0 && (
+          <HeatmapCanvasLayer points={heatmapPoints} intensity={heatmapIntensity} />
+        )}
 
         {/* Capa de recorrido histórico si está cargada */}
         {trajectories.map((t) => (
-          <TrajectoryLayer key={t.id} points={t.points} animalName={t.name} color={t.color} />
+          <TrajectoryLayer
+            key={t.id}
+            points={t.points}
+            animalName={t.name}
+            color={t.color}
+            progressIndex={t.progressIndex}
+          />
         ))}
 
         {/* Marcadores de animales (ocultos o mostrados según contexto) */}

@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Polygon, Popup, CircleMarker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import MapActionControls from './controls/MapActionControls';
 import AnimalMarkersLayer from './AnimalMarkersLayer';
+import HeatmapCanvasLayer from './HeatmapCanvasLayer';
 import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
@@ -109,34 +110,6 @@ export default function RotationMap({
     if (nextCoords.length > 0) pts.push(...nextCoords);
     return pts;
   }, [activeTransitionCoords, currentCoords, fromCoords, nextCoords]);
-
-  // Heatmap binning
-  const heatmapData = useMemo(() => {
-    if (!showHeatmap || !heatmapPoints || heatmapPoints.length === 0) {
-      return { cells: [], maxCount: 1 };
-    }
-    const binSize = 0.0004; // ~40m
-    const grid = new Map<string, { lat: number; lng: number; count: number }>();
-    let max = 1;
-
-    heatmapPoints.forEach((p) => {
-      const bLat = Math.round(p.latitude / binSize) * binSize;
-      const bLng = Math.round(p.longitude / binSize) * binSize;
-      const key = `${bLat.toFixed(5)}_${bLng.toFixed(5)}`;
-      const existing = grid.get(key);
-      if (existing) {
-        existing.count += 1;
-        if (existing.count > max) max = existing.count;
-      } else {
-        grid.set(key, { lat: bLat, lng: bLng, count: 1 });
-      }
-    });
-
-    return {
-      cells: Array.from(grid.values()),
-      maxCount: max,
-    };
-  }, [heatmapPoints, showHeatmap]);
 
   // Filter animals that have GPS coordinates
   const herd = useAnimalsToggle(farmId);
@@ -337,39 +310,8 @@ export default function RotationMap({
           </Polygon>
         )}
 
-        {/* 6. Capa de Puntos Calientes (Heatmap de Pastoreo) */}
-        {showHeatmap &&
-          heatmapData.cells.map((cell, idx) => {
-            const ratio = cell.count / heatmapData.maxCount;
-            let color = '#84cc16';
-            if (ratio > 0.7) color = '#ef4444';
-            else if (ratio > 0.4) color = '#f97316';
-            else if (ratio > 0.2) color = '#eab308';
-
-            const radius = Math.min(32, Math.max(14, 14 + ratio * 18));
-
-            return (
-              <CircleMarker
-                key={`rot-heat-${idx}`}
-                center={[cell.lat, cell.lng]}
-                radius={radius}
-                pathOptions={{
-                  fillColor: color,
-                  fillOpacity: 0.35 + ratio * 0.35,
-                  stroke: false,
-                }}
-              >
-                <Popup>
-                  <div className="p-1.5 text-xs text-zinc-900">
-                    <p className="font-bold">Punto Caliente de Pastoreo</p>
-                    <p className="text-[11px] text-zinc-600 mt-0.5">
-                      Intensidad: <b>{cell.count}</b> lecturas detectadas ({Math.round(ratio * 100)}% del máximo)
-                    </p>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            );
-          })}
+        {/* 6. Capa de Puntos Calientes (Heatmap de Pastoreo en Nebulosa Continua) */}
+        {showHeatmap && heatmapPoints && heatmapPoints.length > 0 && <HeatmapCanvasLayer points={heatmapPoints} />}
 
         {/* 7. Hacienda (capa opcional) */}
         {herd.enabled && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}

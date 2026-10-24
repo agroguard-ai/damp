@@ -44,12 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const refreshUser = useCallback(async () => {
-    // Si no hay cookie de autenticación y ya no estamos cargando, no tiene sentido consultar
-    if (typeof document !== 'undefined' && !document.cookie.includes('damp_token=') && !user) {
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
@@ -106,16 +100,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
         return; // No saturar mientras la pestaña esté en segundo plano
       }
-      if (typeof document !== 'undefined' && !document.cookie.includes('damp_token=') && !user) {
-        return; // No consultar si el usuario no tiene sesión
-      }
       void refreshUser();
     }, 45000); // 45 segundos en vez de 10s para evitar saturar memoria y CPU
 
     const onFocus = () => {
-      if (typeof document !== 'undefined' && (document.cookie.includes('damp_token=') || user)) {
-        void refreshUser();
-      }
+      void refreshUser();
     };
 
     if (typeof window !== 'undefined') {

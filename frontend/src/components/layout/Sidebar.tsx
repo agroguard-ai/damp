@@ -19,11 +19,12 @@ import {
   Users,
   Building2,
   Activity,
+  LogOut,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const { user, emulatedUser } = useAuth();
+  const { user, emulatedUser, logout } = useAuth();
   const { adminFarmId } = useFarmPermissions();
 
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
@@ -194,6 +195,26 @@ export default function Sidebar() {
           </div>
         )}
       </nav>
+
+      {/* Footer con opción de Logout fija en Sidebar */}
+      <div className="p-3 border-t border-zinc-800">
+        <button
+          onClick={() => void logout()}
+          className="w-full flex items-center py-2.5 rounded-lg text-sm font-medium transition-colors text-zinc-400 hover:text-red-400 hover:bg-zinc-800/60 px-3 cursor-pointer"
+          title="Cerrar sesión"
+        >
+          <span className="shrink-0 w-6 h-6 flex items-center justify-center">
+            <LogOut className="w-5 h-5" />
+          </span>
+          <span
+            className={`transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ${
+              isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-40 ml-3 text-base'
+            }`}
+          >
+            Cerrar Sesión
+          </span>
+        </button>
+      </div>
     </aside>
   );
 }

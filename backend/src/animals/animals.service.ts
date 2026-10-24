@@ -909,11 +909,12 @@ export class AnimalsService {
         collarId: { in: collarIds },
         timestamp: timestampFilter,
       },
+      orderBy: { timestamp: 'desc' },
       select: {
         latitude: true,
         longitude: true,
       },
-      take: 2000,
+      take: 10000,
     });
 
     return {

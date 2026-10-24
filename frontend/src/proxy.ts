@@ -5,6 +5,7 @@ const AUTH_COOKIE_NAME = 'damp_token';
 const PUBLIC_PATHS = [
   '/',
   '/sign-in',
+  '/logout',
   '/api/auth/login',
   '/api/auth/logout',
   '/api/iot',
