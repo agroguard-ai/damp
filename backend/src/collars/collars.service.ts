@@ -252,16 +252,11 @@ export class CollarsService {
     const collar = await this.getOrThrow(id);
 
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
-    if (!isSuperAdmin && user?.sub) {
-      const farmIds = await this.getUserWritableFarmIds(user.sub);
-      const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
-      if (!belongsToFarm) {
-        throw new ForbiddenException('No tienes permisos para modificar el estado de este collar');
-      }
+    if (!isSuperAdmin) {
+      throw new ForbiddenException('Solo el superadministrador puede modificar el estado de un collar');
     }
 
-    if (status !== 'AVAILABLE') {
-      // Marking a collar damaged/out of service releases whatever animal is currently wearing it.
+    if (status !== CollarStatus.AVAILABLE) {
       await this.prisma.animalCollar.updateMany({
         where: { collarId: id, endAt: null },
         data: { endAt: new Date() },
@@ -327,6 +322,10 @@ export class CollarsService {
   async syncFence(id: number, user?: JwtPayload) {
     const collar = await this.getOrThrow(id);
 
+    if (collar.isArchived) {
+      throw new BadRequestException(`El collar #${id} está archivado / fuera de servicio.`);
+    }
+
     const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN && !user?.isEmulated;
     if (!isSuperAdmin && user?.sub) {
       const farmIds = await this.getUserWritableFarmIds(user.sub);
@@ -334,6 +333,42 @@ export class CollarsService {
       if (!belongsToFarm) {
         throw new ForbiddenException('No tienes acceso a este collar');
       }
+    }
+
+    // Verificar que el collar esté colocado en un animal
+    const activeAssignment = await this.prisma.animalCollar.findFirst({
+      where: { collarId: id, endAt: null },
+      include: {
+        animal: {
+          select: {
+            id: true,
+            tag: true,
+            farmId: true,
+            animalGeofences: {
+              where: { endAt: null, geofence: { active: true } },
+              include: { geofence: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!activeAssignment) {
+      throw new BadRequestException(
+        `El collar #${id} (${collar.identifier}) no está colocado en ningún animal para sincronizar cerco.`
+      );
+    }
+
+    // Verificar si el animal tiene cerco activo o si el campo tiene plan de rotación activo
+    const hasGeofence = activeAssignment.animal.animalGeofences.length > 0;
+    const hasRotationPlan = await this.prisma.rotationPlan.findFirst({
+      where: { farmId: activeAssignment.animal.farmId, status: 'ACTIVE' },
+    });
+
+    if (!hasGeofence && !hasRotationPlan) {
+      throw new BadRequestException(
+        `El animal ${activeAssignment.animal.tag || activeAssignment.animal.id} no posee ningún cerco virtual activo ni plan de rotación asignado. Asignale un cerco antes de sincronizar.`
+      );
     }
 
     return this.prisma.collar.update({
@@ -374,7 +409,7 @@ export class CollarsService {
     return this.prisma.collar.delete({ where: { id } });
   }
 
-  async assertAvailableForAssignment(id: number) {
+  async assertAvailableForAssignment(id: number, targetFarmId?: string) {
     const collar = await this.prisma.collar.findUnique({ where: { id } });
     if (!collar) {
       throw new NotFoundException(`El collar con ID ${id} no existe.`);
@@ -382,8 +417,17 @@ export class CollarsService {
     if (collar.isArchived) {
       throw new BadRequestException(`El collar ${collar.identifier} está archivado / fuera de servicio.`);
     }
-    if (collar.status !== 'AVAILABLE') {
-      throw new BadRequestException(`El collar ${collar.identifier} no está disponible (estado: ${collar.status}).`);
+    if (targetFarmId) {
+      if (!collar.farmId) {
+        throw new BadRequestException(
+          `El collar ${collar.identifier} se encuentra en Stock Central. Debe ser asignado a este establecimiento por el Superadministrador antes de colocarlo en ganado.`
+        );
+      }
+      if (collar.farmId !== targetFarmId) {
+        throw new BadRequestException(
+          `El collar ${collar.identifier} pertenece a otro establecimiento. No puede ser colocado en ganado de este campo.`
+        );
+      }
     }
     const activeAssignment = await this.prisma.animalCollar.findFirst({
       where: { collarId: id, endAt: null },

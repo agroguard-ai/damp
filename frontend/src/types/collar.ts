@@ -1,6 +1,6 @@
 import type { TelemetryReading } from './telemetry';
 
-export type CollarStatus = 'AVAILABLE' | 'DAMAGED' | 'OUT_OF_SERVICE';
+export type CollarStatus = 'AVAILABLE' | 'OUT_OF_SERVICE';
 
 export interface Collar {
   id: number;

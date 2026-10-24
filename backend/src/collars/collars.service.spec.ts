@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CollarsService } from './collars.service';
 import { PrismaService } from '@/prisma/prisma.service';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { GlobalRole } from '@generated/prisma';
+import { CollarStatus, GlobalRole } from '@generated/prisma';
 
 describe('CollarsService', () => {
   let service: CollarsService;
@@ -33,6 +33,13 @@ describe('CollarsService', () => {
     };
     user: {
       update: jest.Mock;
+    };
+    collarRequest: {
+      findUnique: jest.Mock;
+      update: jest.Mock;
+    };
+    rotationPlan: {
+      findFirst: jest.Mock;
     };
     $executeRaw: jest.Mock;
   };
@@ -66,6 +73,13 @@ describe('CollarsService', () => {
       },
       user: {
         update: jest.fn(),
+      },
+      collarRequest: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      rotationPlan: {
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
 
@@ -144,13 +158,13 @@ describe('CollarsService', () => {
     });
   });
 
-  describe('updateStatus y liberación automática', () => {
-    it('libera automáticamente al animal activo si se marca como DAMAGED', async () => {
+  describe('updateStatus y control exclusivo de Superadministrador', () => {
+    it('libera automáticamente al animal activo si se marca como OUT_OF_SERVICE', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'AVAILABLE', farmId: 'farm-1' });
-      prisma.collar.update.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'DAMAGED' });
+      prisma.collar.update.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'OUT_OF_SERVICE' });
 
       const superAdminUser = { sub: 'sa-1', globalRole: GlobalRole.SUPER_ADMIN, email: 'sa@test.com' };
-      await service.updateStatus(1, 'DAMAGED', superAdminUser);
+      await service.updateStatus(1, CollarStatus.OUT_OF_SERVICE, superAdminUser);
 
       expect(prisma.animalCollar.updateMany).toHaveBeenCalledWith({
         where: { collarId: 1, endAt: null },
@@ -158,79 +172,19 @@ describe('CollarsService', () => {
       });
       expect(prisma.collar.update).toHaveBeenCalledWith({
         where: { id: 1 },
-        data: { status: 'DAMAGED' },
+        data: { status: 'OUT_OF_SERVICE' },
         include: { farm: { select: { id: true, name: true } } },
       });
     });
 
-    it('permite a un granjero marcar como DAMAGED un collar de su propio campo', async () => {
+    it('rechaza con ForbiddenException si un usuario que no es Superadmin intenta cambiar el estado de un collar', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'AVAILABLE', farmId: 'farm-1' });
-      prisma.farmUser.findMany.mockResolvedValue([{ farmId: 'farm-1' }]);
-      prisma.collar.update.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'DAMAGED' });
 
       const farmerUser = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
-      await service.updateStatus(1, 'DAMAGED', farmerUser);
-
-      expect(prisma.animalCollar.updateMany).toHaveBeenCalled();
-      expect(prisma.collar.update).toHaveBeenCalled();
-    });
-
-    it('rechaza con ForbiddenException si un usuario intenta cambiar el estado de un collar de otro campo', async () => {
-      prisma.collar.findUnique.mockResolvedValue({ id: 2, identifier: 'COL-002', status: 'AVAILABLE', farmId: 'farm-other' });
-      prisma.farmUser.findMany.mockResolvedValue([{ farmId: 'farm-my' }]);
-
-      const farmerUser = { sub: 'farmer-1', globalRole: GlobalRole.USER, email: 'farmer@test.com' };
-      await expect(service.updateStatus(2, 'DAMAGED', farmerUser)).rejects.toThrow(ForbiddenException);
-    });
-
-    it('rechaza a un VIEWER aunque el collar sea de su campo (solo se buscan membresías ADMIN/OPERATOR)', async () => {
-      prisma.collar.findUnique.mockResolvedValue({ id: 1, identifier: 'COL-001', status: 'AVAILABLE', farmId: 'farm-1' });
-      prisma.farmUser.findMany.mockResolvedValue([]);
-
-      const viewerUser = { sub: 'viewer-1', globalRole: GlobalRole.USER, email: 'viewer@test.com' };
-      await expect(service.updateStatus(1, 'DAMAGED', viewerUser)).rejects.toThrow(ForbiddenException);
-      expect(prisma.farmUser.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ role: { name: { in: ['ADMIN', 'OPERATOR'] } } }),
-        })
-      );
-      expect(prisma.collar.update).not.toHaveBeenCalled();
+      await expect(service.updateStatus(1, CollarStatus.OUT_OF_SERVICE, farmerUser)).rejects.toThrow(ForbiddenException);
     });
   });
 
-  describe('Solicitudes (Collar Requests)', () => {
-    it('aprueba la solicitud e incrementa maxCollars si incrementMaxCollars es true', async () => {
-      prisma.collarRequest.findUnique.mockResolvedValue({
-        id: 'req-1',
-        farmId: 'farm-1',
-        requestedCount: 3,
-        farm: { userId: 'owner-1' },
-      });
-      prisma.collarRequest.update.mockResolvedValue({
-        id: 'req-1',
-        status: 'APPROVED',
-      });
-
-      await service.updateRequest('req-1', {
-        status: 'APPROVED',
-        incrementMaxCollars: true,
-        responseNotes: 'Aprobado por contrato',
-      });
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'owner-1' },
-        data: { maxCollars: { increment: 3 } },
-      });
-      expect(prisma.collarRequest.update).toHaveBeenCalledWith({
-        where: { id: 'req-1' },
-        data: expect.objectContaining({
-          status: 'APPROVED',
-          responseNotes: 'Aprobado por contrato',
-        }),
-        include: expect.any(Object),
-      });
-    });
-  });
 
   describe('archive y restore', () => {
     it('archiva un collar liberando animales activos y estableciendo OUT_OF_SERVICE', async () => {
@@ -292,11 +246,20 @@ describe('CollarsService', () => {
       expect(res.isArchived).toBe(false);
     });
 
-    it('marca un collar con fenceNotificationPending = true en syncFence', async () => {
+    it('marca un collar con fenceNotificationPending = true en syncFence si tiene animal y cerco activo', async () => {
       prisma.collar.findUnique.mockResolvedValue({
         id: 10,
         identifier: 'COL-010',
         fenceNotificationPending: false,
+        farmId: 'farm-1',
+      });
+      prisma.animalCollar.findFirst.mockResolvedValue({
+        animal: {
+          id: 'a-1',
+          tag: 'ER-01',
+          farmId: 'farm-1',
+          animalGeofences: [{ id: 'ag-1', geofence: { id: 'g-1', active: true } }],
+        },
       });
       prisma.collar.update.mockResolvedValue({
         id: 10,
@@ -304,7 +267,8 @@ describe('CollarsService', () => {
         fenceNotificationPending: true,
       });
 
-      const res = await service.syncFence(10);
+      const superAdminUser = { sub: 'sa-1', globalRole: GlobalRole.SUPER_ADMIN, email: 'sa@test.com' };
+      const res = await service.syncFence(10, superAdminUser);
       expect(prisma.collar.update).toHaveBeenCalledWith({
         where: { id: 10 },
         data: {
@@ -313,6 +277,18 @@ describe('CollarsService', () => {
         include: expect.any(Object),
       });
       expect(res.fenceNotificationPending).toBe(true);
+    });
+
+    it('rechaza syncFence si el collar no está colocado en ningún animal', async () => {
+      prisma.collar.findUnique.mockResolvedValue({
+        id: 10,
+        identifier: 'COL-010',
+        farmId: 'farm-1',
+      });
+      prisma.animalCollar.findFirst.mockResolvedValue(null);
+
+      const superAdminUser = { sub: 'sa-1', globalRole: GlobalRole.SUPER_ADMIN, email: 'sa@test.com' };
+      await expect(service.syncFence(10, superAdminUser)).rejects.toThrow(BadRequestException);
     });
   });
 

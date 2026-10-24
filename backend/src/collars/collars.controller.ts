@@ -41,6 +41,8 @@ export class CollarsController {
   }
 
   @Patch(':id/status')
+  @UseGuards(GlobalRolesGuard)
+  @GlobalRoles(GlobalRole.SUPER_ADMIN)
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateCollarStatusDto,

@@ -43,14 +43,12 @@ import { Select } from '@/components/ui/Select';
 
 const STATUS_LABELS: Record<CollarStatus, string> = {
   AVAILABLE: 'Disponible',
-  DAMAGED: 'Dañado',
   OUT_OF_SERVICE: 'Fuera de servicio',
 };
 
 const STATUS_CLASSES: Record<CollarStatus, string> = {
   AVAILABLE:
     'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/30',
-  DAMAGED: 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30',
   OUT_OF_SERVICE: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/30',
 };
 
@@ -375,27 +373,6 @@ export default function CollaresPage() {
     }
   };
 
-  // Handle status change
-  const handleStatusChange = async (id: number, status: CollarStatus) => {
-    if (status !== 'AVAILABLE') {
-      const ok = await confirm({
-        title: `Marcar collar como ${STATUS_LABELS[status]}`,
-        description:
-          'Si este collar está asignado a un animal, se liberará automáticamente para que puedas colocarle otro dispositivo inmediatamente.',
-        confirmLabel: 'Confirmar Cambio de Estado',
-        danger: true,
-      });
-      if (!ok) return;
-    }
-    try {
-      await updateStatus(id, status);
-      toast.success('Estado del collar actualizado correctamente');
-      refetch();
-      if (expandedId === id) refetchDetail();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al actualizar estado');
-    }
-  };
 
   // Handle archive collar
   const handleArchive = async (collar: Collar) => {
@@ -815,10 +792,16 @@ export default function CollaresPage() {
                             className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${
                               c.isArchived
                                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'
-                                : STATUS_CLASSES[c.status]
+                                : c.farmId
+                                ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40'
+                                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
                             }`}
                           >
-                            {c.isArchived ? 'Archivado' : STATUS_LABELS[c.status]}
+                            {c.isArchived
+                              ? 'Archivado'
+                              : c.farmId
+                              ? 'Asignado a Campo'
+                              : 'Disponible (Stock Central)'}
                           </span>
                         </div>
 
@@ -828,6 +811,11 @@ export default function CollaresPage() {
                             <span className="text-zinc-500 dark:text-zinc-400 font-medium inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700/40">
                               <RadioOff className="w-3.5 h-3.5 text-zinc-400" />
                               Dado de baja / Fuera de servicio
+                            </span>
+                          ) : !c.farmId ? (
+                            <span className="text-amber-700 dark:text-amber-400 font-medium inline-flex items-center gap-1.5 bg-amber-50/60 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
+                              <Layers className="w-3.5 h-3.5 text-amber-500" />
+                              Stock Central: disponible para asignación a un campo (Superadministrador)
                             </span>
                           ) : c.assignedAnimal ? (
                             <div className="flex flex-wrap items-center gap-1.5">
@@ -858,28 +846,12 @@ export default function CollaresPage() {
                               )}
                             </div>
                           ) : (
-                            <span className="text-amber-700 dark:text-amber-400 font-medium inline-flex items-center gap-1.5 bg-amber-50/60 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
-                              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                              Libre para colocar en ganado
+                            <span className="text-emerald-700 dark:text-emerald-400 font-medium inline-flex items-center gap-1.5 bg-emerald-50/60 dark:bg-emerald-950/20 px-2.5 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/40">
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              Libre para colocar en ganado del campo
                             </span>
                           )}
                         </div>
-                      </div>
-
-                      {/* Role action quick toggle */}
-                      <div className="shrink-0 flex items-center gap-1.5">
-                        <Select
-                          value={c.status}
-                          disabled={!canEditIn(c.farmId)}
-                          onChange={(v) => void handleStatusChange(c.id, v as CollarStatus)}
-                          size="sm"
-                          className="w-36"
-                          options={[
-                            { value: 'AVAILABLE', label: 'Disponible' },
-                            { value: 'DAMAGED', label: 'Dañado' },
-                            ...(isSuperAdmin ? [{ value: 'OUT_OF_SERVICE', label: 'Fuera de servicio' }] : []),
-                          ]}
-                        />
                       </div>
                     </div>
 
@@ -936,7 +908,11 @@ export default function CollaresPage() {
                           onClick={() => void handleSyncFence(c)}
                           disabled={syncingCollarId === c.id}
                           className="p-1.5 text-indigo-600 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 rounded-lg hover:bg-indigo-100 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
-                          title="Forzar retransmisión de las coordenadas del cerco en el próximo reporte del collar"
+                          title={
+                            c.lastFenceSyncedAt
+                              ? `Forzar reenvío del cerco (Última sincronización confirmada: ${new Date(c.lastFenceSyncedAt).toLocaleString('es-AR')})`
+                              : 'Forzar retransmisión de las coordenadas del cerco en el próximo reporte del collar'
+                          }
                         >
                           <RefreshCw className={`w-3.5 h-3.5 ${syncingCollarId === c.id ? 'animate-spin' : ''}`} />
                           Sincronizar Cerco

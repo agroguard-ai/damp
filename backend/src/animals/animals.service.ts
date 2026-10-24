@@ -59,7 +59,7 @@ export class AnimalsService {
     await this.checkFarmAccess(farmId, userId);
 
     if (collarId) {
-      await this.collarsService.assertAvailableForAssignment(collarId);
+      await this.collarsService.assertAvailableForAssignment(collarId, farmId);
     }
 
     const animal = await this.prisma.animal.create({
@@ -84,11 +84,10 @@ export class AnimalsService {
         },
       });
 
-      // Asegurar que el collar quede asignado al farmId de este animal y con notificación pendiente de cerco
+      // Asegurar que el collar quede con notificación pendiente de cerco para recibirlo en su próximo reporte
       await this.prisma.collar.update({
         where: { id: collarId },
         data: {
-          farmId,
           fenceNotificationPending: true,
         },
       });
@@ -570,7 +569,7 @@ export class AnimalsService {
     }
 
     await this.checkFarmAccess(animal.farmId, userId);
-    await this.collarsService.assertAvailableForAssignment(collarId);
+    await this.collarsService.assertAvailableForAssignment(collarId, animal.farmId);
 
     const now = new Date();
 
@@ -592,11 +591,10 @@ export class AnimalsService {
         },
       });
 
-      // Asegurar farmId en el collar y marcarlo pendiente de notificación de cerco
+      // Asegurar que el collar quede con notificación pendiente de cerco para recibirlo en su próximo reporte
       await tx.collar.update({
         where: { id: collarId },
         data: {
-          farmId: animal.farmId,
           fenceNotificationPending: true,
         },
       });

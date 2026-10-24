@@ -127,7 +127,6 @@ model Animal {
 
 enum CollarStatus {
   AVAILABLE
-  DAMAGED
   OUT_OF_SERVICE
 }
 

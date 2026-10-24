@@ -156,7 +156,9 @@ export class IotService {
     // Solo debe realizarse cuando haya cambios pendientes de notificación en el cerco para este collar.
     // Si ya fue notificado previamente, devolvemos "NONE" para evitar retransmitir todo el listado
     // de coordenadas en cada reporte y cuidar ancho de banda LoRa y batería del nodo.
-    if (!collar.fenceNotificationPending) {
+    const isTransitioning = Boolean((activeFence as any).transition?.isTransitioning);
+
+    if (!collar.fenceNotificationPending && !isTransitioning) {
       return { downlink: 'NONE' };
     }
 
@@ -170,6 +172,10 @@ export class IotService {
         lastFenceSyncedAt: new Date(),
       },
     });
+
+    this.logger.log(
+      `[IoT Downlink] Transmitiendo cerco "${activeFence.geofenceName}" (${polygon.length} vértices) al collar #${payload.collar_id}`
+    );
 
     return { downlink };
   }

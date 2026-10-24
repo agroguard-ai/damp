@@ -193,7 +193,22 @@ async function sendReading(s) {
       body: JSON.stringify(body),
     });
     const text = await res.text();
-    log(zoneTag, `${s.identifier} ${phaseTag} temp=${body.temp}°C lat=${body.lat} lng=${body.lng} → HTTP ${res.status} ${res.ok ? '' : text}`);
+    let downlinkMsg = '';
+    if (res.status === 200 && text) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.downlink && parsed.downlink !== 'NONE') {
+          const vertexCount = parsed.downlink.split(';').length;
+          downlinkMsg = ` 📥 [DOWNLINK CERCO RECIBIDO: ${vertexCount} vértices]`;
+        }
+      } catch {
+        downlinkMsg = ` 📥 [DOWNLINK: ${text}]`;
+      }
+    }
+    log(
+      zoneTag,
+      `${s.identifier} ${phaseTag} temp=${body.temp}°C lat=${body.lat} lng=${body.lng} → HTTP ${res.status}${downlinkMsg} ${!res.ok ? text : ''}`
+    );
   } catch (err) {
     log('❌', `${s.identifier} error de red: ${err.message}`);
   }
