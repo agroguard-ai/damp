@@ -57,12 +57,13 @@ export function Founders() {
 
       <div className="mt-12 relative w-full h-64 sm:h-96 lg:h-120 rounded-2xl overflow-hidden border border-border shadow-lg bg-surface-raised">
         <Image
-          src="/pictures/team_photo.jpg"
+          src="/pictures/grupo.jpeg"
           alt="Fotografía del equipo fundador de DAMP Agro: Matías, Santino y Tomás"
           fill
           priority
           sizes="(max-width: 1280px) 100vw, 1280px"
-          className="object-cover"
+          style={{ objectPosition: 'center 26%' }}
+          className="object-cover -scale-x-100"
         />
       </div>
 

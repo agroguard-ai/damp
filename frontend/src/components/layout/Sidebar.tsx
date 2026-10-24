@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { SidebarLink } from '@/components/layout/SidebarLink';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
+import { DampLogo } from '@/components/landing/Brand';
 import {
-  Hexagon,
   Menu,
   LayoutDashboard,
   Tractor,
@@ -43,9 +43,9 @@ export default function Sidebar() {
           className="w-full flex items-center font-bold text-lg tracking-tight text-white transition-colors focus:outline-none cursor-pointer"
           title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
-          <div className="relative w-6 h-6 shrink-0 flex items-center justify-center">
-            <Hexagon
-              className={`absolute w-6 h-6 text-green-600 dark:text-green-500 transition-all duration-300 ${
+          <div className="relative w-7 h-7 shrink-0 flex items-center justify-center">
+            <DampLogo
+              className={`absolute w-7 h-7 transition-all duration-300 ${
                 isCollapsed ? 'opacity-0 scale-75 rotate-90' : 'opacity-100 scale-100 rotate-0'
               }`}
             />

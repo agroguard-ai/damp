@@ -14,7 +14,6 @@ interface Part {
   name: string;
   title: string;
   text: string;
-  specs: string[];
   tone: Tone;
 }
 
@@ -24,49 +23,42 @@ const PARTS: Part[] = [
     name: 'Carcasa',
     title: 'Una cáscara para el campo',
     text: 'Protege la electrónica del agua, el barro y los golpes, y deja pasar la señal de radio y del GPS.',
-    specs: ['En diseño', 'Plástico: deja pasar la señal'],
     tone: 'green',
   },
   {
     name: 'GPS',
     title: 'Dónde está el animal',
     text: 'La antena cerámica mira al cielo y calcula latitud y longitud con los satélites que ve.',
-    specs: ['NEO-6M', 'Primer fix 30–60 s'],
     tone: 'green',
   },
   {
     name: 'Radio LoRa',
     title: 'Habla sin internet',
     text: 'Manda los datos por radio al gateway de la base y escucha 1 segundo por si llegan coordenadas nuevas del cerco.',
-    specs: ['915 MHz', '2–5 km en campo abierto', 'Cada 5 min'],
     tone: 'green',
   },
   {
     name: 'Cerebro',
     title: 'Quién decide',
     text: 'Lee los sensores, arma el mensaje, guarda el cerco virtual y calcula si el animal está adentro o afuera.',
-    specs: ['ESP32-S3', '21 × 17,5 mm', 'Cerco de hasta 20 vértices'],
     tone: 'green',
   },
   {
     name: 'Buzzer + LED',
     title: 'Avisa en el momento',
     text: 'Si el animal sale del cerco, el buzzer pita y el LED parpadea ahí mismo, sin esperar al servidor.',
-    specs: ['Buzzer 2000 Hz', 'LED verde'],
-    tone: 'amber',
+    tone: 'green',
   },
   {
     name: 'Batería',
     title: 'De qué vive',
     text: 'Una batería LiPo alimenta todo. Hoy dura unas 7–8 horas; el próximo paso es dormir el collar entre envíos.',
-    specs: ['LiPo 3,7 V', '~7–8 h hoy', 'Deep sleep ~7 µA'],
-    tone: 'amber',
+    tone: 'green',
   },
   {
     name: 'Sensor',
-    title: 'Cómo se siente',
+    title: 'Cómo se mide',
     text: 'Una cápsula de acero en la correa toca el cuello y mide la temperatura para detectar fiebre o hipotermia.',
-    specs: ['DS18B20', '±0,5 °C', 'Fiebre ≥ 39,5 °C'],
     tone: 'green',
   },
 ];
@@ -81,7 +73,6 @@ function stepFromProgress(p: number) {
 }
 
 const toneText: Record<Tone, string> = { green: 'text-primary-400', amber: 'text-accent-400' };
-const toneBorder: Record<Tone, string> = { green: 'border-primary-500/40', amber: 'border-accent-500/40' };
 
 /**
  * "El collar por dentro": sección fija (pin) de la landing. Mientras se
@@ -102,6 +93,7 @@ export function CollarExplode() {
   const tagLabelRef = useRef<HTMLSpanElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<CollarScene | null>(null);
+  const progressRef = useRef(0);
   const [step, setStep] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [webglFailed, setWebglFailed] = useState(false);
@@ -130,9 +122,16 @@ export function CollarExplode() {
         tag.dataset.tone = info.active >= 0 ? PARTS[info.active].tone : 'green';
       }
       tag.style.opacity = String(Math.max(0, info.visibility * 1.4 - 0.4));
-      // Que la etiqueta no se salga por la derecha en pantallas angostas.
-      const maxX = (tag.parentElement?.clientWidth ?? 0) - (tagLabelRef.current?.offsetWidth ?? 0) - 72;
-      tag.style.transform = `translate3d(${Math.min(info.x, Math.max(0, maxX))}px, ${info.y}px, 0)`;
+      // Que la etiqueta no se salga por los bordes ni pise el texto inferior en mobile.
+      const parentW = tag.parentElement?.clientWidth ?? window.innerWidth;
+      const parentH = tag.parentElement?.clientHeight ?? window.innerHeight;
+      const tagW = (tagLabelRef.current?.offsetWidth ?? 90) + 56;
+      const maxX = Math.max(12, parentW - tagW - 12);
+      const clampedX = Math.min(Math.max(12, info.x), maxX);
+      const isMobile = parentW < 1024;
+      const maxY = isMobile ? parentH * 0.52 : parentH - 48;
+      const clampedY = Math.min(Math.max(84, info.y), maxY);
+      tag.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
     };
 
     const loadScene = () => {
@@ -146,7 +145,7 @@ export function CollarExplode() {
             sceneRef.current = scene;
             const rect = canvas.getBoundingClientRect();
             scene.resize(rect.width, rect.height);
-            ScrollTrigger.refresh();
+            scene.setProgress(progressRef.current);
           } catch {
             setWebglFailed(true);
           }
@@ -196,6 +195,7 @@ export function CollarExplode() {
       scrub: true,
       anticipatePin: 1,
       onUpdate: (self) => {
+        progressRef.current = self.progress;
         sceneRef.current?.setProgress(self.progress);
         if (barRef.current) barRef.current.style.transform = `scaleY(${self.progress})`;
         setStep((prev) => {
@@ -259,18 +259,25 @@ export function CollarExplode() {
               className="pointer-events-none absolute left-0 top-0 opacity-0 will-change-transform group"
             >
               <div className="flex -translate-y-1/2 items-center">
-                <span className="h-px w-10 bg-primary-400/80 group-data-[tone=amber]:bg-accent-400/80" />
+                <span className="h-px w-6 sm:w-10 bg-primary-400/80 group-data-[tone=amber]:bg-accent-400/80" />
                 <span className="h-2 w-2 -ml-1 order-first rounded-full bg-primary-400 shadow-[0_0_12px_rgba(74,222,128,0.9)] group-data-[tone=amber]:bg-accent-400" />
                 <span
                   ref={tagLabelRef}
-                  className="ml-1 whitespace-nowrap rounded-full border border-primary-500/70 bg-neutral-950/85 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-primary-300 backdrop-blur group-data-[tone=amber]:border-accent-500/70 group-data-[tone=amber]:text-accent-300"
+                  className="ml-1 whitespace-nowrap rounded-full border border-primary-500/70 bg-neutral-950/85 px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.12em] sm:tracking-[0.14em] text-primary-300 backdrop-blur group-data-[tone=amber]:border-accent-500/70 group-data-[tone=amber]:text-accent-300"
                 />
               </div>
             </div>
 
             {/* Encabezado fijo */}
-            <div className="pointer-events-none absolute left-0 right-0 top-0 mx-auto max-w-7xl px-6 pt-24 lg:pt-28">
-              <span className="text-sm font-semibold uppercase tracking-wider text-primary-400">Por dentro del collar</span>
+            <div className="pointer-events-none absolute left-0 right-0 top-0 mx-auto max-w-7xl px-5 sm:px-6 pt-20 lg:pt-28 flex items-center justify-between">
+              <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-primary-400">
+                Por dentro del collar
+              </span>
+              {activePart >= 0 && (
+                <span className="lg:hidden rounded-full border border-white/15 bg-neutral-900/80 backdrop-blur px-2.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                  {String(activePart + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
+                </span>
+              )}
             </div>
 
             {/* Lista de piezas + progreso (escritorio) */}
@@ -303,56 +310,52 @@ export function CollarExplode() {
 
             {/* Textos por paso */}
             <div className="pointer-events-none absolute inset-x-0 bottom-0 lg:inset-y-0 lg:left-auto lg:right-0 lg:w-[40%]">
-              <div className="relative h-[44svh] bg-linear-to-t from-neutral-950 via-neutral-950/90 to-transparent lg:h-full lg:bg-none">
+              <div className="relative h-[42svh] sm:h-[44svh] bg-linear-to-t from-neutral-950 via-neutral-950/95 via-65% to-transparent lg:h-full lg:bg-none">
                 <StepPanel visible={step === 0}>
-                  <h2 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl text-balance">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-bold leading-[1.08] tracking-tight text-balance">
                     Siete piezas que cuidan a{' '}
                     <span className="bg-linear-to-r from-primary-400 to-secondary-300 bg-clip-text text-transparent">
                       cada animal
                     </span>
                   </h2>
-                  <p className="mt-5 max-w-md text-lg leading-relaxed text-neutral-400">
+                  <p className="mt-2.5 sm:mt-5 max-w-md text-sm sm:text-lg leading-relaxed text-neutral-400">
                     Seguí bajando: el collar se abre capa por capa y te muestra qué hace cada parte.
                   </p>
-                  <div className="mt-8 flex items-center gap-3 font-mono text-xs uppercase tracking-[0.2em] text-primary-400">
-                    <span className="relative h-8 w-5 rounded-full border border-primary-400/60">
+                  <div className="mt-4 sm:mt-8 inline-flex items-center gap-2.5 font-mono text-[11px] sm:text-xs uppercase tracking-[0.2em] text-primary-400">
+                    <span className="relative h-6 w-4 sm:h-8 sm:w-5 rounded-full border border-primary-400/60 shrink-0">
                       <span className="absolute left-1/2 top-1.5 h-1.5 w-0.5 -translate-x-1/2 animate-bounce rounded-full bg-primary-400" />
                     </span>
-                    Deslizá
+                    <span>Deslizá</span>
                   </div>
                 </StepPanel>
 
                 {PARTS.map((part, i) => (
                   <StepPanel key={part.name} visible={step === i + 1}>
-                    <p className={`font-mono text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
-                      {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')} · {part.name}
+                    <p className={`font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
+                      {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
                     </p>
-                    <h3 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl text-balance">{part.title}</h3>
-                    <p className="mt-4 max-w-md text-base leading-relaxed text-neutral-400 sm:text-lg">{part.text}</p>
-                    <ul className="mt-6 flex flex-wrap gap-2">
-                      {part.specs.map((spec) => (
-                        <li
-                          key={spec}
-                          className={`rounded-md border bg-white/3 px-2.5 py-1 font-mono text-xs text-neutral-200 tabular-nums ${toneBorder[part.tone]}`}
-                        >
-                          {spec}
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="mt-1.5 sm:mt-3 font-display text-2xl sm:text-4xl font-bold tracking-tight text-balance">
+                      {part.title}
+                    </h3>
+                    <p className="mt-2 sm:mt-4 max-w-md text-sm sm:text-lg leading-snug sm:leading-relaxed text-neutral-400">
+                      {part.text}
+                    </p>
                   </StepPanel>
                 ))}
 
                 <StepPanel visible={step === PARTS.length + 1}>
-                  <p className="font-mono text-xs uppercase tracking-[0.18em] text-primary-400">Todo junto</p>
-                  <h3 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">Un ciclo cada 5 minutos</h3>
-                  <ol className="mt-6 grid max-w-md gap-2">
+                  <p className="font-mono text-[11px] sm:text-xs uppercase tracking-[0.18em] text-primary-400">Todo junto</p>
+                  <h3 className="mt-1.5 sm:mt-3 font-display text-2xl sm:text-4xl font-bold tracking-tight">
+                    Un ciclo cada 5 minutos
+                  </h3>
+                  <ol className="mt-3 sm:mt-6 grid grid-cols-2 sm:grid-cols-1 max-w-md gap-1.5 sm:gap-2">
                     {CYCLE.map((item, i) => (
                       <li
                         key={item}
-                        className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/3 px-3.5 py-2.5 text-sm text-neutral-200"
+                        className="flex items-center gap-2 sm:gap-3 rounded-lg border border-white/10 bg-white/3 px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 text-xs sm:text-sm text-neutral-200"
                       >
-                        <span className="font-mono text-xs text-primary-400">{i + 1}</span>
-                        {item}
+                        <span className="font-mono text-[11px] sm:text-xs text-primary-400">{i + 1}</span>
+                        <span className="truncate">{item}</span>
                       </li>
                     ))}
                   </ol>
@@ -374,7 +377,7 @@ function StepPanel({ visible, children }: { visible: boolean; children: React.Re
   return (
     <div
       aria-hidden={!visible}
-      className={`absolute inset-x-0 bottom-10 px-6 transition-[opacity,margin,filter] duration-500 ease-out lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:pl-0 lg:pr-12 ${
+      className={`absolute inset-x-0 bottom-5 sm:bottom-10 px-5 sm:px-6 transition-[opacity,margin,filter] duration-500 ease-out lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:pl-0 lg:pr-12 ${
         visible ? 'mt-0 opacity-100 blur-none' : 'mt-6 opacity-0 blur-[2px]'
       }`}
     >
@@ -398,7 +401,7 @@ function PartsList() {
       {PARTS.map((part, i) => (
         <li key={part.name} className="rounded-xl border border-white/10 bg-white/3 p-5">
           <p className={`font-mono text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
-            {String(i + 1).padStart(2, '0')} · {part.name}
+            {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
           </p>
           <h3 className="mt-2 font-display text-xl font-bold">{part.title}</h3>
           <p className="mt-2 text-sm leading-relaxed text-neutral-400">{part.text}</p>

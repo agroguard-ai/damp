@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { Hexagon, Lock, Mail, AlertCircle, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
+import { DampLogo } from '@/components/landing/Brand';
+import { Lock, Mail, AlertCircle, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function SignInPage() {
   const { login } = useAuth();
@@ -39,7 +40,7 @@ export default function SignInPage() {
         <div className="text-center space-y-2">
           <Link href="/" className="inline-flex items-center gap-2.5 group">
             <div className="p-2 bg-green-500/10 rounded-xl border border-green-500/20 group-hover:border-green-500/40 transition-colors">
-              <Hexagon className="w-8 h-8 text-green-500 fill-green-500/10" />
+              <DampLogo className="w-8 h-8" />
             </div>
             <span className="text-2xl font-bold tracking-tight text-white">
               DAMP <span className="text-green-500">Agro</span>
