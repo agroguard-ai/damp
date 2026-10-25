@@ -1,171 +1,142 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { GlobalRole } from '@generated/prisma';
 import { FarmUsersService } from './farm-users.service';
 
 function makePrismaMock() {
-  return {
-    farm: { findUnique: jest.fn() },
-    user: { findUnique: jest.fn() },
+  const prisma = {
+    user: { findUnique: jest.fn(), findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
+    farm: { findMany: jest.fn() },
     role: { upsert: jest.fn() },
-    farmUser: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      findFirst: jest.fn(),
-      upsert: jest.fn(),
-      update: jest.fn(),
-    },
+    farmUser: { updateMany: jest.fn(), upsert: jest.fn() },
+    $transaction: jest.fn(),
   };
+  // Transacción interactiva: corre el callback con el mismo mock; en array: resuelve las operaciones.
+  prisma.$transaction.mockImplementation((arg: unknown) =>
+    typeof arg === 'function' ? (arg as (tx: typeof prisma) => unknown)(prisma) : Promise.all(arg as unknown[])
+  );
+  return prisma;
 }
 
-describe('FarmUsersService', () => {
+const ADMIN = { id: 'admin-1', globalRole: GlobalRole.FARM_ADMIN };
+const ADMIN_FARMS = [
+  { id: 'farm-a', name: 'La Esperanza' },
+  { id: 'farm-b', name: 'El Palmar' },
+];
+
+describe('FarmUsersService (personal del administrador de campos)', () => {
   let prisma: ReturnType<typeof makePrismaMock>;
   let service: FarmUsersService;
 
   beforeEach(() => {
     prisma = makePrismaMock();
     service = new FarmUsersService(prisma as any);
+    prisma.farm.findMany.mockResolvedValue(ADMIN_FARMS);
+    prisma.role.upsert.mockResolvedValue({ id: 'role-op', name: 'OPERATOR' });
   });
 
-  describe('findAllInFarm', () => {
-    it('solo trae membresías activas', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
-      prisma.farmUser.findMany.mockResolvedValue([]);
+  /** Primer findUnique: el administrador; el siguiente: la persona buscada. */
+  function mockUsers(target: unknown) {
+    prisma.user.findUnique.mockResolvedValueOnce(ADMIN).mockResolvedValueOnce(target);
+  }
 
-      await service.findAllInFarm('farm-1');
-
-      expect(prisma.farmUser.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { farmId: 'farm-1', isActive: true } })
-      );
-    });
-  });
-
-  describe('removeSubUser', () => {
-    it('hace baja lógica (isActive: false, removedAt) en vez de borrar la fila', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu1', isActive: true, role: { name: 'OPERATOR' } });
-      prisma.farmUser.update.mockResolvedValue({ id: 'fu1', isActive: false });
-
-      await service.removeSubUser('farm-1', 'user-1');
-
-      expect(prisma.farmUser.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { farmId_userId: { farmId: 'farm-1', userId: 'user-1' } },
-          data: expect.objectContaining({ isActive: false, removedAt: expect.any(Date) }),
-        })
-      );
-    });
-
-    it('tira 404 si la membresía ya estaba dada de baja', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu1', isActive: false, role: { name: 'OPERATOR' } });
-
-      await expect(service.removeSubUser('farm-1', 'user-1')).rejects.toThrow(NotFoundException);
-      expect(prisma.farmUser.update).not.toHaveBeenCalled();
-    });
-
-    it('tira 404 si la membresía nunca existió', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue(null);
-      await expect(service.removeSubUser('farm-1', 'user-1')).rejects.toThrow(NotFoundException);
-    });
-
-    it('rechaza dar de baja al único administrador activo del campo', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu-admin', isActive: true, role: { name: 'ADMIN' } });
-      prisma.farmUser.findFirst.mockResolvedValue(null);
-
-      await expect(service.removeSubUser('farm-1', 'user-1')).rejects.toThrow(
-        'No se puede dar de baja al único administrador del campo. Asigná otro administrador antes de remover este acceso.'
-      );
-      expect(prisma.farmUser.update).not.toHaveBeenCalled();
-    });
-
-    it('permite dar de baja a un administrador si existe otro administrador activo', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu-admin', isActive: true, role: { name: 'ADMIN' } });
-      prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu-other-admin', userId: 'user-2' });
-      prisma.farmUser.update.mockResolvedValue({ id: 'fu-admin', isActive: false });
-
-      await service.removeSubUser('farm-1', 'user-1');
-
-      expect(prisma.farmUser.update).toHaveBeenCalled();
+  describe('acceso', () => {
+    it('rechaza a quien no es FARM_ADMIN (ej. un operador)', async () => {
+      prisma.user.findUnique.mockResolvedValueOnce({ id: 'op-1', globalRole: GlobalRole.USER });
+      await expect(service.findStaff('op-1')).rejects.toThrow(ForbiddenException);
     });
   });
 
-  describe('assignSubUser', () => {
-    it('reactiva (isActive: true, removedAt: null) al reasignar un usuario previamente removido', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
-      prisma.farmUser.findFirst.mockResolvedValue(null);
-      prisma.role.upsert.mockResolvedValue({ id: 'role-1', name: 'OPERATOR' });
-      prisma.farmUser.upsert.mockResolvedValue({ id: 'fu1', isActive: true });
+  describe('createStaff', () => {
+    const dto = { email: 'Pedro@Campo.com', name: 'Pedro', roleName: 'OPERATOR' as const, farmIds: ['farm-a', 'farm-b'] };
 
-      await service.assignSubUser('farm-1', { userId: 'user-1', roleName: 'OPERATOR' });
+    it('crea un USER con contraseña temporal y lo asigna con el mismo rol a todos los campos elegidos', async () => {
+      mockUsers(null);
+      prisma.user.create.mockResolvedValue({ id: 'u-1', email: 'pedro@campo.com', name: 'Pedro' });
 
+      const result = await service.createStaff(ADMIN.id, dto);
+
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ email: 'pedro@campo.com', globalRole: GlobalRole.USER, mustChangePassword: true }),
+      });
+      expect(prisma.farmUser.upsert).toHaveBeenCalledTimes(2);
       expect(prisma.farmUser.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          update: expect.objectContaining({ isActive: true, removedAt: null }),
-        })
+        expect.objectContaining({ create: { farmId: 'farm-b', userId: 'u-1', roleId: 'role-op' } })
       );
+      expect(result.temporaryPassword).toMatch(/^Damp/);
+      expect(result.user.farms).toEqual(ADMIN_FARMS);
     });
 
-    it('rechaza asignar un usuario que ya pertenece a otro campo', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-2' });
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', email: 'a@b.com' });
-      prisma.farmUser.findFirst.mockResolvedValue({
-        id: 'fu1',
-        farmId: 'farm-1',
-        userId: 'user-1',
-        isActive: true,
-        farm: { name: 'Campo Los Pinos' },
+    it('rechaza asignar un campo que no administra', async () => {
+      mockUsers(null);
+      await expect(service.createStaff(ADMIN.id, { ...dto, farmIds: ['farm-ajeno'] })).rejects.toThrow(
+        ForbiddenException
+      );
+      expect(prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un email ya registrado por otra persona', async () => {
+      mockUsers({ id: 'x', globalRole: GlobalRole.USER, isActive: true, farmUsers: [{ farmId: 'farm-otro' }] });
+      await expect(service.createStaff(ADMIN.id, dto)).rejects.toThrow(ConflictException);
+    });
+
+    it('reincorpora a alguien dado de baja que había sido personal de este administrador', async () => {
+      mockUsers({ id: 'u-old', globalRole: GlobalRole.USER, isActive: false, farmUsers: [{ farmId: 'farm-a' }] });
+      prisma.user.update.mockResolvedValue({ id: 'u-old', email: 'pedro@campo.com', name: 'Pedro' });
+
+      await service.createStaff(ADMIN.id, dto);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u-old' },
+        data: expect.objectContaining({ isActive: true, mustChangePassword: true }),
       });
-
-      await expect(service.assignSubUser('farm-2', { userId: 'user-1', roleName: 'OPERATOR' })).rejects.toThrow(
-        'El usuario "a@b.com" ya se encuentra asignado al establecimiento "Campo Los Pinos". Un usuario solo puede pertenecer a un campo a la vez.'
-      );
-    });
-
-    it('rechaza asignar ADMIN si ya existe otro administrador activo en el campo', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1' });
-      prisma.user.findUnique.mockResolvedValue({ id: 'user-2', email: 'user2@b.com' });
-      prisma.farmUser.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'fu-admin-1', userId: 'user-1', roleId: 'role-admin' });
-
-      await expect(service.assignSubUser('farm-1', { userId: 'user-2', roleName: 'ADMIN' } as any)).rejects.toThrow(
-        'Este campo ya posee un rol administrador asignado. Solo puede haber un único administrador por campo.'
-      );
+      expect(prisma.user.create).not.toHaveBeenCalled();
     });
   });
 
-  describe('updateSubUserRole', () => {
-    it('tira 404 si la membresía está dada de baja', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu1', isActive: false });
-      await expect(service.updateSubUserRole('farm-1', 'user-1', { roleName: 'ADMIN' } as any)).rejects.toThrow(
-        NotFoundException
+  describe('updateStaff', () => {
+    const staff = {
+      id: 'u-1',
+      globalRole: GlobalRole.USER,
+      isActive: true,
+      farmUsers: [{ farmId: 'farm-a', role: { name: 'OPERATOR' } }],
+    };
+
+    it('cambia los campos: da de baja los que se sacan y activa los nuevos', async () => {
+      mockUsers(staff);
+
+      await service.updateStaff(ADMIN.id, 'u-1', { farmIds: ['farm-b'] });
+
+      expect(prisma.farmUser.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u-1', isActive: true, farmId: { notIn: ['farm-b'] } },
+        data: expect.objectContaining({ isActive: false }),
+      });
+      expect(prisma.farmUser.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { farmId_userId: { farmId: 'farm-b', userId: 'u-1' } } })
       );
     });
 
-    it('rechaza actualizar rol a ADMIN si ya existe otro administrador activo', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({
-        id: 'fu-emp',
-        farmId: 'farm-1',
-        userId: 'user-2',
-        isActive: true,
-        role: { name: 'VIEWER' },
-      });
-      prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu-admin-1', userId: 'user-1', roleId: 'role-admin' });
-
-      await expect(service.updateSubUserRole('farm-1', 'user-2', { roleName: 'ADMIN' } as any)).rejects.toThrow(
-        'Este campo ya posee un rol administrador asignado. Solo puede haber un único administrador por campo.'
-      );
+    it('404 si la persona tiene campos de otro administrador', async () => {
+      mockUsers({ ...staff, farmUsers: [{ farmId: 'farm-otro', role: { name: 'OPERATOR' } }] });
+      await expect(service.updateStaff(ADMIN.id, 'u-1', { roleName: 'VIEWER' })).rejects.toThrow(NotFoundException);
     });
 
-    it('rechaza degradar al administrador del campo (quedaría sin admin)', async () => {
-      prisma.farmUser.findUnique.mockResolvedValue({
-        id: 'fu-admin',
-        farmId: 'farm-1',
-        userId: 'user-1',
-        isActive: true,
-        role: { name: 'ADMIN' },
-      });
+    it('404 si se intenta editar a un administrador de campos', async () => {
+      mockUsers({ ...staff, globalRole: GlobalRole.FARM_ADMIN });
+      await expect(service.updateStaff(ADMIN.id, 'u-1', { roleName: 'VIEWER' })).rejects.toThrow(NotFoundException);
+    });
+  });
 
-      await expect(service.updateSubUserRole('farm-1', 'user-1', { roleName: 'OPERATOR' })).rejects.toThrow(
-        'No se puede cambiar el rol del administrador del campo'
-      );
-      expect(prisma.farmUser.update).not.toHaveBeenCalled();
+  describe('removeStaff', () => {
+    it('da de baja todas sus membresías y desactiva la cuenta', async () => {
+      mockUsers({ id: 'u-1', globalRole: GlobalRole.USER, farmUsers: [{ farmId: 'farm-a', role: { name: 'VIEWER' } }] });
+
+      await service.removeStaff(ADMIN.id, 'u-1');
+
+      expect(prisma.farmUser.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'u-1', isActive: true },
+        data: expect.objectContaining({ isActive: false }),
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({ where: { id: 'u-1' }, data: { isActive: false } });
     });
   });
 });

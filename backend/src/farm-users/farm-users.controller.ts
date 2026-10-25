@@ -1,42 +1,39 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
-import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
-import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
-import { RequireFarmRole } from '@/auth/decorators/require-farm-role.decorator';
+import { CurrentUser } from '@/auth/current-user.decorator';
 import { FarmUsersService } from './farm-users.service';
-import { AssignFarmUserDto } from './dto/assign-farm-user.dto';
-import { UpdateFarmUserDto } from './dto/update-farm-user.dto';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import { UpdateStaffDto } from './dto/update-staff.dto';
 
-@Controller('farms/:farmId/users')
-@UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)
+// Personal del administrador de campos logueado (o del emulado por un SUPER_ADMIN): el servicio
+// valida que sea FARM_ADMIN y que cada campo y cada persona sean suyos.
+@Controller('staff')
+@UseGuards(JwtAuthGuard)
 export class FarmUsersController {
   constructor(private readonly farmUsersService: FarmUsersService) {}
 
   @Get()
-  @RequireFarmRole('ADMIN')
-  findAllInFarm(@Param('farmId') farmId: string) {
-    return this.farmUsersService.findAllInFarm(farmId);
+  findStaff(@CurrentUser('sub') adminId: string) {
+    return this.farmUsersService.findStaff(adminId);
   }
 
   @Post()
-  @RequireFarmRole('ADMIN')
-  assignSubUser(@Param('farmId') farmId: string, @Body() assignFarmUserDto: AssignFarmUserDto) {
-    return this.farmUsersService.assignSubUser(farmId, assignFarmUserDto);
+  createStaff(@CurrentUser('sub') adminId: string, @Body() dto: CreateStaffDto) {
+    return this.farmUsersService.createStaff(adminId, dto);
   }
 
   @Patch(':userId')
-  @RequireFarmRole('ADMIN')
-  updateSubUserRole(
-    @Param('farmId') farmId: string,
-    @Param('userId') userId: string,
-    @Body() updateFarmUserDto: UpdateFarmUserDto
-  ) {
-    return this.farmUsersService.updateSubUserRole(farmId, userId, updateFarmUserDto);
+  updateStaff(@CurrentUser('sub') adminId: string, @Param('userId') userId: string, @Body() dto: UpdateStaffDto) {
+    return this.farmUsersService.updateStaff(adminId, userId, dto);
+  }
+
+  @Post(':userId/reset-password')
+  resetStaffPassword(@CurrentUser('sub') adminId: string, @Param('userId') userId: string) {
+    return this.farmUsersService.resetStaffPassword(adminId, userId);
   }
 
   @Delete(':userId')
-  @RequireFarmRole('ADMIN')
-  removeSubUser(@Param('farmId') farmId: string, @Param('userId') userId: string) {
-    return this.farmUsersService.removeSubUser(farmId, userId);
+  removeStaff(@CurrentUser('sub') adminId: string, @Param('userId') userId: string) {
+    return this.farmUsersService.removeStaff(adminId, userId);
   }
 }

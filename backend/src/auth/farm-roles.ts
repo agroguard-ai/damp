@@ -10,3 +10,7 @@ export type FarmRoleName = (typeof FARM_ROLES)[number];
 
 /** Roles que pueden crear/modificar/eliminar datos operativos del campo. */
 export const FARM_WRITE_ROLES: readonly FarmRoleName[] = ['ADMIN', 'OPERATOR'];
+
+/** Roles del personal que un administrador de campos crea para sus campos (todo menos ADMIN). */
+export const STAFF_ROLES = ['OPERATOR', 'VIEWER'] as const;
+export type StaffRoleName = (typeof STAFF_ROLES)[number];
