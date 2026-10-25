@@ -101,7 +101,7 @@ describe('IotService', () => {
       } as any);
 
       expect(rotationsService.resolveActiveCoordinatesForAnimal).toHaveBeenCalledWith('animal-1', 'farm-1');
-      expect(result.downlink).toBe('-34.1,-58.1;-34.1,-58.2;-34.2,-58.2');
+      expect(result.downlink).toBe('-34.10000,-58.10000;-34.10000,-58.20000;-34.20000,-58.20000');
       expect(prisma.collar.update).toHaveBeenCalledWith({
         where: { id: 1 },
         data: expect.objectContaining({

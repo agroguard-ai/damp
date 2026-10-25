@@ -4,10 +4,11 @@ import { BadRequestException } from '@nestjs/common';
 function makePrismaMock() {
   return {
     farm: { findUnique: jest.fn() },
+    farmUser: { findFirst: jest.fn() },
     animal: { findMany: jest.fn() },
     animalCollar: { findMany: jest.fn() },
     collar: { updateMany: jest.fn() },
-    animalGeofence: { updateMany: jest.fn() },
+    animalGeofence: { updateMany: jest.fn(), findMany: jest.fn() },
     geofence: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -97,7 +98,6 @@ describe('GeofencesService', () => {
           'user-1'
         )
       ).rejects.toThrow(BadRequestException);
-
       expect(prisma.geofence.create).not.toHaveBeenCalled();
     });
 
@@ -183,6 +183,74 @@ describe('GeofencesService', () => {
         )
       ).rejects.toThrow(BadRequestException);
       expect(prisma.geofence.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('activate & deactivate', () => {
+    const farm = { id: 'farm-1', name: 'Estancia A', userId: 'user-1', polygonCoordinates: farmPolygon };
+
+    it('desactiva un cerco y finaliza las asignaciones de animales notificando collares', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', farm });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1' }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 20 }]);
+      prisma.animalGeofence.updateMany.mockResolvedValue({ count: 1 });
+      prisma.collar.updateMany.mockResolvedValue({ count: 1 });
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', active: false });
+
+      const result = await service.deactivate('geo-1', 'user-1');
+
+      expect(prisma.collar.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: [20] } },
+        data: { fenceNotificationPending: true },
+      });
+      expect(prisma.animalGeofence.updateMany).toHaveBeenCalledWith({
+        where: { geofenceId: 'geo-1', endAt: null },
+        data: { endAt: expect.any(Date) },
+      });
+      expect(prisma.geofence.update).toHaveBeenCalledWith({
+        where: { id: 'geo-1' },
+        data: { active: false, deactivatedAt: expect.any(Date) },
+      });
+      expect(result.active).toBe(false);
+    });
+
+    it('activa un cerco previamente desactivado', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: [
+          [-34.55, -58.55],
+          [-34.55, -58.45],
+          [-34.45, -58.45],
+        ],
+      });
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', active: true });
+
+      const result = await service.activate('geo-1', 'user-1');
+
+      expect(prisma.geofence.update).toHaveBeenCalledWith({
+        where: { id: 'geo-1' },
+        data: {
+          active: true,
+          activatedAt: expect.any(Date),
+          deactivatedAt: null,
+        },
+        include: {
+          animalGeofences: {
+            where: { endAt: null },
+            include: { animal: true },
+          },
+        },
+      });
+      expect(result.active).toBe(true);
+    });
+
+    it('rechaza activar si el usuario no tiene acceso', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', farm });
+      prisma.farmUser.findFirst.mockResolvedValue(null);
+
+      await expect(service.activate('geo-1', 'other-user')).rejects.toThrow();
     });
   });
 });

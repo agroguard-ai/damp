@@ -159,7 +159,12 @@ export class GeofencesService {
       throw new NotFoundException('Geofence not found');
     }
     if (geofence.farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this geofence');
+      const membership = await this.prisma.farmUser.findFirst({
+        where: { farmId: geofence.farmId, userId, isActive: true },
+      });
+      if (!membership) {
+        throw new ForbiddenException('You do not have access to this geofence');
+      }
     }
 
     if (dto.polygonCoordinates) {
@@ -207,10 +212,35 @@ export class GeofencesService {
       throw new NotFoundException('Geofence not found');
     }
     if (geofence.farm.userId !== userId) {
-      throw new ForbiddenException('You do not have access to this geofence');
+      const membership = await this.prisma.farmUser.findFirst({
+        where: { farmId: geofence.farmId, userId, isActive: true },
+      });
+      if (!membership) {
+        throw new ForbiddenException('You do not have access to this geofence');
+      }
     }
 
     const now = new Date();
+
+    // Notificar a los collares de los animales asignados que el cerco ya no rige
+    const activeAnimalGeofences = await this.prisma.animalGeofence.findMany({
+      where: { geofenceId: id, endAt: null },
+      select: { animalId: true },
+    });
+    const animalIds = activeAnimalGeofences.map((ag) => ag.animalId);
+    if (animalIds.length > 0) {
+      const activeAnimalCollars = await this.prisma.animalCollar.findMany({
+        where: { animalId: { in: animalIds }, endAt: null },
+        select: { collarId: true },
+      });
+      const collarIds = activeAnimalCollars.map((ac) => ac.collarId);
+      if (collarIds.length > 0) {
+        await this.prisma.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { fenceNotificationPending: true },
+        });
+      }
+    }
 
     await this.prisma.animalGeofence.updateMany({
       where: { geofenceId: id, endAt: null },
@@ -220,6 +250,56 @@ export class GeofencesService {
     return this.prisma.geofence.update({
       where: { id },
       data: { active: false, deactivatedAt: now },
+    });
+  }
+
+  async activate(id: string, userId: string) {
+    const geofence = await this.prisma.geofence.findUnique({
+      where: { id },
+      include: { farm: true },
+    });
+    if (!geofence) {
+      throw new NotFoundException('Geofence not found');
+    }
+    if (geofence.farm.userId !== userId) {
+      const membership = await this.prisma.farmUser.findFirst({
+        where: { farmId: geofence.farmId, userId, isActive: true },
+      });
+      if (!membership) {
+        throw new ForbiddenException('You do not have access to this geofence');
+      }
+    }
+
+    if (geofence.polygonCoordinates) {
+      let coords: [number, number][] = [];
+      try {
+        coords =
+          typeof geofence.polygonCoordinates === 'string'
+            ? JSON.parse(geofence.polygonCoordinates)
+            : (geofence.polygonCoordinates as [number, number][]);
+      } catch {
+        coords = [];
+      }
+      if (Array.isArray(coords) && coords.length >= 3) {
+        this.assertInsideFarm(geofence.farm, coords);
+      }
+    }
+
+    const now = new Date();
+
+    return this.prisma.geofence.update({
+      where: { id },
+      data: {
+        active: true,
+        activatedAt: now,
+        deactivatedAt: null,
+      },
+      include: {
+        animalGeofences: {
+          where: { endAt: null },
+          include: { animal: true },
+        },
+      },
     });
   }
 }

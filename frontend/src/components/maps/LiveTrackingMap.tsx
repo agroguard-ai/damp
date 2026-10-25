@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -56,6 +56,10 @@ export interface MapTrajectory {
 }
 
 export interface LiveTrackingMapProps {
+  /** Id del campo para detectar cambios de establecimiento */
+  farmId?: string;
+  /** Centro sugerido del mapa (coordenada de la provincia o primer vértice) */
+  center?: [number, number];
   /** Perímetro del campo (se dibuja como referencia y para encuadrar el mapa). */
   farmPolygon?: [number, number][];
   geofences: Geofence[];
@@ -87,12 +91,16 @@ function parsePolygon(raw: unknown): [number, number][] {
 }
 
 function MapAutoBounds({
+  farmId,
+  center,
   farmPolygon,
   geofences,
   animals,
   trajectories,
   recenterTick,
 }: {
+  farmId?: string;
+  center?: [number, number];
   farmPolygon: [number, number][];
   geofences: Geofence[];
   animals: MapAnimal[];
@@ -100,10 +108,21 @@ function MapAutoBounds({
   recenterTick: number;
 }) {
   const map = useMap();
-  const didInitialFit = useRef(false);
+  const lastTargetKeyRef = useRef<string>('');
   const lastRecenterTick = useRef(recenterTick);
   const trajectoryKey = trajectories.map((t) => `${t.id}:${t.points.length}`).join('|');
   const prevTrajectoryKey = useRef(trajectoryKey);
+
+  // Clave que identifica la ubicación objetivo actual (campo, polígono o centro)
+  const targetKey = useMemo(() => {
+    const polySig =
+      farmPolygon.length > 0
+        ? `poly:${farmPolygon.length}:${farmPolygon[0]?.[0].toFixed(5)},${farmPolygon[0]?.[1].toFixed(5)}`
+        : 'no-poly';
+    const fenceSig = geofences.length > 0 ? `fences:${geofences.map((g) => g.id).join(',')}` : 'no-fences';
+    const centerSig = center ? `center:${center[0].toFixed(5)},${center[1].toFixed(5)}` : 'no-center';
+    return `${farmId || 'default'}|${polySig}|${fenceSig}|${centerSig}`;
+  }, [farmId, farmPolygon, geofences, center]);
 
   useEffect(() => {
     const manualRecenter = recenterTick !== lastRecenterTick.current;
@@ -112,32 +131,48 @@ function MapAutoBounds({
     const trajectoryChanged = trajectoryKey !== prevTrajectoryKey.current;
     prevTrajectoryKey.current = trajectoryKey;
 
-    // Si hay recorridos recién cargados o el usuario pide recentrar, se encuadran todos
+    const targetChanged = targetKey !== lastTargetKeyRef.current;
+    lastTargetKeyRef.current = targetKey;
+
+    // 1. Si hay recorridos de animales activos cargados y cambiaron o se pidió recentrar
     const trajectoryCoords: [number, number][] = trajectories.flatMap((t) =>
       t.points.map((p) => [p.latitude, p.longitude] as [number, number])
     );
-    if (trajectoryCoords.length > 0 && (trajectoryChanged || manualRecenter)) {
-      map.fitBounds(trajectoryCoords, { padding: [50, 50] });
+    if (trajectoryCoords.length > 0 && (trajectoryChanged || (manualRecenter && !targetChanged))) {
+      map.fitBounds(trajectoryCoords, { padding: [50, 50], animate: true });
       return;
     }
 
-    if (didInitialFit.current && !manualRecenter) return;
+    // 2. Si no cambió el objetivo (mismo campo, mismo polígono) y no es recentrado manual, no interrumpir la navegación del usuario
+    if (!targetChanged && !manualRecenter) {
+      return;
+    }
 
+    // 3. Obtener coordenadas del campo y sus cercos
     const coords: [number, number][] = [];
-    coords.push(...farmPolygon);
-    geofences.forEach((geofence) => coords.push(...parsePolygon(geofence.polygonCoordinates)));
-
-    animals.forEach((animal) => {
-      if (animal.latestReading) {
-        coords.push([animal.latestReading.latitude, animal.latestReading.longitude]);
-      }
+    if (farmPolygon.length > 0) {
+      coords.push(...farmPolygon);
+    }
+    geofences.forEach((geofence) => {
+      coords.push(...parsePolygon(geofence.polygonCoordinates));
     });
 
-    if (coords.length > 0) {
-      map.fitBounds(coords, { padding: [40, 40] });
-      didInitialFit.current = true;
+    // Si aún no hay polígono ni cercos pero hay animales con señal en este campo
+    if (coords.length === 0) {
+      animals.forEach((animal) => {
+        if (animal.latestReading) {
+          coords.push([animal.latestReading.latitude, animal.latestReading.longitude]);
+        }
+      });
     }
-  }, [farmPolygon, geofences, animals, trajectories, trajectoryKey, map, recenterTick]);
+
+    // 4. Encuadrar en el campo o centrar en su posición de provincia/coordenada
+    if (coords.length > 0) {
+      map.fitBounds(coords, { padding: [40, 40], maxZoom: 16, animate: true });
+    } else if (center) {
+      map.setView(center, 14, { animate: true });
+    }
+  }, [targetKey, farmPolygon, geofences, animals, trajectories, trajectoryKey, center, map, recenterTick]);
 
   return null;
 }
@@ -234,9 +269,11 @@ function TrajectoryLayer({
         >
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
-              <span className={`inline-block font-bold px-1.5 py-0.5 rounded text-[10px] ${
-                isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-              }`}>
+              <span
+                className={`inline-block font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                  isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                }`}
+              >
                 {isAnimatedInProgress ? '⏱️ Progreso / En movimiento' : '🏁 Fin / Posición más reciente'}
               </span>
               <h4 className="font-bold">{animalName}</h4>
@@ -254,6 +291,8 @@ function TrajectoryLayer({
 }
 
 export default function LiveTrackingMap({
+  farmId,
+  center: centerProp,
   farmPolygon = [],
   geofences,
   animals,
@@ -270,7 +309,10 @@ export default function LiveTrackingMap({
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const [recenterTick, setRecenterTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const center: [number, number] = [-34.6037, -58.3816];
+
+  const defaultCenter: [number, number] = [-34.6037, -58.3816];
+  const initialCenter: [number, number] =
+    centerProp || (farmPolygon.length > 0 ? farmPolygon[0] : defaultCenter);
 
   const activeProvider = MAP_PROVIDERS[currentLayer];
 
@@ -289,7 +331,31 @@ export default function LiveTrackingMap({
         animalsToggle={animalsToggle}
       />
 
-      <MapContainer center={center} zoom={13} className="w-full h-full">
+      {/* Legend Badge Bar */}
+      {(farmPolygon.length > 0 || geofences.length > 0) && (
+        <div className="absolute top-3 left-14 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-2.5 py-1 text-[11px] font-medium hidden sm:flex items-center gap-2.5 pointer-events-none shadow-sm">
+          {farmPolygon.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-xs bg-green-500 border border-green-600"></span>
+              <span>Campo</span>
+            </div>
+          )}
+          {geofences.some((g) => g.active !== false) && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-xs bg-cyan-400 border border-cyan-500"></span>
+              <span>Cerco Activo</span>
+            </div>
+          )}
+          {geofences.some((g) => g.active === false) && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-xs bg-slate-400 border border-slate-500"></span>
+              <span>Cerco Desactivado</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <MapContainer center={initialCenter} zoom={13} className="w-full h-full">
         <TileLayer
           key={currentLayer}
           attribution={activeProvider.attribution}
@@ -323,25 +389,38 @@ export default function LiveTrackingMap({
           />
         )}
 
-        {/* Cerco virtual (Geofence) */}
+        {/* Cerco virtual (Geofence) — activos en Cyan, desactivados en Slate */}
         {geofences.map((geofence) => {
-          if (!geofence.active) return null;
           const coords = parsePolygon(geofence.polygonCoordinates);
           if (coords.length === 0) return null;
+          const isActive = geofence.active !== false;
+
           return (
             <Polygon
               key={geofence.id}
               positions={coords}
               pathOptions={{
-                color: '#06b6d4',
-                fillColor: '#22d3ee',
-                fillOpacity: 0.15,
-                weight: 2.5,
-                dashArray: '5, 5',
+                color: isActive ? '#06b6d4' : '#94a3b8',
+                fillColor: isActive ? '#22d3ee' : '#64748b',
+                fillOpacity: isActive ? 0.15 : 0.10,
+                weight: isActive ? 2.5 : 2,
+                dashArray: isActive ? '5, 5' : '4, 6',
               }}
             >
               <Popup>
-                <span className="text-xs font-semibold text-zinc-900">⚡ Cerco: {geofence.name}</span>
+                <div className="p-1.5 text-xs space-y-1 text-zinc-900">
+                  <div className={`flex items-center gap-1.5 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
+                    <span>⚡</span>
+                    <span>{geofence.name}</span>
+                  </div>
+                  <span
+                    className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      isActive ? 'bg-cyan-100 text-cyan-800' : 'bg-zinc-200 text-zinc-700'
+                    }`}
+                  >
+                    {isActive ? 'Activo' : 'Desactivado'}
+                  </span>
+                </div>
               </Popup>
             </Polygon>
           );
@@ -373,6 +452,8 @@ export default function LiveTrackingMap({
         )}
 
         <MapAutoBounds
+          farmId={farmId}
+          center={centerProp || defaultCenter}
           farmPolygon={farmPolygon}
           geofences={geofences}
           animals={animals}

@@ -11,6 +11,7 @@ import { GatewaysService } from '@/gateways/gateways.service';
 import { AlertSettingsService } from '@/alert-settings/alert-settings.service';
 import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
+import { hasGpsFix } from '@/common/gps';
 import { haversineMeters } from './utils/haversine.utils';
 import { MlHealthService } from './ml-health.service';
 import { buildMlWindow, blockStartFor, ML_BLOCK_MINUTES, ML_MIN_BLOCKS_WITH_DATA, ML_WINDOW_BLOCKS } from './ml-window';
@@ -159,8 +160,9 @@ export class IotService {
 
     const polygon = activeFence.polygon;
 
-    const isInside = isPointInPolygon([payload.lat, payload.lng], polygon);
-    if (!isInside) {
+    // Sin fix GPS el collar manda 0,0: no se puede evaluar el cerco.
+    // Si no, (0,0) cae siempre fuera del polígono y se disparan ESCAPE falsos.
+    if (hasGpsFix(payload.lat, payload.lng) && !isPointInPolygon([payload.lat, payload.lng], polygon)) {
       await this.raiseEscapeAlert(animalCollar.animalId, activeFence.geofenceName);
     }
 
@@ -174,7 +176,9 @@ export class IotService {
       return { downlink: 'NONE' };
     }
 
-    const downlink = polygon.map((p) => `${p[0]},${p[1]}`).join(';');
+    // 5 decimales (~1 m de precision) para que el cerco entre en el limite de
+    // 255 bytes por paquete LoRa del SX1262 (a 6-7 decimales no entra).
+    const downlink = polygon.map(([lat, lng]) => `${lat.toFixed(5)},${lng.toFixed(5)}`).join(';');
 
     // Marcamos que ya se le notificó al collar
     await this.prisma.collar.update({

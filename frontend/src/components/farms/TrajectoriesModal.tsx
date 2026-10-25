@@ -35,7 +35,13 @@ const PRESET_RANGES = [
   { days: 90, label: '90 días' },
 ] as const;
 
-const formatDate = (d: Date) => d.toISOString().split('T')[0];
+// Fecha en horario LOCAL (no UTC): con toISOString() un click a las 21:30 ART
+// ya devolvía el día siguiente y el rango quedaba vacío.
+const formatDate = (d: Date) => {
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${month}-${day}`;
+};
 
 interface TrajectoriesModalProps {
   farm: Pick<Farm, 'id' | 'name' | 'polygonCoordinates'>;
