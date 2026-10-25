@@ -24,11 +24,20 @@ import {
 import { Pagination, PaginationMeta } from '@/components/ui/Pagination';
 import { Select } from '@/components/ui/Select';
 
+type GlobalRole = 'SUPER_ADMIN' | 'FARM_ADMIN' | 'USER';
+/** Roles que el super admin asigna; USER es el personal que crea cada administrador de campos. */
+type AssignableRole = Exclude<GlobalRole, 'USER'>;
+
+const ROLE_OPTIONS: { value: AssignableRole; label: string }[] = [
+  { value: 'FARM_ADMIN', label: 'Administrador de campos' },
+  { value: 'SUPER_ADMIN', label: 'Super administrador' },
+];
+
 interface UserRecord {
   id: string;
   name: string | null;
   email: string;
-  globalRole: 'SUPER_ADMIN' | 'USER';
+  globalRole: GlobalRole;
   mustChangePassword?: boolean;
   isActive: boolean;
   maxCollars: number;
@@ -58,7 +67,7 @@ export function AdminUserList() {
   const [creating, setCreating] = useState(false);
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
-  const [formRole, setFormRole] = useState<'USER' | 'SUPER_ADMIN'>('USER');
+  const [formRole, setFormRole] = useState<AssignableRole>('FARM_ADMIN');
   const [formPassword, setFormPassword] = useState('');
   const [formMaxCollars, setFormMaxCollars] = useState<number>(10);
   const [createdCredentials, setCreatedCredentials] = useState<{ email: string; pass: string } | null>(null);
@@ -98,7 +107,7 @@ export function AdminUserList() {
   }, [fetchUsers]);
   /* eslint-enable */
 
-  const handleRoleChange = async (userId: string, newRole: 'SUPER_ADMIN' | 'USER') => {
+  const handleRoleChange = async (userId: string, newRole: AssignableRole) => {
     try {
       setUpdatingId(userId);
       const res = await fetch(`/api/admin/users/${userId}/role`, {
@@ -108,7 +117,8 @@ export function AdminUserList() {
       });
 
       if (!res.ok) {
-        throw new Error('Error al actualizar el rol global del usuario');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || 'Error al actualizar el rol global del usuario');
       }
 
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, globalRole: newRole } : u)));
@@ -227,7 +237,7 @@ export function AdminUserList() {
       setFormName('');
       setFormEmail('');
       setFormPassword('');
-      setFormRole('USER');
+      setFormRole('FARM_ADMIN');
       setFormMaxCollars(10);
       setIsModalOpen(false);
       toast.success('Usuario creado exitosamente');
@@ -380,6 +390,9 @@ export function AdminUserList() {
                     <td className="px-6 py-4">
                       {u.globalRole === 'SUPER_ADMIN' ? (
                         <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">Ilimitado</span>
+                      ) : u.globalRole === 'USER' ? (
+                        // El cupo es del administrador de campos: su personal usa el de él.
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">—</span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 font-mono text-xs">
@@ -415,16 +428,22 @@ export function AdminUserList() {
                     </td>
 
                     <td className="px-6 py-4">
-                      <Select
-                        value={u.globalRole}
-                        onChange={(v) => void handleRoleChange(u.id, v as 'SUPER_ADMIN' | 'USER')}
-                        options={[
-                          { value: 'USER', label: 'USER (Usuario estándar)' },
-                          { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Administrador Global)' },
-                        ]}
-                        size="sm"
-                        disabled={updatingId === u.id || !u.isActive}
-                      />
+                      {u.globalRole === 'USER' ? (
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                          title="Operador o lector: lo gestiona su administrador de campos desde Personal"
+                        >
+                          Personal de campo
+                        </span>
+                      ) : (
+                        <Select
+                          value={u.globalRole}
+                          onChange={(v) => void handleRoleChange(u.id, v as AssignableRole)}
+                          options={ROLE_OPTIONS}
+                          size="sm"
+                          disabled={updatingId === u.id || !u.isActive}
+                        />
+                      )}
                     </td>
 
                     <td className="px-6 py-4">
@@ -628,18 +647,16 @@ export function AdminUserList() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Rol Global</label>
-                <Select
-                  value={formRole}
-                  onChange={(v) => setFormRole(v as 'USER' | 'SUPER_ADMIN')}
-                  options={[
-                    { value: 'USER', label: 'USER (Cliente / Productor estándar)' },
-                    { value: 'SUPER_ADMIN', label: 'SUPER_ADMIN (Super Administrador Plataforma)' },
-                  ]}
-                />
+                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Tipo de usuario</label>
+                <Select value={formRole} onChange={(v) => setFormRole(v as AssignableRole)} options={ROLE_OPTIONS} />
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  {formRole === 'FARM_ADMIN'
+                    ? 'Registra sus propios campos y crea a sus operadores y lectores desde la sección Personal.'
+                    : 'Acceso total a la plataforma.'}
+                </p>
               </div>
 
-              {formRole === 'USER' && (
+              {formRole === 'FARM_ADMIN' && (
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Cupo Inicial de Collares Contratados
