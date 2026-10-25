@@ -11,7 +11,6 @@ import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
 import type { Geofence } from '@/types';
 
-// Ícono para animales pastando
 function parsePolygon(raw: unknown): [number, number][] {
   try {
     const poly = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -32,21 +31,31 @@ function MapAutoBounds({
   recenterTick: number;
 }) {
   const map = useMap();
-  const didInitialFit = useRef(false);
+  const lastTargetKeyRef = useRef<string>('');
   const lastRecenterTick = useRef(recenterTick);
+
+  const targetKey = useMemo(() => {
+    const farmSig =
+      farmCoords.length > 0 ? `${farmCoords.length}:${farmCoords[0][0].toFixed(5)},${farmCoords[0][1].toFixed(5)}` : 'empty';
+    const fenceSig =
+      fenceCoords.length > 0 ? `${fenceCoords.length}:${fenceCoords[0][0].toFixed(5)},${fenceCoords[0][1].toFixed(5)}` : 'empty';
+    return `${farmSig}|${fenceSig}`;
+  }, [farmCoords, fenceCoords]);
 
   useEffect(() => {
     const manualRecenter = recenterTick !== lastRecenterTick.current;
     lastRecenterTick.current = recenterTick;
 
-    if (didInitialFit.current && !manualRecenter) return;
+    const targetChanged = targetKey !== lastTargetKeyRef.current;
+    lastTargetKeyRef.current = targetKey;
+
+    if (!targetChanged && !manualRecenter) return;
 
     const coords = fenceCoords.length > 0 ? fenceCoords : farmCoords;
     if (coords.length > 0) {
-      map.fitBounds(coords, { padding: [40, 40] });
-      didInitialFit.current = true;
+      map.fitBounds(coords, { padding: [40, 40], maxZoom: 16, animate: true });
     }
-  }, [farmCoords, fenceCoords, map, recenterTick]);
+  }, [farmCoords, fenceCoords, targetKey, map, recenterTick]);
 
   return null;
 }
@@ -113,6 +122,7 @@ export default function RotationMap({
 
   // Filter animals that have GPS coordinates
   const herd = useAnimalsToggle(farmId);
+  const initialCenter: [number, number] = farmCoords.length > 0 ? farmCoords[0] : center;
 
   return (
     <div
@@ -129,7 +139,7 @@ export default function RotationMap({
         animalsToggle={herd.control}
       />
 
-      <MapContainer center={center} zoom={14} className="w-full h-full">
+      <MapContainer center={initialCenter} zoom={14} className="w-full h-full">
         <TileLayer
           key={currentLayer}
           attribution={activeProvider.attribution}

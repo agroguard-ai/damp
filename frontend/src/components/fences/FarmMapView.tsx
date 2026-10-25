@@ -14,8 +14,9 @@ const TrajectoriesModal = dynamic(() => import('@/components/farms/TrajectoriesM
 const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 horas sin señal = desactualizado
 
 interface FarmMapViewProps {
-  farm: Pick<Farm, 'id' | 'name' | 'polygonCoordinates'>;
+  farm: Pick<Farm, 'id' | 'name' | 'polygonCoordinates'> & Partial<Pick<Farm, 'province' | 'location'>>;
   geofences: Geofence[];
+  center?: [number, number];
 }
 
 /**
@@ -23,9 +24,15 @@ interface FarmMapViewProps {
  * del mapa, apagado por defecto): solo con la capa prendida se consultan posiciones.
  * "Ver recorrido" en un animal abre la ventana de Recorridos con ese animal elegido.
  */
-export default function FarmMapView({ farm, geofences }: FarmMapViewProps) {
+export default function FarmMapView({ farm, geofences, center }: FarmMapViewProps) {
   const [filterGeofenceId, setFilterGeofenceId] = useState('');
   const [trajectoryAnimalId, setTrajectoryAnimalId] = useState<string | null>(null);
+
+  // Al cambiar de campo, reseteamos el filtro de cerco y el animal de recorrido seleccionado
+  useEffect(() => {
+    setFilterGeofenceId('');
+    setTrajectoryAnimalId(null);
+  }, [farm.id]);
 
   const farmPolygon = useMemo(() => parsePolygon(farm.polygonCoordinates), [farm.polygonCoordinates]);
   const herd = useAnimalsToggle(farm.id);
@@ -86,7 +93,11 @@ export default function FarmMapView({ farm, geofences }: FarmMapViewProps) {
                 onChange={setFilterGeofenceId}
                 options={[
                   { value: '', label: 'Todos los cercos' },
-                  ...geofences.map((g) => ({ value: g.id, label: g.name, icon: Zap })),
+                  ...geofences.map((g) => ({
+                    value: g.id,
+                    label: `${g.name}${!g.active ? ' (desactivado)' : ''}`,
+                    icon: Zap,
+                  })),
                 ]}
               />
             )}
@@ -96,6 +107,8 @@ export default function FarmMapView({ farm, geofences }: FarmMapViewProps) {
       )}
 
       <LiveTrackingMap
+        farmId={farm.id}
+        center={center}
         farmPolygon={farmPolygon}
         geofences={geofences}
         animals={herd.enabled ? visibleAnimals : []}

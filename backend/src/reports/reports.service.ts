@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { startOfDay, endOfDay } from '@/common/date-range';
 import * as ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 
@@ -71,8 +72,8 @@ export class ReportsService {
   private dateFilter({ from, to }: DateRange) {
     if (!from && !to) return undefined;
     return {
-      ...(from && { gte: new Date(from) }),
-      ...(to && { lte: new Date(to) }),
+      ...(from && { gte: startOfDay(from) }),
+      ...(to && { lte: endOfDay(to) }),
     };
   }
 

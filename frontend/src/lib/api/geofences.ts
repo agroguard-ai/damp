@@ -22,4 +22,8 @@ export const geofencesApi = {
   /** PATCH /api/geofences/[id]/deactivate — deactivates a geofence (baja lógica) */
   deactivate: (id: string): Promise<Geofence> =>
     apiFetch<Geofence>(`/api/geofences/${id}/deactivate`, { method: 'PATCH' }),
+
+  /** PATCH /api/geofences/[id]/activate — activates a geofence */
+  activate: (id: string): Promise<Geofence> =>
+    apiFetch<Geofence>(`/api/geofences/${id}/activate`, { method: 'PATCH' }),
 };

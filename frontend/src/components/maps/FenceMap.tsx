@@ -381,10 +381,16 @@ export default function FenceMap({
             <span>Campo</span>
           </div>
         )}
-        {geofences.length > 0 && (
+        {geofences.some((g) => g.active !== false) && (
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-cyan-400 border border-cyan-500"></span>
-            <span>Cerco Eléctrico</span>
+            <span>Cerco Activo</span>
+          </div>
+        )}
+        {geofences.some((g) => g.active === false) && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-slate-400 border border-slate-500"></span>
+            <span>Cerco Desactivado</span>
           </div>
         )}
         {newPoints.length > 0 && (
@@ -455,7 +461,7 @@ export default function FenceMap({
           />
         )}
 
-        {/* 2. Render Geofences (Cercos Eléctricos: Electric Cyan dashed) */}
+        {/* 2. Render Geofences (Cercos Eléctricos: Cyan si activo, Slate si desactivado) */}
         {geofences.map((fence) => {
           if (!fence.polygonCoordinates) return null;
           try {
@@ -465,22 +471,27 @@ export default function FenceMap({
                 : fence.polygonCoordinates;
 
             if (Array.isArray(coords) && coords.length > 0) {
+              const isActive = fence.active !== false;
               return (
                 <Polygon
                   key={fence.id}
                   positions={coords}
                   pathOptions={{
-                    color: '#06b6d4',
-                    fillColor: '#22d3ee',
-                    fillOpacity: 0.22,
-                    weight: 2.5,
-                    dashArray: '5, 5',
+                    color: isActive ? '#06b6d4' : '#94a3b8',
+                    fillColor: isActive ? '#22d3ee' : '#64748b',
+                    fillOpacity: isActive ? 0.22 : 0.10,
+                    weight: isActive ? 2.5 : 2,
+                    dashArray: isActive ? '5, 5' : '4, 6',
                   }}
                 >
                   <Tooltip sticky>
                     <div className="text-xs">
-                      <div className="font-bold text-cyan-700">⚡ {fence.name}</div>
-                      <div className="text-[10px] text-zinc-500">{fence.active ? 'Cerco Activo' : 'Desactivado'}</div>
+                      <div className={`font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
+                        ⚡ {fence.name}
+                      </div>
+                      <div className="text-[10px] text-zinc-500">
+                        {isActive ? 'Cerco Activo' : 'Desactivado'}
+                      </div>
                     </div>
                   </Tooltip>
                 </Polygon>

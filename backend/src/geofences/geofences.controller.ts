@@ -41,4 +41,11 @@ export class GeofencesController {
   deactivate(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.geofencesService.deactivate(id, userId);
   }
+
+  @Patch(':id/activate')
+  @ResolveFarmIdFrom('geofence')
+  @RequireFarmRole('ADMIN', 'OPERATOR')
+  activate(@Param('id') id: string, @CurrentUser('sub') userId: string) {
+    return this.geofencesService.activate(id, userId);
+  }
 }

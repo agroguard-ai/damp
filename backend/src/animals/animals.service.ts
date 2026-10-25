@@ -6,6 +6,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
+import { startOfDay, endOfDay } from '@/common/date-range';
+import { ONLY_WITH_GPS_FIX } from '@/common/gps';
 import { CollarsService } from '@/collars/collars.service';
 import { CreateAnimalDto } from './dto/create-animal.dto';
 import { UpdateAnimalDto } from './dto/update-animal.dto';
@@ -836,20 +838,18 @@ export class AnimalsService {
 
     const timestampFilter: Prisma.DateTimeFilter = {};
     if (from) {
-      timestampFilter.gte = new Date(from);
+      timestampFilter.gte = startOfDay(from);
     }
     if (to) {
-      const toDate = new Date(to);
-      if (to.length === 10) {
-        toDate.setHours(23, 59, 59, 999);
-      }
-      timestampFilter.lte = toDate;
+      timestampFilter.lte = endOfDay(to);
     }
 
     const readings = await this.prisma.telemetryReading.findMany({
       where: {
         collarId: { in: collarIds },
         ...(from || to ? { timestamp: timestampFilter } : {}),
+        // Sin fix GPS el collar manda 0,0: no se dibuja en el recorrido
+        ...ONLY_WITH_GPS_FIX,
       },
       orderBy: { timestamp: 'asc' },
       select: {
@@ -891,12 +891,8 @@ export class AnimalsService {
 
     const timestampFilter: Prisma.DateTimeFilter = {};
     if (from || to) {
-      if (from) timestampFilter.gte = new Date(from);
-      if (to) {
-        const toDate = new Date(to);
-        if (to.length === 10) toDate.setHours(23, 59, 59, 999);
-        timestampFilter.lte = toDate;
-      }
+      if (from) timestampFilter.gte = startOfDay(from);
+      if (to) timestampFilter.lte = endOfDay(to);
     } else {
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
       timestampFilter.gte = since;
@@ -906,6 +902,8 @@ export class AnimalsService {
       where: {
         collarId: { in: collarIds },
         timestamp: timestampFilter,
+        // Sin fix GPS el collar manda 0,0: no se dibuja en el mapa de calor
+        ...ONLY_WITH_GPS_FIX,
       },
       orderBy: { timestamp: 'desc' },
       select: {

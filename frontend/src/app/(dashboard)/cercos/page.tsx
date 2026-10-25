@@ -77,11 +77,13 @@ function CercosContent() {
   const { mutate: createGeofence, loading: submitting } = useMutation(geofencesApi.create);
   const { mutate: updateGeofence, loading: updating } = useMutation(geofencesApi.update);
   const { mutate: deactivateGeofence } = useMutation(geofencesApi.deactivate);
+  const { mutate: activateGeofence } = useMutation(geofencesApi.activate);
 
   // Modal de alta / edición
   const [fenceModal, setFenceModal] = useState<FenceModalState>(null);
   const [pastureType, setPastureType] = useState('');
   const [selectedAnimalIds, setSelectedAnimalIds] = useState<string[]>([]);
+  const [activateOnSave, setActivateOnSave] = useState(false);
 
   // Solo se pueden encerrar animales con collar activo (el backend lo exige)
   const animalsWithCollar = useMemo(() => animals.filter((a) => a.animalCollars?.length > 0), [animals]);
@@ -113,11 +115,13 @@ function CercosContent() {
   const openCreateModal = () => {
     setPastureType('');
     setSelectedAnimalIds([]);
+    setActivateOnSave(false);
     setFenceModal({ mode: 'create' });
   };
 
   const openEditModal = (fence: Geofence) => {
     setPastureType(fence.pastureType || '');
+    setActivateOnSave(!fence.active);
     setFenceModal({ mode: 'edit', fence });
   };
 
@@ -131,7 +135,13 @@ function CercosContent() {
         pastureType: pastureType.trim() || null,
         polygonCoordinates: points,
       });
-      toast.success(`Cerco "${name}" actualizado`);
+
+      if (!fenceModal.fence.active && activateOnSave) {
+        await activateGeofence(fenceModal.fence.id);
+        toast.success(`Cerco "${name}" actualizado y activado`);
+      } else {
+        toast.success(`Cerco "${name}" actualizado`);
+      }
     } else {
       await createGeofence({
         farmId: activeFarmId,
@@ -163,6 +173,25 @@ function CercosContent() {
       refetchGeofences();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al desactivar el cerco');
+    }
+  };
+
+  const handleActivate = async (id: string, fenceName: string) => {
+    const ok = await confirm({
+      title: `Activar "${fenceName}"`,
+      description:
+        'El cerco volverá a estar activo en el mapa y podrás asignarle hacienda con collar.',
+      confirmLabel: 'Activar',
+      danger: false,
+    });
+    if (!ok) return;
+
+    try {
+      await activateGeofence(id);
+      toast.success(`Cerco "${fenceName}" activado.`);
+      refetchGeofences();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al activar el cerco');
     }
   };
 
@@ -256,6 +285,7 @@ function CercosContent() {
 
       {FEATURES.grazingRotation && activeTab === 'rotation' && activeFarm ? (
         <RotationView
+          key={activeFarm.id}
           farm={activeFarm}
           geofences={geofences}
           animals={animals}
@@ -266,7 +296,14 @@ function CercosContent() {
         <>
           {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
-            {activeFarm && <FarmMapView farm={activeFarm} geofences={geofences} />}
+            {activeFarm && (
+              <FarmMapView
+                key={activeFarm.id}
+                farm={activeFarm}
+                geofences={geofences}
+                center={mapCenter}
+              />
+            )}
           </div>
 
           {/* Listado de Cercos */}
@@ -342,9 +379,15 @@ function CercosContent() {
                           className="text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors"
                         >
                           <td className="py-4 pr-4">
-                            <span className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white">
-                              <Zap className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
-                              {fence.name}
+                            <span className="flex items-center gap-2 font-semibold">
+                              <Zap
+                                className={`w-3.5 h-3.5 shrink-0 ${fence.active ? 'text-cyan-500' : 'text-zinc-400'}`}
+                              />
+                              <span
+                                className={fence.active ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}
+                              >
+                                {fence.name}
+                              </span>
                             </span>
                           </td>
 
@@ -387,27 +430,39 @@ function CercosContent() {
                           </td>
 
                           <td className="py-4 pl-4 text-right whitespace-nowrap space-x-1.5">
-                            {canEdit && fence.active && (
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(fence)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-cyan-700 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
-                                title="Editar nombre, pastura o perímetro del cerco"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                                <span>Editar</span>
-                              </button>
-                            )}
-                            {canEdit && fence.active && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeactivate(fence.id, fence.name)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
-                                title="Desactivar cerco eléctrico"
-                              >
-                                <Power className="w-3 h-3" />
-                                <span>Desactivar</span>
-                              </button>
+                            {canEdit && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(fence)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-cyan-700 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+                                  title="Editar nombre, pastura o perímetro del cerco"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Editar</span>
+                                </button>
+                                {fence.active ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeactivate(fence.id, fence.name)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
+                                    title="Desactivar cerco eléctrico"
+                                  >
+                                    <Power className="w-3 h-3" />
+                                    <span>Desactivar</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleActivate(fence.id, fence.name)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 transition-colors cursor-pointer"
+                                    title="Activar cerco eléctrico"
+                                  >
+                                    <Power className="w-3 h-3" />
+                                    <span>Activar</span>
+                                  </button>
+                                )}
+                              </>
                             )}
                           </td>
                         </tr>
@@ -453,7 +508,13 @@ function CercosContent() {
             boundaryLabel: `del campo "${activeFarm.name || ''}"`,
             center: mapCenter,
           }}
-          submitLabel={fenceModal.mode === 'edit' ? 'Guardar cambios' : 'Activar cerco'}
+          submitLabel={
+            fenceModal.mode === 'edit'
+              ? !fenceModal.fence.active && activateOnSave
+                ? 'Guardar y activar'
+                : 'Guardar cambios'
+              : 'Activar cerco'
+          }
           submitting={submitting || updating}
           onClose={() => setFenceModal(null)}
           onSubmit={handleSaveFence}
@@ -471,9 +532,28 @@ function CercosContent() {
               value={pastureType}
               onChange={(e) => setPastureType(e.target.value)}
               placeholder="Ej: Alfalfa, Trébol, Pasto natural"
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-600 text-sm"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-600 text-sm"
             />
           </div>
+
+          {fenceModal.mode === 'edit' && !fenceModal.fence.active && (
+            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={activateOnSave}
+                onChange={(e) => setActivateOnSave(e.target.checked)}
+                className="accent-emerald-600 w-4 h-4 cursor-pointer"
+              />
+              <div>
+                <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block">
+                  Activar este cerco al guardar
+                </span>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
+                  El cerco volverá a quedar activo en el mapa para contener hacienda.
+                </span>
+              </div>
+            </label>
+          )}
 
           {fenceModal.mode === 'create' && (
             <div className="space-y-2">
