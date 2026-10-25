@@ -28,7 +28,7 @@ describe('MedicalEventsService', () => {
   });
 
   describe('create', () => {
-    it('permite registrar un evento si el usuario es el dueño de la granja', async () => {
+    it('permite registrar un evento si el usuario es el dueño del campo', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
         farm: { userId: 'owner-1', farmUsers: [] },
@@ -56,7 +56,7 @@ describe('MedicalEventsService', () => {
       expect(prisma.animal.update).not.toHaveBeenCalled();
     });
 
-    it('permite registrar un evento si el usuario es un empleado activo (operario) de la granja', async () => {
+    it('permite registrar un evento si el usuario es un empleado activo (operario) del campo', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
         farm: {
@@ -129,7 +129,7 @@ describe('MedicalEventsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('rechaza con ForbiddenException si el usuario no pertenece a la granja del animal', async () => {
+    it('rechaza con ForbiddenException si el usuario no pertenece al campo del animal', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
         farm: { userId: 'other-owner', farmUsers: [] },

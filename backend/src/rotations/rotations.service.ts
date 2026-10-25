@@ -53,7 +53,7 @@ export class RotationsService implements OnModuleInit, OnModuleDestroy {
     const isAdmin = isOwner || userRole === 'ADMIN';
 
     if (requireAdmin && !isAdmin) {
-      throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
+      throw new ForbiddenException('Se requieren permisos de administrador del campo para realizar esta acción');
     }
 
     if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {

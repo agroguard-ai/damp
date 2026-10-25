@@ -150,7 +150,7 @@ export default function NewFarmPage() {
 
   if (!farmPerms.loading && farmPerms.role !== null && farmPerms.role !== 'ADMIN') {
     return (
-      <AccessDeniedState description="Solo el administrador de la granja puede registrar nuevos establecimientos." />
+      <AccessDeniedState description="Solo el administrador del campo puede registrar nuevos establecimientos." />
     );
   }
 

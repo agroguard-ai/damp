@@ -89,19 +89,19 @@ describe('FarmRoleGuard', () => {
     );
   });
 
-  it('NO trata params.id como farmId — evita el bug de tratar un id de recurso como id de granja', async () => {
+  it('NO trata params.id como farmId — evita el bug de tratar un id de recurso como id de campo', async () => {
     mockReflector(undefined, undefined);
     const { context } = makeContext({
       clerkSub: 'clerk_1',
       dbUser: { id: 'u1', globalRole: GlobalRole.USER },
-      params: { id: 'animal-99' }, // :id de un animal, no una granja
+      params: { id: 'animal-99' }, // :id de un animal, no un campo
     });
 
     await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException);
     expect(prisma.farmUser.findUnique).not.toHaveBeenCalled();
   });
 
-  it('rechaza con rol insuficiente aunque sea miembro de la granja', async () => {
+  it('rechaza con rol insuficiente aunque sea miembro del campo', async () => {
     mockReflector(['ADMIN'], undefined);
     prisma.farmUser.findUnique.mockResolvedValue({ id: 'fu1', isActive: true, role: { name: 'VIEWER' } });
     const { context } = makeContext({
@@ -113,7 +113,7 @@ describe('FarmRoleGuard', () => {
     await expect(guard.canActivate(context)).rejects.toThrow(ForbiddenException);
   });
 
-  it('rechaza si el usuario no es miembro de la granja', async () => {
+  it('rechaza si el usuario no es miembro del campo', async () => {
     mockReflector(undefined, undefined);
     prisma.farmUser.findUnique.mockResolvedValue(null);
     const { context } = makeContext({
@@ -196,7 +196,7 @@ describe('FarmRoleGuard', () => {
       expect(prisma.animal.findUnique).toHaveBeenCalledWith({ where: { id: 'animal-5' }, select: { farmId: true } });
     });
 
-    it('ignora un ?farmId= de otra granja: rechaza si no coincide con la granja del recurso', async () => {
+    it('ignora un ?farmId= de otro campo: rechaza si no coincide con el campo del recurso', async () => {
       mockReflector(['ADMIN', 'OPERATOR'], { resource: 'animal', idKey: 'id' });
       prisma.animal.findUnique.mockResolvedValue({ farmId: 'farm-donde-es-viewer' });
       const { context } = makeContext({
@@ -233,7 +233,7 @@ describe('FarmRoleGuard', () => {
       await expect(guard.canActivate(context)).rejects.toThrow(BadRequestException);
     });
 
-    it('tira 403 ForbiddenException si el dueño de la granja está suspendido (cascada)', async () => {
+    it('tira 403 ForbiddenException si el dueño del campo está suspendido (cascada)', async () => {
       mockReflector(undefined, undefined);
       prisma.farmUser.findUnique.mockResolvedValue({
         id: 'fu1',

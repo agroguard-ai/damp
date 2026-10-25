@@ -56,7 +56,7 @@ export class IotService {
    * Procesa una lectura de telemetría enviada por un collar IoT.
    *
    * 1. Valida que el collar exista.
-   * 2. Valida que el collar pertenezca a la misma granja que el gateway autenticado.
+   * 2. Valida que el collar pertenezca a la mismo campo que el gateway autenticado.
    * 3. Persiste la lectura (lat, lng, temp).
    * 4. Busca el animal activo asociado al collar y su cerco virtual activo.
    * 5. Si el animal está fuera del cerco, dispara una alerta ESCAPE (si no hay ya una sin resolver).
@@ -211,7 +211,7 @@ export class IotService {
   }
 
   /**
-   * Evalúa la lectura actual contra los umbrales configurados por la granja (CU016) y,
+   * Evalúa la lectura actual contra los umbrales configurados por el campo (CU016) y,
    * si corresponde, dispara una alerta HEALTH (fiebre, hipotermia o inactividad prolongada).
    *
    * Es reactiva e instantánea (una sola lectura fuera de umbral ya alcanza) — complementa,

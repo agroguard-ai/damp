@@ -61,7 +61,7 @@ describe('IotLogsService', () => {
           id: 'gw-100',
           name: 'Gateway Principal',
           farmId: 'farm-1',
-          farm: { id: 'farm-1', name: 'Granja Norte' },
+          farm: { id: 'farm-1', name: 'Campo Norte' },
         },
       });
 
@@ -72,7 +72,7 @@ describe('IotLogsService', () => {
       expect(callData.status).toBe('SUCCESS');
       expect(callData.apiKeyUsed).toContain('gw_liv...');
       expect(callData.gatewayName).toBe('Gateway Principal');
-      expect(callData.farmName).toBe('Granja Norte');
+      expect(callData.farmName).toBe('Campo Norte');
       expect(callData.lat).toBe(-34.6037);
     });
 

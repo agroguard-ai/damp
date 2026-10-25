@@ -40,7 +40,7 @@ export class AnimalsService {
     const isAdmin = isOwner || userRole === 'ADMIN';
 
     if (requireAdmin && !isAdmin) {
-      throw new ForbiddenException('Se requieren permisos de administrador de la granja para realizar esta acción');
+      throw new ForbiddenException('Se requieren permisos de administrador del campo para realizar esta acción');
     }
 
     if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
@@ -494,7 +494,7 @@ export class AnimalsService {
       throw new BadRequestException('El establecimiento de origen y destino deben ser distintos.');
     }
 
-    // El guard solo puede validar una granja; acá se exige rol de escritura en origen y destino.
+    // El guard solo puede validar un campo; acá se exige rol de escritura en origen y destino.
     const [source, target] = await Promise.all([
       this.checkFarmAccess(sourceFarmId, userId),
       this.checkFarmAccess(targetFarmId, userId),

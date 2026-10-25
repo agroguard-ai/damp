@@ -22,7 +22,7 @@ export class ReportsService {
       },
     });
     if (!farm) {
-      throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
+      throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
     }
 
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -114,7 +114,7 @@ export class ReportsService {
   }
 
   // ---------------------------------------------------------------------
-  // 2. Listado de animales de una granja (Excel)
+  // 2. Listado de animales de un campo (Excel)
   // ---------------------------------------------------------------------
   async farmAnimalsExcel(farmId: string, userId: string): Promise<Buffer> {
     await this.getOwnedFarm(farmId, userId);

@@ -41,7 +41,7 @@ export class CollarsService {
     return userFarms.map((f) => f.id);
   }
 
-  /** Granjas donde el usuario puede modificar datos (ADMIN u OPERATOR); un VIEWER no puede tocar collares. */
+  /** Campos donde el usuario puede modificar datos (ADMIN u OPERATOR); un VIEWER no puede tocar collares. */
   private async getUserWritableFarmIds(userId: string): Promise<string[]> {
     const memberships = await this.prisma.farmUser.findMany({
       where: { userId, isActive: true, role: { name: { in: [...FARM_WRITE_ROLES] } } },
@@ -202,7 +202,7 @@ export class CollarsService {
       await this.assertCollarQuota(dto.farmId, id);
     }
 
-    // Si se cambia de granja o se pasa a stock libre, liberar animal activo si lo hubiera
+    // Si se cambia de campo o se pasa a stock libre, liberar animal activo si lo hubiera
     if (dto.farmId !== undefined && dto.farmId !== existing.farmId) {
       await this.prisma.animalCollar.updateMany({
         where: { collarId: id, endAt: null },

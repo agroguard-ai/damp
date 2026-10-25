@@ -46,7 +46,7 @@ describe('AdminUsersService', () => {
   });
 
   describe('findAll', () => {
-    it('debe mapear usuarios calculando assignedCollarsCount desde sus granjas', async () => {
+    it('debe mapear usuarios calculando assignedCollarsCount desde sus campos', async () => {
       prisma.user.findMany.mockResolvedValue([
         {
           id: 'u1',

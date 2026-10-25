@@ -1,12 +1,12 @@
 /**
- * Roles a nivel de granja (CU018). Los nombres coinciden con las filas de la tabla `roles`
+ * Roles a nivel de campo (CU018). Los nombres coinciden con las filas de la tabla `roles`
  * que crea el seed.
- * - ADMIN: todo dentro de su granja, incluida la gestión de usuarios y la configuración de alertas.
- * - OPERATOR: todo menos administrar usuarios, configurar alertas y editar/dar de baja la granja.
+ * - ADMIN: todo dentro de su campo, incluida la gestión de usuarios y la configuración de alertas.
+ * - OPERATOR: todo menos administrar usuarios, configurar alertas y editar/dar de bajal campo.
  * - VIEWER: solo lectura.
  */
 export const FARM_ROLES = ['ADMIN', 'OPERATOR', 'VIEWER'] as const;
 export type FarmRoleName = (typeof FARM_ROLES)[number];
 
-/** Roles que pueden crear/modificar/eliminar datos operativos de la granja. */
+/** Roles que pueden crear/modificar/eliminar datos operativos del campo. */
 export const FARM_WRITE_ROLES: readonly FarmRoleName[] = ['ADMIN', 'OPERATOR'];

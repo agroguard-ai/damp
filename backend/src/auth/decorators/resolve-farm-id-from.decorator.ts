@@ -13,7 +13,7 @@ export interface ResolveFarmIdFromOptions {
 
 /**
  * Le dice a FarmRoleGuard cómo encontrar el farmId cuando la ruta no lo trae directo
- * (p. ej. PATCH /animals/:id — :id es del animal, no de la granja). El guard busca
+ * (p. ej. PATCH /animals/:id — :id es del animal, no del campo). El guard busca
  * `idKey` en params/body/query, resuelve el recurso correspondiente por Prisma y saca
  * su farmId de ahí antes de chequear el rol.
  */

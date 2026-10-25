@@ -3,9 +3,9 @@
 import { ShieldOff } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-/** Pantalla para rutas a las que el rol de granja del usuario no tiene acceso (ej. entrar por URL directa). */
+/** Pantalla para rutas a las que el rol de campo del usuario no tiene acceso (ej. entrar por URL directa). */
 export function AccessDeniedState({
-  description = 'Tu rol en este establecimiento no tiene permisos para esta sección. Consultá con el administrador de la granja.',
+  description = 'Tu rol en este establecimiento no tiene permisos para esta sección. Consultá con el administrador del campo.',
   backHref = '/dashboard',
 }: {
   description?: string;

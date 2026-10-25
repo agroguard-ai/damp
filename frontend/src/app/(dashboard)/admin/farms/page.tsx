@@ -53,7 +53,7 @@ export default function AdminFarmsPage() {
         setLoading(true);
         const res = await fetch(`/api/admin/farms?page=${page}&limit=${limit}`);
         if (!res.ok) {
-          throw new Error('No se pudo cargar la lista global de granjas.');
+          throw new Error('No se pudo cargar la lista global de campos.');
         }
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -76,7 +76,7 @@ export default function AdminFarmsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="text-zinc-500 font-medium">Cargando todas las granjas del sistema...</div>
+        <div className="text-zinc-500 font-medium">Cargando todos los campos del sistema...</div>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function AdminFarmsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Building2 className="w-7 h-7 text-purple-600" />
-            Todas las Granjas
+            Todos los Campos
           </h1>
         </div>
         <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
@@ -114,7 +114,7 @@ export default function AdminFarmsPage() {
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-white leading-tight">
-                    {f.name || 'Granja sin nombre'}
+                    {f.name || 'Campo sin nombre'}
                   </h3>
                 </div>
 
@@ -133,7 +133,7 @@ export default function AdminFarmsPage() {
                   )}
                 </div>
 
-                {/* Administrador de la granja */}
+                {/* Administrador del campo */}
                 <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   {adminMember ? (
                     <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/40 p-2 rounded-lg border border-purple-100 dark:border-purple-900/50">

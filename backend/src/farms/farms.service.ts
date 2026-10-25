@@ -14,15 +14,15 @@ export class FarmsService {
       throw new NotFoundException('User record not found in system database');
     }
 
-    // Solo crean granjas el superadmin, los administradores de granja o un productor nuevo que
-    // todavía no pertenece a ninguna. Un OPERATOR/VIEWER no puede crearse una granja propia para
-    // escalar a ADMIN ni saltear la regla de "un usuario, una granja" de los sub-usuarios.
+    // Solo crean campos el superadmin, los administradores de campo o un productor nuevo que
+    // todavía no pertenece a ninguna. Un OPERATOR/VIEWER no puede crearse un campo propio para
+    // escalar a ADMIN ni saltear la regla de "un usuario, un campo" de los sub-usuarios.
     if (dbUser.globalRole !== GlobalRole.SUPER_ADMIN) {
       const nonAdminMembership = await this.prisma.farmUser.findFirst({
         where: { userId: dbUser.id, isActive: true, role: { name: { not: 'ADMIN' } } },
       });
       if (nonAdminMembership) {
-        throw new ForbiddenException('Solo el administrador de la granja puede crear establecimientos.');
+        throw new ForbiddenException('Solo el administrador del campo puede crear establecimientos.');
       }
     }
 
@@ -149,7 +149,7 @@ export class FarmsService {
       });
 
       if (!adminMember) {
-        throw new ForbiddenException('Solo el administrador de la granja puede modificarla');
+        throw new ForbiddenException('Solo el administrador del campo puede modificarlo');
       }
     }
 
@@ -219,13 +219,13 @@ export class FarmsService {
       });
       if (!member) {
         throw new ForbiddenException(
-          'Solo el propietario o un administrador de la granja puede dar de baja el establecimiento'
+          'Solo el propietario o un administrador del campo puede dar de baja el establecimiento'
         );
       }
     }
 
     return this.prisma.$transaction(async (tx) => {
-      // 1. Obtener animales de la granja para cerrar asignaciones de collares y geocercas
+      // 1. Obtener animales del campo para cerrar asignaciones de collares y geocercas
       const farmAnimals = await tx.animal.findMany({
         where: { farmId: id },
         select: { id: true },
@@ -253,12 +253,12 @@ export class FarmsService {
         data: { farmId: null },
       });
 
-      // 3. Eliminar geocercas de la granja
+      // 3. Eliminar geocercas del campo
       await tx.geofence.deleteMany({
         where: { farmId: id },
       });
 
-      // 4. Inactivar miembros de la granja
+      // 4. Inactivar miembros del campo
       await tx.farmUser.updateMany({
         where: { farmId: id },
         data: { isActive: false, removedAt: new Date() },

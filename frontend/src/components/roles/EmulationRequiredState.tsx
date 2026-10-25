@@ -114,7 +114,7 @@ export function EmulationRequiredState({ title = 'Recursos del Sistema' }: { tit
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-medium bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-2 py-0.5 rounded-full">
-                      {u._count?.farmUsers ?? 0} granjas
+                      {u._count?.farmUsers ?? 0} campos
                     </span>
                     {selectingId === u.id ? (
                       <Loader2 className="w-4 h-4 animate-spin text-purple-600" />

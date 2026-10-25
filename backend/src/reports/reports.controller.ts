@@ -7,7 +7,7 @@ import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
 import { FarmRoleGuard } from '@/auth/guards/farm-role.guard';
 import { ResolveFarmIdFrom } from '@/auth/decorators/resolve-farm-id-from.decorator';
 
-// Todos los reportes son de solo lectura -> cualquier miembro de la granja (VIEWER incluido,
+// Todos los reportes son de solo lectura -> cualquier miembro del campo (VIEWER incluido,
 // CU017 lo pide explícitamente), sin @RequireFarmRole.
 @Controller('reports')
 @UseGuards(JwtAuthGuard, GlobalRolesGuard, FarmRoleGuard)

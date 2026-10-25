@@ -81,7 +81,7 @@ export class FarmRoleGuard implements CanActivate {
     const query = request.query as Record<string, unknown> | undefined;
 
     // OJO: no cae a params.id como fallback genérico — en la mayoría de las rutas :id es
-    // el id del recurso (zona, animal, gateway...), no de la granja, y tratarlo como farmId
+    // el id del recurso (zona, animal, gateway...), no del campo, y tratarlo como farmId
     // "encontraría" un farmId incorrecto sin nunca pasar por el resolver de @ResolveFarmIdFrom.
     const rawFarmId = params?.farmId ?? body?.farmId ?? query?.farmId;
     let farmId = typeof rawFarmId === 'string' ? rawFarmId : undefined;
@@ -91,9 +91,9 @@ export class FarmRoleGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    // Si la ruta declara @ResolveFarmIdFrom, manda la granja del recurso, no un farmId que venga
-    // en la request: si no, alguien podría mandar ?farmId=<granja donde es ADMIN> y pasar el
-    // chequeo de rol para modificar un recurso de otra granja donde no tiene ese rol.
+    // Si la ruta declara @ResolveFarmIdFrom, mandal campo del recurso, no un farmId que venga
+    // en la request: si no, alguien podría mandar ?farmId=<campo donde es ADMIN> y pasar el
+    // chequeo de rol para modificar un recurso de otro campo donde no tiene ese rol.
     if (resolveFrom) {
       const idKey = resolveFrom.idKey ?? 'id';
       const rawResourceId = params?.[idKey] ?? body?.[idKey] ?? query?.[idKey];
@@ -141,8 +141,8 @@ export class FarmRoleGuard implements CanActivate {
       throw new ForbiddenException('User is not a registered member of this farm');
     }
 
-    // Cascada de suspensión: si el dueño de la granja está suspendido,
-    // se inhabilita el acceso para todos los miembros de esa granja
+    // Cascada de suspensión: si el dueño del campo está suspendido,
+    // se inhabilita el acceso para todos los miembros de ese campo
     if (farmUser.farm?.user && !farmUser.farm.user.isActive) {
       throw new ForbiddenException(
         'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'

@@ -29,7 +29,7 @@ export class GatewaysService {
     if (dto.farmId) {
       const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
       if (!farm) {
-        throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
+        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe.`);
       }
 
       if (!isSuperAdmin && farm.userId !== userId) {
@@ -212,10 +212,10 @@ export class GatewaysService {
     if (dto.farmId && dto.farmId !== gateway.farmId) {
       const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
       if (!farm) {
-        throw new NotFoundException(`La granja con ID ${dto.farmId} no existe.`);
+        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe.`);
       }
 
-      // Mover el gateway a otra granja requiere permisos de escritura también en la granja destino.
+      // Mover el gateway a otro campo requiere permisos de escritura también en el campo destino.
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (user?.globalRole !== GlobalRole.SUPER_ADMIN) {
         const member = await this.prisma.farmUser.findUnique({

@@ -17,7 +17,7 @@ export class AlertSettingsService {
   private async getOwnedFarm(farmId: string, userId: string) {
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
     if (!farm) {
-      throw new NotFoundException(`La granja con ID ${farmId} no existe.`);
+      throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
     }
     if (farm.userId !== userId) {
       throw new ForbiddenException('No tienes acceso a este establecimiento.');
@@ -41,7 +41,7 @@ export class AlertSettingsService {
     });
   }
 
-  /** Umbrales efectivos de una granja para uso interno (ej. iot.service). Nunca lanza: usa defaults si no hay config. */
+  /** Umbrales efectivos de un campo para uso interno (ej. iot.service). Nunca lanza: usa defaults si no hay config. */
   async getEffective(farmId: string) {
     const settings = await this.prisma.alertSettings.findUnique({ where: { farmId } });
     return settings ?? DEFAULTS;

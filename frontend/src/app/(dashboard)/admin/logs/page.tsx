@@ -260,7 +260,7 @@ export default function AdminIotLogsPage() {
             <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Buscar IP, error, granja..."
+              placeholder="Buscar IP, error, campo..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -311,7 +311,7 @@ export default function AdminIotLogsPage() {
                 { value: 'SUCCESS', label: 'Éxito (200 / 204)' },
                 { value: 'REJECTED_AUTH', label: 'Rechazo Auth (401)' },
                 { value: 'NOT_FOUND', label: 'No Encontrado (404)' },
-                { value: 'FORBIDDEN', label: 'Granja Inválida (403)' },
+                { value: 'FORBIDDEN', label: 'Campo Inválido (403)' },
                 { value: 'ERROR', label: 'Todos los Errores (4xx / 5xx)' },
               ]}
               size="sm"
@@ -332,7 +332,7 @@ export default function AdminIotLogsPage() {
               <tr>
                 <th className="py-3 px-4">Fecha / Hora</th>
                 <th className="py-3 px-4">Dispositivo (Collar)</th>
-                <th className="py-3 px-4">Gateway & Granja</th>
+                <th className="py-3 px-4">Gateway & Campo</th>
                 <th className="py-3 px-4">Telemetría Recibida</th>
                 <th className="py-3 px-4">Resultado HTTP</th>
                 <th className="py-3 px-4 text-center">Latencia</th>
@@ -388,14 +388,14 @@ export default function AdminIotLogsPage() {
                         )}
                       </td>
 
-                      {/* Gateway & Granja */}
+                      {/* Gateway & Campo */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5 font-medium text-zinc-900 dark:text-white">
                           <Router className="w-3.5 h-3.5 text-purple-500 shrink-0" />
                           <span className="truncate max-w-40">{log.gatewayName || log.gatewayId || 'Desconocido'}</span>
                         </div>
                         <div className="text-[11px] text-zinc-400 truncate max-w-44 mt-0.5">
-                          {log.farmName ? `Granja: ${log.farmName}` : log.ipAddress ? `IP: ${log.ipAddress}` : '—'}
+                          {log.farmName ? `Campo: ${log.farmName}` : log.ipAddress ? `IP: ${log.ipAddress}` : '—'}
                         </div>
                       </td>
 
@@ -457,7 +457,7 @@ export default function AdminIotLogsPage() {
                                   : isNotFound
                                     ? 'Collar No Existe'
                                     : isForbidden
-                                      ? 'Granja Incorrecta'
+                                      ? 'Campo Incorrecto'
                                       : 'Error'}
                           </span>
                         </span>
@@ -575,7 +575,7 @@ export default function AdminIotLogsPage() {
               </div>
 
               <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-zinc-700/50">
-                <span className="text-zinc-400 block text-[10px] uppercase font-bold">Granja</span>
+                <span className="text-zinc-400 block text-[10px] uppercase font-bold">Campo</span>
                 <span className="font-semibold text-zinc-900 dark:text-white mt-1 block truncate">
                   {selectedLog.farmName || selectedLog.farmId || '—'}
                 </span>

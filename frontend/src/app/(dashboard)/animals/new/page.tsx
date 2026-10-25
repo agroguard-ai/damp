@@ -71,7 +71,7 @@ export default function NewAnimalPage() {
 
   if (!farmPerms.loading && farmPerms.role !== null && !farmPerms.canEdit) {
     return (
-      <AccessDeniedState description="Tu rol es de solo lectura: no podés registrar animales. Consultá con el administrador de la granja." />
+      <AccessDeniedState description="Tu rol es de solo lectura: no podés registrar animales. Consultá con el administrador del campo." />
     );
   }
 

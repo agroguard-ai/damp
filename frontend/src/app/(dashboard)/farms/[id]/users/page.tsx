@@ -10,7 +10,7 @@ export default async function FarmUsersPage({ params }: { params: Promise<{ id: 
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Users className="w-7 h-7 text-purple-600 dark:text-purple-400" />
-            Gestión de Usuarios de la Granja
+            Gestión de Usuarios del Campo
           </h1>
         </div>
       </div>

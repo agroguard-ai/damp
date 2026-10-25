@@ -125,7 +125,7 @@ export function AdminUserList() {
     if (u.isActive) {
       const ok = await confirm({
         title: 'Suspender cliente / Inhabilitar acceso',
-        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará de inmediato su acceso al sistema y suspenderá las granjas asociadas para todos sus empleados. Los datos históricos se conservan para auditoría.`,
+        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará de inmediato su acceso al sistema y suspenderá los campos asociados para todos sus empleados. Los datos históricos se conservan para auditoría.`,
         confirmLabel: 'Suspender cliente',
         danger: true,
       });
@@ -133,7 +133,7 @@ export function AdminUserList() {
     } else {
       const ok = await confirm({
         title: 'Reactivar cliente',
-        description: `¿Deseas reactivar la cuenta de "${u.name || u.email}"? Se restaurará su acceso y el de sus empleados a sus granjas de inmediato.`,
+        description: `¿Deseas reactivar la cuenta de "${u.name || u.email}"? Se restaurará su acceso y el de sus empleados a sus campos de inmediato.`,
         confirmLabel: 'Reactivar cliente',
         danger: false,
       });
@@ -337,7 +337,7 @@ export function AdminUserList() {
                 <th className="px-6 py-3.5">Email</th>
                 <th className="px-6 py-3.5">Estado</th>
                 <th className="px-6 py-3.5">Collares Contratados</th>
-                <th className="px-6 py-3.5">Granjas</th>
+                <th className="px-6 py-3.5">Campos</th>
                 <th className="px-6 py-3.5">Rol Global</th>
                 <th className="px-6 py-3.5">Estado Clave</th>
                 <th className="px-6 py-3.5">Fecha Alta</th>
@@ -550,7 +550,7 @@ export function AdminUserList() {
                   className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
                 />
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  Collares actualmente asignados a sus granjas:{' '}
+                  Collares actualmente asignados a sus campos:{' '}
                   <span className="font-bold text-zinc-700 dark:text-zinc-200">
                     {editingCollarUser.assignedCollarsCount ?? 0}
                   </span>

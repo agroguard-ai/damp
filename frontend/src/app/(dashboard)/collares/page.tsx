@@ -207,7 +207,7 @@ export default function CollaresPage() {
           map.set(f.userId, {
             id: f.userId,
             name: f.user?.name || null,
-            email: f.user?.email || 'admin@granja.com',
+            email: f.user?.email || 'admin@campo.com',
           });
         }
       }
@@ -629,7 +629,7 @@ export default function CollaresPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xs space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filtros de Búsqueda y Administrador de Granja
+            Filtros de Búsqueda y Administrador de Campo
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -645,7 +645,7 @@ export default function CollaresPage() {
               />
             </div>
 
-            {/* 2. Admin de Granja Filter (SuperAdmin only) */}
+            {/* 2. Admin de Campo Filter (SuperAdmin only) */}
             {isSuperAdmin && (
               <div>
                 <Select
@@ -658,7 +658,7 @@ export default function CollaresPage() {
                   searchable={farmAdminsList.length > 5}
                   searchPlaceholder="Buscar administrador..."
                   options={[
-                    { value: 'ALL', label: `👤 Todos los Administradores de Granja (${farmAdminsList.length})` },
+                    { value: 'ALL', label: `👤 Todos los Administradores de Campo (${farmAdminsList.length})` },
                     { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
                     ...farmAdminsList.map((u) => {
                       const userFarmsCount = allFarms.filter(
@@ -949,10 +949,10 @@ export default function CollaresPage() {
                             <button
                               onClick={() => handleOpenAssignModal(c)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
-                              title="Asignar collar a un administrador de granja y campo"
+                              title="Asignar collar a un administrador de campo"
                             >
                               <UserIcon className="w-3.5 h-3.5" />
-                              {c.farmId ? 'Reasignar Granja' : 'Asignar a Granja'}
+                              {c.farmId ? 'Reasignar Campo' : 'Asignar a Campo'}
                             </button>
 
                             <button
@@ -1131,7 +1131,7 @@ export default function CollaresPage() {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-white">
-                    Asignar Collar a Administrador de Granja
+                    Asignar Collar a Administrador de Campo
                   </h3>
                   <p className="text-xs text-zinc-500">
                     Dispositivo:{' '}
@@ -1180,10 +1180,10 @@ export default function CollaresPage() {
             )}
 
             <form onSubmit={handleAssignSubmit} className="space-y-4">
-              {/* Paso 1: Administrador de Granja */}
+              {/* Paso 1: Administrador de Campo */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider block">
-                  1. Administrador de Granja *
+                  1. Administrador de Campo *
                 </label>
                 <Select
                   required
@@ -1200,8 +1200,8 @@ export default function CollaresPage() {
                   searchPlaceholder="Buscar administrador..."
                   placeholder={
                     farmAdminsList.length === 0
-                      ? 'No hay administradores de granja registrados...'
-                      : `Seleccionar administrador de granja (${farmAdminsList.length})...`
+                      ? 'No hay administradores de campo registrados...'
+                      : `Seleccionar administrador de campo (${farmAdminsList.length})...`
                   }
                   options={farmAdminsList.map((u) => {
                     const farmCount = allFarms.filter(
@@ -1223,7 +1223,7 @@ export default function CollaresPage() {
                 </label>
                 {!assignProducerId ? (
                   <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5">
-                    Seleccioná primero un administrador de granja en el paso 1
+                    Seleccioná primero un administrador de campo en el paso 1
                   </div>
                 ) : farmsForAssignModal.length === 0 ? (
                   <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3.5 py-2.5">

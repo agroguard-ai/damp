@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 export type FarmRoleName = 'ADMIN' | 'OPERATOR' | 'VIEWER';
 
 export const FARM_ROLE_LABELS: Record<FarmRoleName, string> = {
-  ADMIN: 'Administrador de granja',
+  ADMIN: 'Administrador de campo',
   OPERATOR: 'Operador',
   VIEWER: 'Solo lectura',
 };
@@ -14,24 +14,24 @@ export const FARM_ROLE_LABELS: Record<FarmRoleName, string> = {
 const ROLE_RANK: Record<FarmRoleName, number> = { VIEWER: 0, OPERATOR: 1, ADMIN: 2 };
 
 export interface FarmPermissions {
-  /** Rol efectivo en la granja (null si no es miembro). */
+  /** Rol efectivo en el campo (null si no es miembro). */
   role: FarmRoleName | null;
   /** SUPER_ADMIN sin emular: acceso total de plataforma. */
   isPlatformAdmin: boolean;
   /** Crear/editar/eliminar datos operativos (ADMIN u OPERATOR). */
   canEdit: boolean;
-  /** Gestionar el personal de la granja, la configuración de alertas y la granja en sí (ADMIN). */
+  /** Gestionar el personal del campo, la configuración de alertas y el campo en sí (ADMIN). */
   canManageUsers: boolean;
-  /** Granja donde el usuario es ADMIN (para el acceso a "Personal" desde el menú). */
+  /** Campo donde el usuario es ADMIN (para el acceso a "Personal" desde el menú). */
   adminFarmId: string | null;
   /** La sesión todavía se está cargando: no decidir accesos hasta que sea false. */
   loading: boolean;
-  /** Para listados con recursos de varias granjas (ej. gateways): ¿puede escribir en esa granja? */
+  /** Para listados con recursos de varias campos (ej. gateways): ¿puede escribir en ese campo? */
   canEditIn: (farmId: string | null | undefined) => boolean;
 }
 
 /**
- * Permisos del usuario actual (o del emulado, si un SUPER_ADMIN está emulando) dentro de una granja.
+ * Permisos del usuario actual (o del emulado, si un SUPER_ADMIN está emulando) dentro de un campo.
  * Es solo para la UI: el backend vuelve a validar todo con FarmRoleGuard.
  *
  * Sin `farmId` se toma el rol MÁS BAJO entre sus membresías activas (criterio conservador: no mostrar

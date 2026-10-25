@@ -114,7 +114,7 @@ export default function Sidebar() {
               />
               <SidebarLink
                 href="/admin/farms"
-                label="Todas las Granjas"
+                label="Todos los Campos"
                 logo={<Building2 className="text-purple-400" />}
                 isCollapsed={isCollapsed}
               />
@@ -183,7 +183,7 @@ export default function Sidebar() {
             <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
             <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
             <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
-            {/* Personal: gestión de usuarios internos, exclusiva del administrador de la granja (CU018) */}
+            {/* Personal: gestión de usuarios internos, exclusiva del administrador del campo (CU018) */}
             {adminFarmId && (
               <SidebarLink
                 href={`/farms/${adminFarmId}/users`}

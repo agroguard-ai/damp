@@ -7,7 +7,7 @@ import { useFarmPermissions, FARM_ROLE_LABELS } from '@/hooks/useFarmPermissions
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
 import { Select } from '@/components/ui/Select';
 
-// Cada granja tiene un único administrador (regla del backend), así que desde acá solo se
+// Cada campo tiene un único administrador (regla del backend), así que desde acá solo se
 // invita o se cambia entre operador y solo lectura.
 const ASSIGNABLE_ROLES = ['OPERATOR', 'VIEWER'] as const;
 
@@ -51,7 +51,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       setLoading(true);
       const res = await fetch(`/api/farms/${farmId}/users`);
       if (!res.ok) {
-        throw new Error('No se pudo cargar la lista de miembros de la granja.');
+        throw new Error('No se pudo cargar la lista de miembros del campo.');
       }
       const data: FarmUserRecord[] = await res.json();
       setMembers(data);
@@ -82,7 +82,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
 
       if (!res.ok) {
         const data = (await res.json()) as { message?: string };
-        throw new Error(data.message || 'Error al asignar sub-usuario a la granja');
+        throw new Error(data.message || 'Error al asignar sub-usuario al campo');
       }
 
       setEmailInput('');
@@ -119,7 +119,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
 
   const handleRemoveUser = async (userId: string) => {
     const ok = await confirm({
-      title: 'Remover usuario de la granja',
+      title: 'Remover usuario del campo',
       description: 'Pierde acceso a este establecimiento de inmediato. Se puede volver a invitar más adelante.',
       confirmLabel: 'Remover',
       danger: true,
@@ -147,7 +147,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
   if (!authLoading && !canManageUsers) {
     return (
       <AccessDeniedState
-        description="Solo el administrador de la granja puede gestionar el personal y sus accesos."
+        description="Solo el administrador del campo puede gestionar el personal y sus accesos."
         backHref="/farms"
       />
     );
@@ -156,7 +156,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="text-zinc-500 dark:text-zinc-400 font-medium">Cargando usuarios de la granja...</div>
+        <div className="text-zinc-500 dark:text-zinc-400 font-medium">Cargando usuarios del campo...</div>
       </div>
     );
   }
@@ -175,7 +175,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800">
         <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-1">Asignar Nuevo Sub-usuario</h3>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
-          Ingrese el email del usuario para otorgarle acceso a esta granja con un rol específico.
+          Ingrese el email del usuario para otorgarle acceso a este campo con un rol específico.
         </p>
 
         <form onSubmit={(e) => void handleAssignUser(e)} className="flex flex-col sm:flex-row gap-3">
@@ -207,7 +207,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
       {/* Sub-users List Table */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
         <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-          <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Usuarios Asignados a la Granja</h3>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Usuarios Asignados al Campo</h3>
           <span className="bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800">
             Integrantes: {members.length}
           </span>
@@ -218,7 +218,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-400 uppercase font-semibold text-xs border-b border-zinc-200 dark:border-zinc-800">
               <tr>
                 <th className="px-6 py-3.5">Usuario / Email</th>
-                <th className="px-6 py-3.5">Rol en Granja</th>
+                <th className="px-6 py-3.5">Rol en Campo</th>
                 <th className="px-6 py-3.5 text-right">Acciones</th>
               </tr>
             </thead>
@@ -246,7 +246,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
                     )}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {/* El admin no se puede revocar: la granja quedaría sin administrador */}
+                    {/* El admin no se puede revocar: el campo quedaría sin administrador */}
                     {m.role?.name !== 'ADMIN' && (
                       <button
                         onClick={() => void handleRemoveUser(m.userId)}
@@ -261,7 +261,7 @@ export function FarmUserList({ farmId }: { farmId: string }) {
               {members.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-6 py-8 text-center text-zinc-400 dark:text-zinc-500">
-                    No hay sub-usuarios asignados a esta granja.
+                    No hay sub-usuarios asignados a este campo.
                   </td>
                 </tr>
               )}

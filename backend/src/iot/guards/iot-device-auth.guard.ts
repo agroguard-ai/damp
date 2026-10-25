@@ -31,7 +31,7 @@ export class IotDeviceAuthGuard implements CanActivate {
 
     const gateway = await this.gatewaysService.validateApiKey(apiKey.trim(), gatewayId);
     if (!gateway) {
-      this.logger.warn(`[IoT Telemetry] Rechazado 401: API Key inválida o no coincide con ninguna granja/gateway.`);
+      this.logger.warn(`[IoT Telemetry] Rechazado 401: API Key inválida o no coincide con ningún campo/gateway.`);
       throw new UnauthorizedException('Invalid API Key or mismatched gateway');
     }
 

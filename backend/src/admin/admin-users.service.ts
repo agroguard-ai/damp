@@ -161,7 +161,7 @@ export class AdminUsersService {
     const currentAssigned = existingUser.farms.reduce((acc, f) => acc + f._count.collars, 0);
     if (maxCollars < currentAssigned) {
       throw new BadRequestException(
-        `No se puede reducir el cupo a ${maxCollars} porque el usuario ya tiene ${currentAssigned} collares asignados a sus granjas.`
+        `No se puede reducir el cupo a ${maxCollars} porque el usuario ya tiene ${currentAssigned} collares asignados a sus campos.`
       );
     }
 

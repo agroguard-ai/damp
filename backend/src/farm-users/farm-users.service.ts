@@ -45,7 +45,7 @@ export class FarmUsersService {
 
   async assignSubUser(farmId: string, dto: AssignFarmUserDto) {
     if (!dto.userId && !dto.email) {
-      throw new BadRequestException('Debe proporcionar el email o ID del usuario para asignarlo a la granja.');
+      throw new BadRequestException('Debe proporcionar el email o ID del usuario para asignarlo al campo.');
     }
 
     const farm = await this.prisma.farm.findUnique({
@@ -67,7 +67,7 @@ export class FarmUsersService {
       throw new NotFoundException(`El usuario ingresado no existe en el sistema.`);
     }
 
-    // Regla de negocio: Un usuario solo puede pertenecer a 1 granja a la vez
+    // Regla de negocio: Un usuario solo puede pertenecer a 1 campo a la vez
     const existingMembership = await this.prisma.farmUser.findFirst({
       where: {
         userId: user.id,
@@ -85,18 +85,18 @@ export class FarmUsersService {
 
     if (existingMembership) {
       if (existingMembership.farmId === farmId) {
-        throw new BadRequestException('El usuario ya se encuentra asignado a esta granja.');
+        throw new BadRequestException('El usuario ya se encuentra asignado a este campo.');
       } else {
-        const farmName = existingMembership.farm?.name || 'otra granja';
+        const farmName = existingMembership.farm?.name || 'otro campo';
         throw new BadRequestException(
-          `El usuario "${user.email}" ya se encuentra asignado al establecimiento "${farmName}". Un usuario solo puede pertenecer a una granja a la vez.`
+          `El usuario "${user.email}" ya se encuentra asignado al establecimiento "${farmName}". Un usuario solo puede pertenecer a un campo a la vez.`
         );
       }
     }
 
     const roleNameUpper = dto.roleName.toUpperCase();
 
-    // Regla de negocio: cada granja posee un único rol administrador
+    // Regla de negocio: cada campo posee un único rol administrador
     if (roleNameUpper === 'ADMIN') {
       const existingAdmin = await this.prisma.farmUser.findFirst({
         where: {
@@ -109,7 +109,7 @@ export class FarmUsersService {
 
       if (existingAdmin) {
         throw new BadRequestException(
-          'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'
+          'Este campo ya posee un rol administrador asignado. Solo puede haber un único administrador por campo.'
         );
       }
     }
@@ -159,20 +159,20 @@ export class FarmUsersService {
     });
 
     if (!existing || !existing.isActive) {
-      throw new NotFoundException(`Membresía del usuario no encontrada en la granja.`);
+      throw new NotFoundException(`Membresía del usuario no encontrada en el campo.`);
     }
 
     const roleNameUpper = dto.roleName.toUpperCase();
 
-    // Regla de negocio: la granja nunca puede quedar sin administrador (nadie podría volver a
+    // Regla de negocio: el campo nunca puede quedar sin administrador (nadie podría volver a
     // gestionar sus usuarios). Mismo criterio que removeSubUser.
     if (existing.role.name === 'ADMIN' && roleNameUpper !== 'ADMIN') {
       throw new BadRequestException(
-        'No se puede cambiar el rol del administrador de la granja: el establecimiento quedaría sin administrador.'
+        'No se puede cambiar el rol del administrador del campo: el establecimiento quedaría sin administrador.'
       );
     }
 
-    // Regla de negocio: cada granja posee un único rol administrador
+    // Regla de negocio: cada campo posee un único rol administrador
     if (roleNameUpper === 'ADMIN') {
       const existingAdmin = await this.prisma.farmUser.findFirst({
         where: {
@@ -185,7 +185,7 @@ export class FarmUsersService {
 
       if (existingAdmin) {
         throw new BadRequestException(
-          'Esta granja ya posee un rol administrador asignado. Solo puede haber un único administrador por granja.'
+          'Este campo ya posee un rol administrador asignado. Solo puede haber un único administrador por campo.'
         );
       }
     }
@@ -231,7 +231,7 @@ export class FarmUsersService {
     });
 
     if (!existing || !existing.isActive) {
-      throw new NotFoundException(`Membresía del usuario no encontrada en la granja.`);
+      throw new NotFoundException(`Membresía del usuario no encontrada en el campo.`);
     }
 
     if (existing.role.name === 'ADMIN') {
@@ -246,7 +246,7 @@ export class FarmUsersService {
 
       if (!otherActiveAdmin) {
         throw new BadRequestException(
-          'No se puede dar de baja al único administrador de la granja. Asigná otro administrador antes de remover este acceso.'
+          'No se puede dar de baja al único administrador del campo. Asigná otro administrador antes de remover este acceso.'
         );
       }
     }

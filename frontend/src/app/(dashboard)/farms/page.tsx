@@ -92,7 +92,7 @@ export default function FarmsPage() {
     // SuperAdmin without emulation has no tenant farm creation capability
     if (user.globalRole === 'SUPER_ADMIN' && !emulatedUser) return false;
     // Operadores y lectores no crean establecimientos (el backend también lo rechaza):
-    // solo administradores de granja o productores que todavía no tienen ninguna.
+    // solo administradores de campo o productores que todavía no tienen ninguna.
     return lowestFarmRole === null || lowestFarmRole === 'ADMIN';
   }, [user, emulatedUser, lowestFarmRole]);
 
@@ -393,7 +393,7 @@ export default function FarmsPage() {
                             <Route className="w-4 h-4" />
                           </button>
 
-                          {/* Botón Usuarios / Equipo: solo el administrador de la granja gestiona el personal */}
+                          {/* Botón Usuarios / Equipo: solo el administrador del campo gestiona el personal */}
                           {isAdmin && (
                             <Link
                               href={`/farms/${farm.id}/users`}

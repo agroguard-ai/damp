@@ -98,7 +98,7 @@ describe('CollarsService', () => {
   });
 
   describe('create con límite de collares', () => {
-    it('permite crear un collar asignado a una granja si no se supera el cupo del dueño', async () => {
+    it('permite crear un collar asignado a un campo si no se supera el cupo del dueño', async () => {
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         user: { id: 'owner-1', name: 'Granjero 1', email: 'g1@test.com', maxCollars: 5 },
@@ -146,7 +146,7 @@ describe('CollarsService', () => {
       await expect(service.update(2, { id: 5 })).rejects.toThrow();
     });
 
-    it('rechaza con BadRequestException si se transfiere un collar a una granja cuyo dueño no tiene cupo', async () => {
+    it('rechaza con BadRequestException si se transfiere un collar a un campo cuyo dueño no tiene cupo', async () => {
       prisma.collar.findUnique.mockResolvedValue({ id: 10, identifier: 'COL-010', farmId: 'farm-old' });
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-target',

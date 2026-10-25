@@ -135,7 +135,7 @@ export default function AlertasPage() {
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      {/* Header y Selector de Granja */}
+      {/* Header y Selector de Campo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
@@ -521,7 +521,7 @@ export default function AlertasPage() {
                       </button>
                     ) : (
                       <p className="text-[11px] text-zinc-500 italic">
-                        Solo el administrador de la granja puede modificar los umbrales de alerta.
+                        Solo el administrador del campo puede modificar los umbrales de alerta.
                       </p>
                     )}
                   </form>

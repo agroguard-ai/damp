@@ -6,7 +6,7 @@ import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 
 export function QuickActions() {
   const { role, canEdit } = useFarmPermissions();
-  // Mismo criterio que el backend: crean campos el admin de granja o un productor sin granja todavía.
+  // Mismo criterio que el backend: crean campos el admin de campo o un productor sin campo todavía.
   const canCreateFarm = role === null || role === 'ADMIN';
 
   return (
