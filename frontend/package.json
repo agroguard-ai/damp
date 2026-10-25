@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=1536' next dev --webpack --disable-source-maps",
-    "start:dev": "NODE_OPTIONS='--max-old-space-size=1536' next dev --webpack --disable-source-maps",
+    "dev": "cross-env NODE_OPTIONS=--max-old-space-size=1536 next dev --webpack --disable-source-maps",
+    "start:dev": "cross-env NODE_OPTIONS=--max-old-space-size=1536 next dev --webpack --disable-source-maps",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -29,6 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "0.186.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "eslint-config-prettier": "^10.1.8",
