@@ -9,6 +9,7 @@ datasource db {
 
 enum GlobalRole {
   SUPER_ADMIN
+  FARM_ADMIN
   USER
 }
 

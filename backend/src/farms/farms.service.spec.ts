@@ -41,6 +41,28 @@ describe('FarmsService', () => {
     service = new FarmsService(prisma as any);
   });
 
+  describe('create — quién puede registrar campos', () => {
+    it('un FARM_ADMIN crea el campo y queda como su ADMIN', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.FARM_ADMIN });
+      prisma.role.findUnique.mockResolvedValue({ id: 'role-admin', name: 'ADMIN' });
+      const tx = { farm: { create: jest.fn().mockResolvedValue({ id: 'farm-1' }) }, farmUser: { create: jest.fn() } };
+      prisma.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
+
+      await service.create({ name: 'La Esperanza' } as any, 'user-1');
+
+      expect(tx.farmUser.create).toHaveBeenCalledWith({
+        data: { farmId: 'farm-1', userId: 'user-1', roleId: 'role-admin' },
+      });
+    });
+
+    it('un USER (operador/lector, aunque no tenga campos) no puede crear campos', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-2', globalRole: GlobalRole.USER });
+
+      await expect(service.create({ name: 'Propio' } as any, 'user-2')).rejects.toThrow(ForbiddenException);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+  });
+
   describe('update — geofence containment validation', () => {
     it('actualiza el campo exitosamente si todos sus cercos quedan dentro del nuevo perímetro', async () => {
       prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.USER });

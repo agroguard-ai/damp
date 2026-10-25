@@ -148,9 +148,9 @@ export default function NewFarmPage() {
     return <EmulationRequiredState title="el Alta y Gestión de Campos" />;
   }
 
-  if (!farmPerms.loading && farmPerms.role !== null && farmPerms.role !== 'ADMIN') {
+  if (!farmPerms.loading && !farmPerms.isFarmAdmin) {
     return (
-      <AccessDeniedState description="Solo el administrador del campo puede registrar nuevos establecimientos." />
+      <AccessDeniedState description="Solo el administrador de campos puede registrar nuevos establecimientos." />
     );
   }
 

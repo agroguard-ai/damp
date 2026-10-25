@@ -7,7 +7,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
-  globalRole: 'SUPER_ADMIN' | 'USER';
+  globalRole: 'SUPER_ADMIN' | 'FARM_ADMIN' | 'USER';
   mustChangePassword?: boolean;
   isActive?: boolean;
   farmUsers?: Array<{

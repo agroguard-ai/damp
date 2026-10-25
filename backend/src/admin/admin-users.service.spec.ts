@@ -109,4 +109,47 @@ describe('AdminUsersService', () => {
       await expect(service.updateMaxCollars('u1', 5)).rejects.toThrow(BadRequestException);
     });
   });
+
+  describe('createUser', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.create.mockImplementation(({ data }) => Promise.resolve({ id: 'new', ...data }));
+    });
+
+    it('por defecto crea un administrador de campos con su cupo de collares', async () => {
+      await service.createUser({ email: 'Nuevo@Campo.com ', name: 'Nuevo', maxCollars: 20 });
+
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: 'nuevo@campo.com', globalRole: 'FARM_ADMIN', maxCollars: 20 }),
+        })
+      );
+    });
+
+    it('un super admin no recibe cupo de collares', async () => {
+      await service.createUser({ email: 'sa@damp.com', name: 'SA', globalRole: 'SUPER_ADMIN', maxCollars: 20 });
+
+      expect(prisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ globalRole: 'SUPER_ADMIN', maxCollars: 0 }) })
+      );
+    });
+  });
+
+  describe('updateGlobalRole', () => {
+    it('cambia entre SUPER_ADMIN y FARM_ADMIN', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', globalRole: 'FARM_ADMIN' });
+      prisma.user.update.mockResolvedValue({ id: 'u1', globalRole: 'SUPER_ADMIN' });
+
+      await service.updateGlobalRole('u1', { globalRole: 'SUPER_ADMIN' });
+
+      expect(prisma.user.update).toHaveBeenCalled();
+    });
+
+    it('rechaza cambiar el rol del personal (USER) de un administrador de campos', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'u2', globalRole: 'USER' });
+
+      await expect(service.updateGlobalRole('u2', { globalRole: 'FARM_ADMIN' })).rejects.toThrow(BadRequestException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
 });

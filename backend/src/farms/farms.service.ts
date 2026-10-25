@@ -14,16 +14,11 @@ export class FarmsService {
       throw new NotFoundException('User record not found in system database');
     }
 
-    // Solo crean campos el superadmin, los administradores de campo o un productor nuevo que
-    // todavía no pertenece a ninguna. Un OPERATOR/VIEWER no puede crearse un campo propio para
-    // escalar a ADMIN ni saltear la regla de "un usuario, un campo" de los sub-usuarios.
-    if (dbUser.globalRole !== GlobalRole.SUPER_ADMIN) {
-      const nonAdminMembership = await this.prisma.farmUser.findFirst({
-        where: { userId: dbUser.id, isActive: true, role: { name: { not: 'ADMIN' } } },
-      });
-      if (nonAdminMembership) {
-        throw new ForbiddenException('Solo el administrador del campo puede crear establecimientos.');
-      }
+    // Solo crean campos el superadmin y los administradores de campos (FARM_ADMIN). Un USER es
+    // siempre personal (operador/lector) de un FARM_ADMIN: no puede crearse un campo propio para
+    // escalar a ADMIN, ni aunque lo hayan dado de baja de todos sus campos.
+    if (dbUser.globalRole !== GlobalRole.SUPER_ADMIN && dbUser.globalRole !== GlobalRole.FARM_ADMIN) {
+      throw new ForbiddenException('Solo los administradores de campos pueden registrar campos.');
     }
 
     let adminRole = await this.prisma.role.findUnique({ where: { name: 'ADMIN' } });

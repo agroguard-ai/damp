@@ -18,6 +18,8 @@ export interface FarmPermissions {
   role: FarmRoleName | null;
   /** SUPER_ADMIN sin emular: acceso total de plataforma. */
   isPlatformAdmin: boolean;
+  /** Administrador de campos (FARM_ADMIN): registra sus campos y gestiona su personal. */
+  isFarmAdmin: boolean;
   /** Crear/editar/eliminar datos operativos (ADMIN u OPERATOR). */
   canEdit: boolean;
   /** Gestionar el personal del campo, la configuración de alertas y el campo en sí (ADMIN). */
@@ -26,7 +28,7 @@ export interface FarmPermissions {
   adminFarmId: string | null;
   /** La sesión todavía se está cargando: no decidir accesos hasta que sea false. */
   loading: boolean;
-  /** Para listados con recursos de varias campos (ej. gateways): ¿puede escribir en ese campo? */
+  /** Para listados con recursos de varios campos (ej. gateways): ¿puede escribir en ese campo? */
   canEditIn: (farmId: string | null | undefined) => boolean;
 }
 
@@ -46,6 +48,7 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
       return {
         role: 'ADMIN',
         isPlatformAdmin,
+        isFarmAdmin: false,
         canEdit: true,
         canManageUsers: true,
         adminFarmId: null,
@@ -54,7 +57,9 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
       };
     }
 
-    const memberships = (emulatedUser ?? user)?.farmUsers ?? [];
+    const effectiveUser = emulatedUser ?? user;
+    const isFarmAdmin = effectiveUser?.globalRole === 'FARM_ADMIN';
+    const memberships = effectiveUser?.farmUsers ?? [];
     const adminFarmId = memberships.find((m) => m.role?.name === 'ADMIN')?.farmId ?? null;
     const canEditIn = (id: string | null | undefined) => {
       const name = id ? memberships.find((m) => m.farmId === id)?.role?.name : undefined;
@@ -76,6 +81,7 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
     return {
       role,
       isPlatformAdmin,
+      isFarmAdmin,
       canEdit: role === 'ADMIN' || role === 'OPERATOR',
       canManageUsers: role === 'ADMIN',
       adminFarmId,

@@ -41,7 +41,7 @@ const TrajectoriesModal = dynamic(() => import('@/components/farms/TrajectoriesM
 
 export default function FarmsPage() {
   const { user, emulatedUser } = useAuth();
-  const { role: lowestFarmRole } = useFarmPermissions();
+  const { isFarmAdmin } = useFarmPermissions();
   const { toast } = useToast();
 
   const {
@@ -92,9 +92,9 @@ export default function FarmsPage() {
     // SuperAdmin without emulation has no tenant farm creation capability
     if (user.globalRole === 'SUPER_ADMIN' && !emulatedUser) return false;
     // Operadores y lectores no crean establecimientos (el backend también lo rechaza):
-    // solo administradores de campo o productores que todavía no tienen ninguna.
-    return lowestFarmRole === null || lowestFarmRole === 'ADMIN';
-  }, [user, emulatedUser, lowestFarmRole]);
+    // solo los administradores de campos.
+    return isFarmAdmin;
+  }, [user, emulatedUser, isFarmAdmin]);
 
   // Filtered farms list
   const filteredFarms = useMemo(() => {

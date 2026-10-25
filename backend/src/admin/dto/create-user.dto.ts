@@ -1,5 +1,7 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength, Min, IsInt } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength, Min, IsInt } from 'class-validator';
 import { GlobalRole } from '@generated/prisma';
+
+export const ADMIN_CREATABLE_ROLES: GlobalRole[] = [GlobalRole.SUPER_ADMIN, GlobalRole.FARM_ADMIN];
 
 export class CreateUserDto {
   @IsEmail({}, { message: 'El correo electrónico no es válido' })
@@ -14,8 +16,10 @@ export class CreateUserDto {
   @MinLength(8, { message: 'La contraseña inicial debe tener al menos 8 caracteres' })
   initialPassword?: string;
 
+  // El super admin solo da de alta super admins y administradores de campos: los operadores y
+  // lectores (USER) los crea cada administrador desde su gestión de personal.
   @IsOptional()
-  @IsEnum(GlobalRole, { message: 'Rol global no válido' })
+  @IsIn(ADMIN_CREATABLE_ROLES, { message: 'El rol debe ser SUPER_ADMIN o FARM_ADMIN' })
   globalRole?: GlobalRole;
 
   @IsOptional()

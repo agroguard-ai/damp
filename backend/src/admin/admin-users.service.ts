@@ -3,6 +3,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { PaginationQueryDto } from '@/common/pagination/dto/pagination-query.dto';
 import { UpdateGlobalRoleDto } from './dto/update-global-role.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { GlobalRole } from '@generated/prisma';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -84,16 +85,18 @@ export class AdminUsersService {
 
     const tempPassword = dto.initialPassword?.trim() || `Damp${Math.random().toString(36).substring(2, 8)}!`;
     const passwordHash = await bcrypt.hash(tempPassword, 10);
+    const globalRole = dto.globalRole ?? GlobalRole.FARM_ADMIN;
 
     const user = await this.prisma.user.create({
       data: {
         email: normalizedEmail,
         name: dto.name.trim(),
         passwordHash,
-        globalRole: dto.globalRole ?? 'USER',
+        globalRole,
         mustChangePassword: true,
         isActive: true,
-        maxCollars: dto.maxCollars ?? 0,
+        // El cupo de collares es del dueño de los campos: un super admin no tiene campos propios.
+        maxCollars: globalRole === GlobalRole.FARM_ADMIN ? (dto.maxCollars ?? 0) : 0,
       },
       select: {
         id: true,
@@ -236,6 +239,14 @@ export class AdminUsersService {
 
     if (!existingUser) {
       throw new NotFoundException(`User with ID "${userId}" not found`);
+    }
+
+    // Un USER es personal (operador/lector) de un administrador de campos: su acceso lo maneja
+    // ese administrador. Ascenderlo desde acá lo dejaría con campos ajenos y como dueño a la vez.
+    if (existingUser.globalRole === GlobalRole.USER) {
+      throw new BadRequestException(
+        'Este usuario es personal de un administrador de campos: su rol se gestiona desde la sección Personal de ese administrador.'
+      );
     }
 
     return this.prisma.user.update({

@@ -308,7 +308,7 @@ async function main() {
     update: {
       name: 'Juan Pérez',
       passwordHash: juanPasswordHash,
-      globalRole: GlobalRole.USER,
+      globalRole: GlobalRole.FARM_ADMIN,
       mustChangePassword: false,
       isActive: true,
       maxCollars: 30,
@@ -317,7 +317,7 @@ async function main() {
       email: juanEmail,
       name: 'Juan Pérez',
       passwordHash: juanPasswordHash,
-      globalRole: GlobalRole.USER,
+      globalRole: GlobalRole.FARM_ADMIN,
       mustChangePassword: false,
       isActive: true,
       maxCollars: 30,

@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/Button';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 
 export function QuickActions() {
-  const { role, canEdit } = useFarmPermissions();
-  // Mismo criterio que el backend: crean campos el admin de campo o un productor sin campo todavía.
-  const canCreateFarm = role === null || role === 'ADMIN';
+  const { isFarmAdmin, canEdit } = useFarmPermissions();
+  // Mismo criterio que el backend: solo los administradores de campos registran campos.
+  const canCreateFarm = isFarmAdmin;
 
   return (
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4 lg:col-span-1">
