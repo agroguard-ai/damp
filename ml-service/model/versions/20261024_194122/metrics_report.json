@@ -1,0 +1,221 @@
+{
+  "version": "20261024_194122",
+  "trained_at": "2026-10-24T19:41:22.356255",
+  "training_duration": {
+    "total_seconds": 218.27,
+    "total_human": "3m 38s",
+    "model_6h_seconds": 96.89,
+    "model_48h_seconds": 117.04
+  },
+  "model_6h": {
+    "fiebre": {
+      "precision": 0.9794,
+      "recall": 0.6934,
+      "f1_score": 0.812,
+      "roc_auc": 0.9002,
+      "threshold": 0.75,
+      "support": 411
+    },
+    "celo": {
+      "precision": 0.9293,
+      "recall": 0.7797,
+      "f1_score": 0.8479,
+      "roc_auc": 0.9444,
+      "threshold": 0.3,
+      "support": 118
+    },
+    "inactividad": {
+      "precision": 0.9711,
+      "recall": 0.7925,
+      "f1_score": 0.8727,
+      "roc_auc": 0.8938,
+      "threshold": 0.7,
+      "support": 212
+    },
+    "anomalia": {
+      "precision": 0.8667,
+      "recall": 0.2653,
+      "f1_score": 0.4062,
+      "roc_auc": 0.6295,
+      "threshold": 0.7,
+      "support": 49
+    }
+  },
+  "model_48h": {
+    "by_stage": {
+      "stage_0_12h": {
+        "fiebre": {
+          "precision": 0.9375,
+          "recall": 0.6122,
+          "f1_score": 0.7407,
+          "roc_auc": 0.8517
+        },
+        "celo": {
+          "precision": 0.7818,
+          "recall": 0.6056,
+          "f1_score": 0.6825,
+          "roc_auc": 0.8767
+        },
+        "inactividad": {
+          "precision": 0.5977,
+          "recall": 0.7222,
+          "f1_score": 0.6541,
+          "roc_auc": 0.8325
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5254
+        }
+      },
+      "stage_12_24h": {
+        "fiebre": {
+          "precision": 0.975,
+          "recall": 0.4105,
+          "f1_score": 0.5778,
+          "roc_auc": 0.7157
+        },
+        "celo": {
+          "precision": 0.34,
+          "recall": 0.2394,
+          "f1_score": 0.281,
+          "roc_auc": 0.7357
+        },
+        "inactividad": {
+          "precision": 0.4416,
+          "recall": 0.4722,
+          "f1_score": 0.4564,
+          "roc_auc": 0.6521
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.3975
+        }
+      },
+      "stage_24_36h": {
+        "fiebre": {
+          "precision": 0.8824,
+          "recall": 0.232,
+          "f1_score": 0.3673,
+          "roc_auc": 0.6195
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.6407
+        },
+        "inactividad": {
+          "precision": 0.3137,
+          "recall": 0.2078,
+          "f1_score": 0.25,
+          "roc_auc": 0.4942
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5385
+        }
+      },
+      "stage_36_48h": {
+        "fiebre": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5556
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.6231
+        },
+        "inactividad": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5071
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4771
+        }
+      }
+    },
+    "cumulative_48h": {
+      "fiebre": {
+        "precision": 0.9375,
+        "recall": 0.3822,
+        "f1_score": 0.543,
+        "roc_auc": 0.7081
+      },
+      "celo": {
+        "precision": 0.7818,
+        "recall": 0.3007,
+        "f1_score": 0.4343,
+        "roc_auc": 0.7555
+      },
+      "inactividad": {
+        "precision": 0.5977,
+        "recall": 0.3636,
+        "f1_score": 0.4522,
+        "roc_auc": 0.6508
+      },
+      "anomalia": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "roc_auc": 0.5165
+      }
+    }
+  },
+  "thresholds": {
+    "fiebre": 0.75,
+    "celo": 0.3,
+    "inactividad": 0.7,
+    "anomalia": 0.7,
+    "fiebre_48h": 0.35,
+    "celo_48h": 0.2,
+    "inactividad_48h": 0.3,
+    "anomalia_48h": 0.2
+  },
+  "metadata": {
+    "version": "20261024_194122",
+    "trained_at": "2026-10-24T19:41:22.356255",
+    "duration_total_seconds": 218.27,
+    "duration_total_human": "3m 38s",
+    "duration_6h_seconds": 96.89,
+    "duration_48h_seconds": 117.04,
+    "feature_cols": [
+      "temp_corporal",
+      "distancia_rodeo",
+      "es_noche",
+      "sexo_num",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "event_labels": [
+      "fiebre",
+      "celo",
+      "inactividad",
+      "anomalia"
+    ],
+    "lookback_6h": 24,
+    "lookback_48h": 96,
+    "lookback": 24,
+    "horizon_6h": 12,
+    "stages_48h": [
+      "stage_0_12h",
+      "stage_12_24h",
+      "stage_24_36h",
+      "stage_36_48h"
+    ],
+    "stage_blocks": 24
+  }
+}

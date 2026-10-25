@@ -105,7 +105,9 @@ class TestPredictHealthWithFakeModel:
     def fake_bundle(self, monkeypatch):
         monkeypatch.setattr(ml_main.bundle, "load_error", None)
         monkeypatch.setattr(ml_main.bundle, "lookback", 2)
+        monkeypatch.setattr(ml_main.bundle, "lookback_6h", 2)
         monkeypatch.setattr(ml_main.bundle, "model", _FakeModel())
+        monkeypatch.setattr(ml_main.bundle, "model_6h", _FakeModel())
         monkeypatch.setattr(ml_main.bundle, "scaler", _IdentityScaler())
         monkeypatch.setattr(ml_main.bundle, "thresholds", {"fiebre": 0.5, "celo": 0.5})
         monkeypatch.setattr(ml_main.bundle, "event_labels", ["fiebre", "celo"])
@@ -119,11 +121,11 @@ class TestPredictHealthWithFakeModel:
         ]
         return ml_main.PredictionRequest(animal_id="a1", sex="FEMALE", readings=readings, include_features=include_features)
 
-    def test_detects_events_over_threshold(self):
+    def test_returns_event_probabilities(self):
         response = ml_main.predict_health(self._request(False))
         assert response.ready is True
-        assert response.events["fiebre"].detected is True
-        assert response.events["celo"].detected is False
+        assert response.events["fiebre"].probability == pytest.approx(0.8)
+        assert response.events["celo"].probability == pytest.approx(0.1)
         assert response.features is None
 
     def test_returns_unscaled_features_when_requested(self):
@@ -147,6 +149,7 @@ class TestPredictHealthInsufficientWindow:
     def test_ready_false_when_fewer_readings_than_lookback(self, monkeypatch):
         monkeypatch.setattr(ml_main.bundle, "load_error", None)
         monkeypatch.setattr(ml_main.bundle, "lookback", 48)
+        monkeypatch.setattr(ml_main.bundle, "lookback_6h", 48)
         readings = [_reading(38.5, 0.0, 0.0, f"2026-08-25T{h:02d}:00:00.000Z") for h in range(5)]
         request = ml_main.PredictionRequest(animal_id="a1", sex="MALE", readings=readings)
 
@@ -182,3 +185,34 @@ class TestPredictHealthEndToEndWithRealModel:
         assert set(body["events"].keys()) == set(ml_main.bundle.event_labels)
         for event in body["events"].values():
             assert 0.0 <= event["probability"] <= 1.0
+
+    def test_predict_48h_trajectory_endpoint(self):
+        client = TestClient(ml_main.app)
+        lookback_48h = ml_main.bundle.lookback_48h
+        readings = [
+            {"temperature": 38.5 + 0.005 * i, "lat": -33.30 + i * 0.00005, "lng": -61.87,
+             "timestamp": f"2026-08-{(i // 24) % 28 + 1:02d}T{i % 24:02d}:00:00.000Z"}
+            for i in range(lookback_48h)
+        ]
+        res = client.post("/predict/48h", json={"animal_id": "a1", "sex": "FEMALE", "readings": readings})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["ready"] is True
+        assert len(body["trajectory_stages"]) == 4
+        assert "passed_states_summary" in body
+        assert "fiebre" in body["passed_states_summary"]
+        assert "max_probability" in body["passed_states_summary"]["fiebre"]
+
+    def test_predict_all_endpoint(self):
+        client = TestClient(ml_main.app)
+        lookback_48h = ml_main.bundle.lookback_48h
+        readings = [
+            {"temperature": 38.5 + 0.005 * i, "lat": -33.30 + i * 0.00005, "lng": -61.87,
+             "timestamp": f"2026-08-{(i // 24) % 28 + 1:02d}T{i % 24:02d}:00:00.000Z"}
+            for i in range(lookback_48h)
+        ]
+        res = client.post("/predict/all", json={"animal_id": "a1", "sex": "FEMALE", "readings": readings})
+        assert res.status_code == 200
+        body = res.json()
+        assert body["prediction_6h"]["ready"] is True
+        assert body["trajectory_48h"]["ready"] is True

@@ -1,0 +1,211 @@
+{
+  "version": "20261024_192129",
+  "trained_at": "2026-10-24T19:21:29.178515",
+  "model_6h": {
+    "fiebre": {
+      "precision": 0.9552,
+      "recall": 0.6229,
+      "f1_score": 0.7541,
+      "roc_auc": 0.8953,
+      "threshold": 0.75,
+      "support": 411
+    },
+    "celo": {
+      "precision": 0.6,
+      "recall": 0.7119,
+      "f1_score": 0.6512,
+      "roc_auc": 0.8806,
+      "threshold": 0.35,
+      "support": 118
+    },
+    "inactividad": {
+      "precision": 0.9634,
+      "recall": 0.7453,
+      "f1_score": 0.8404,
+      "roc_auc": 0.8834,
+      "threshold": 0.2,
+      "support": 212
+    },
+    "anomalia": {
+      "precision": 0.8125,
+      "recall": 0.2653,
+      "f1_score": 0.4,
+      "roc_auc": 0.6635,
+      "threshold": 0.2,
+      "support": 49
+    }
+  },
+  "model_48h": {
+    "by_stage": {
+      "stage_0_12h": {
+        "fiebre": {
+          "precision": 0.9316,
+          "recall": 0.5561,
+          "f1_score": 0.6965,
+          "roc_auc": 0.8703
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.7469
+        },
+        "inactividad": {
+          "precision": 0.8667,
+          "recall": 0.5417,
+          "f1_score": 0.6667,
+          "roc_auc": 0.8806
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4838
+        }
+      },
+      "stage_12_24h": {
+        "fiebre": {
+          "precision": 0.8351,
+          "recall": 0.4263,
+          "f1_score": 0.5645,
+          "roc_auc": 0.7914
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5726
+        },
+        "inactividad": {
+          "precision": 0.4667,
+          "recall": 0.2917,
+          "f1_score": 0.359,
+          "roc_auc": 0.6739
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4626
+        }
+      },
+      "stage_24_36h": {
+        "fiebre": {
+          "precision": 0.6949,
+          "recall": 0.2113,
+          "f1_score": 0.3241,
+          "roc_auc": 0.5881
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5979
+        },
+        "inactividad": {
+          "precision": 0.2308,
+          "recall": 0.0779,
+          "f1_score": 0.1165,
+          "roc_auc": 0.548
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4394
+        }
+      },
+      "stage_36_48h": {
+        "fiebre": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5365
+        },
+        "celo": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.5631
+        },
+        "inactividad": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4704
+        },
+        "anomalia": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1_score": 0.0,
+          "roc_auc": 0.4698
+        }
+      }
+    },
+    "cumulative_48h": {
+      "fiebre": {
+        "precision": 0.9316,
+        "recall": 0.3471,
+        "f1_score": 0.5058,
+        "roc_auc": 0.6977
+      },
+      "celo": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "roc_auc": 0.6291
+      },
+      "inactividad": {
+        "precision": 0.8667,
+        "recall": 0.2727,
+        "f1_score": 0.4149,
+        "roc_auc": 0.6366
+      },
+      "anomalia": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "roc_auc": 0.4385
+      }
+    }
+  },
+  "thresholds": {
+    "fiebre": 0.75,
+    "celo": 0.35,
+    "inactividad": 0.2,
+    "anomalia": 0.2,
+    "fiebre_48h": 0.4,
+    "celo_48h": 0.2,
+    "inactividad_48h": 0.2,
+    "anomalia_48h": 0.2
+  },
+  "metadata": {
+    "version": "20261024_192129",
+    "trained_at": "2026-10-24T19:21:29.178515",
+    "feature_cols": [
+      "temp_corporal",
+      "distancia_rodeo",
+      "es_noche",
+      "sexo_num",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "event_labels": [
+      "fiebre",
+      "celo",
+      "inactividad",
+      "anomalia"
+    ],
+    "lookback_6h": 24,
+    "lookback_48h": 96,
+    "lookback": 24,
+    "horizon_6h": 12,
+    "stages_48h": [
+      "stage_0_12h",
+      "stage_12_24h",
+      "stage_24_36h",
+      "stage_36_48h"
+    ],
+    "stage_blocks": 24
+  }
+}

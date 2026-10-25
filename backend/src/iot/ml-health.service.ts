@@ -7,8 +7,8 @@ const ML_REQUEST_TIMEOUT_MS = 10_000;
 
 export interface MlEventPrediction {
   probability: number;
-  threshold: number;
-  detected: boolean;
+  threshold?: number;
+  detected?: boolean;
 }
 
 export interface MlServiceStatus {

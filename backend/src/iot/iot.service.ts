@@ -26,6 +26,18 @@ const EVENT_LABELS_ES: Record<string, string> = {
   anomalia: 'un evento anómalo',
 };
 
+/**
+ * Umbrales de decisión clínica gestionados en el backend (regla de negocio / alertas).
+ * ml-service provee la probabilidad pura calculada por la red; el backend decide
+ * con qué umbral se activa una alerta y se registra como detectado.
+ */
+export const ML_HEALTH_THRESHOLDS: Record<string, number> = {
+  fiebre: 0.75,
+  celo: 0.30,
+  inactividad: 0.70,
+  anomalia: 0.70,
+};
+
 @Injectable()
 export class IotService {
   private readonly logger = new Logger(IotService.name);
@@ -306,8 +318,12 @@ export class IotService {
       const label = EVENT_LABELS_ES[eventName] ?? eventName;
       const confidencePct = Math.round(prediction.probability * 100);
 
+      // El umbral se gestiona como regla de negocio en el backend:
+      const threshold = prediction.threshold ?? ML_HEALTH_THRESHOLDS[eventName] ?? 0.5;
+      const isDetected = prediction.detected ?? (prediction.probability >= threshold);
+
       let alertId: string | null = null;
-      if (prediction.detected) {
+      if (isDetected) {
         const alert = await this.raiseHealthAlert(
           animalId,
           `[IA:${eventName.toUpperCase()}]`,
@@ -324,8 +340,8 @@ export class IotService {
             animalId,
             predictedEvent: eventName,
             probability: prediction.probability,
-            threshold: prediction.threshold,
-            detected: prediction.detected,
+            threshold,
+            detected: isDetected,
             horizonHours: 6,
             windowReadingsCount: window.blocksWithData,
             windowEndAt: windowEnd,

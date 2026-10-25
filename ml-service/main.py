@@ -1,36 +1,24 @@
 """
-DAMP Agro — ML Health Prediction Microservice
-=============================================
-FastAPI microservice that loads the trained multitask LSTM (entrenado y
-versionado en el repo damp-ml-api) and predicts, para cada evento de salud
-(fiebre, celo, inactividad, anomalía), si va a estar activo en las próximas
-6 horas a partir de la ventana de 24hs de telemetría más reciente del animal.
+DAMP Agro — ML Health Prediction Microservice (Dual Cadence: 6h & 48h)
+======================================================================
+FastAPI microservice that loads the trained models:
+  1. Short-Term Model (6h): Predicts acute events (fiebre, celo, inactividad, anomalía)
+     for the upcoming 6 hours using a lightweight window (default: 12h = 24 blocks).
+  2. Trajectory Model (48h): Predicts the sequence of clinical states across 4 stages
+     of 12 hours ('0-12h', '12-24h', '24-36h', '36-48h'), detecting passed states
+     even if the animal recovers at the end.
 
-Contrato de features: SOLO usa señales que el collar real puede proveer hoy
-o en el corto plazo — temperatura de contacto, posición GPS (de la que se
-deriva una distancia recorrida aproximada por Haversine, ya que el collar
-todavía no manda ese dato directo) y la hora del día. No usa pasos,
-temperatura/humedad ambiente ni días desde el último celo: el hardware no
-tiene acelerómetro ni sensor ambiental, y el backend no registra ciclos de
-celo — entrenar o inferir con esas columnas ausentes obligaría a rellenarlas
-con un valor constante, lo que sesga las predicciones de forma impredecible
-en vez de simplemente degradarlas (ver damp-ml-api/README.md).
-
-Formato de entrada: el modelo se entrenó con UNA lectura por bloque de 30 min, en hora
-local del campo. El backend agrupa la telemetría cruda en esos bloques antes de llamar
-(ver damp/backend/src/iot/ml-window.ts) y manda, por bloque, la temperatura promedio,
-los metros recorridos (`distance_m`) y el inicio del bloque con su offset horario
-(p. ej. "2026-10-13T08:30:00-03:00"). Si `distance_m` no viene, se aproxima con
-Haversine contra el bloque anterior (compatibilidad con clientes viejos).
-
-Endpoint:
-  POST /predict/health
+Endpoints:
+  GET  /health
+  POST /predict/health         (or /predict/6h)
+  POST /predict/48h            (or /predict/trajectory-48h)
+  POST /predict/all            (both 6h and 48h in one call)
 """
 
 import math
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Dict, List, Optional
 
 import joblib
 import numpy as np
@@ -38,44 +26,53 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from tensorflow import keras
 
+from pipeline.features import (
+    BLOCK_MINUTES,
+    EVENT_LABELS,
+    FEATURE_COLS,
+    NIGHT_END_HOUR,
+    NIGHT_START_HOUR,
+    STAGES_48H,
+    compute_feature_row,
+    haversine_meters,
+)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "model")
 
 app = FastAPI(
     title="DAMP Agro ML Service",
-    description="Microservicio de inferencia del modelo LSTM multitarea de detección predictiva de eventos de salud.",
-    version="1.0.0",
+    description="Microservicio de inferencia: predicción táctica a 6h y trayectoria de estados a 48h.",
+    version="2.0.0",
 )
 
 
 # ── Schemas ──────────────────────────────────────────────────────
 
 class TelemetryReading(BaseModel):
-    """Un bloque de 30 min de telemetría (ver docstring del módulo)."""
+    """Un bloque de 30 min de telemetría."""
     temperature: float
     lat: float
     lng: float
-    timestamp: str  # ISO 8601 con offset horario local del campo (la hora local define es_noche y hour_sin/cos)
-    distance_m: Optional[float] = None  # metros recorridos en el bloque; si falta, Haversine contra el anterior
+    timestamp: str  # ISO 8601 con offset horario local del campo (p. ej. -03:00)
+    distance_m: Optional[float] = None  # metros recorridos en el bloque
 
 
 class PredictionRequest(BaseModel):
     animal_id: str
-    sex: Optional[str] = None  # "MALE" | "FEMALE" (enum Sex del backend), afecta sexo_num
-    readings: list[TelemetryReading]  # orden cronológico, idealmente los últimos `lookback` bloques
-    include_features: bool = False  # devolver las features que vio el modelo (para explicar la predicción)
+    sex: Optional[str] = None  # "MALE" | "FEMALE"
+    readings: List[TelemetryReading]
+    include_features: bool = False
 
 
 class EventPrediction(BaseModel):
     probability: float
-    threshold: float
-    detected: bool
 
 
 class FeatureRow(BaseModel):
-    """Features sin escalar de un bloque, tal como entraron al modelo."""
+    """Features sin escalar de un bloque."""
     timestamp: str
-    values: dict[str, float]
+    values: Dict[str, float]
 
 
 class PredictionResponse(BaseModel):
@@ -83,32 +80,90 @@ class PredictionResponse(BaseModel):
     ready: bool
     window_size: int
     required_window_size: int
-    events: dict[str, EventPrediction] = {}
-    features: Optional[list[FeatureRow]] = None
+    events: Dict[str, EventPrediction] = {}
+    features: Optional[List[FeatureRow]] = None
 
 
-# ── Carga del modelo entrenado (falla explícito si no está disponible) ──
+# Schemas para Modelo de 48h (Trayectoria)
+
+class StagePrediction(BaseModel):
+    stage: str
+    probabilities: Dict[str, float]
+
+
+class PassedStateSummary(BaseModel):
+    max_probability: float
+    peak_stage: str
+
+
+class TrajectoryPredictionResponse(BaseModel):
+    animal_id: str
+    ready: bool
+    window_size: int
+    required_window_size: int
+    passed_states_summary: Dict[str, PassedStateSummary] = {}
+    trajectory_stages: List[StagePrediction] = []
+
+
+class CombinedPredictionResponse(BaseModel):
+    animal_id: str
+    prediction_6h: Optional[PredictionResponse] = None
+    trajectory_48h: Optional[TrajectoryPredictionResponse] = None
+
+
+# ── Carga de Modelos y Artefactos ────────────────────────────────
 
 class ModelBundle:
     def __init__(self):
         self.model = None
+        self.model_6h = None
+        self.model_48h = None
         self.scaler = None
         self.thresholds = None
-        self.feature_cols = None
-        self.event_labels = None
-        self.lookback = None
+        self.metadata = None
+        self.feature_cols = FEATURE_COLS
+        self.event_labels = EVENT_LABELS
+        self.lookback_6h = 24
+        self.lookback_48h = 96
+        self.lookback = 24  # compatibilidad con clientes existentes
+        self.version = "unknown"
+        self.trained_at = None
         self.load_error = None
 
     def load(self):
         try:
-            self.model = keras.models.load_model(os.path.join(MODEL_DIR, "final_model.keras"))
-            self.scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.joblib"))
-            self.thresholds = joblib.load(os.path.join(MODEL_DIR, "thresholds.joblib"))
-            metadata = joblib.load(os.path.join(MODEL_DIR, "metadata.joblib"))
-            self.feature_cols = metadata["feature_cols"]
-            self.event_labels = [label.replace("label_", "") for label in metadata["event_labels"]]
-            self.lookback = metadata["lookback"]
-        except Exception as exc:  # noqa: BLE001 — se reporta en /health, no se oculta
+            target_dir = MODEL_DIR
+            requested_version = os.environ.get("MODEL_VERSION")
+            if requested_version:
+                v_dir = os.path.join(MODEL_DIR, "versions", requested_version)
+                if os.path.isdir(v_dir):
+                    target_dir = v_dir
+
+            # 1. Cargar modelo 6h
+            model_6h_file = os.path.join(target_dir, "model_6h.keras")
+            if not os.path.exists(model_6h_file):
+                model_6h_file = os.path.join(target_dir, "final_model.keras")
+            self.model_6h = keras.models.load_model(model_6h_file)
+            self.model = self.model_6h  # alias
+
+            # 2. Cargar modelo 48h si existe
+            model_48h_file = os.path.join(target_dir, "model_48h.keras")
+            if os.path.exists(model_48h_file):
+                self.model_48h = keras.models.load_model(model_48h_file)
+
+            # 3. Scaler, Thresholds y Metadata
+            self.scaler = joblib.load(os.path.join(target_dir, "scaler.joblib"))
+            self.thresholds = joblib.load(os.path.join(target_dir, "thresholds.joblib"))
+            self.metadata = joblib.load(os.path.join(target_dir, "metadata.joblib"))
+
+            self.feature_cols = self.metadata.get("feature_cols", FEATURE_COLS)
+            self.event_labels = [label.replace("label_", "") for label in self.metadata.get("event_labels", EVENT_LABELS)]
+            self.lookback_6h = self.metadata.get("lookback_6h", self.metadata.get("lookback", 24))
+            self.lookback_48h = self.metadata.get("lookback_48h", 96)
+            self.lookback = self.lookback_6h
+            self.version = self.metadata.get("version", "legacy")
+            self.trained_at = self.metadata.get("trained_at", None)
+        except Exception as exc:  # noqa: BLE001
             self.load_error = str(exc)
 
 
@@ -116,83 +171,51 @@ bundle = ModelBundle()
 bundle.load()
 
 
-# ── Feature engineering (debe coincidir exactamente con damp-ml-api/machine-learning/model/preprocess.py) ──
+# ── Feature Engineering ──────────────────────────────────────────
 
-NIGHT_START_HOUR = 22
-NIGHT_END_HOUR = 6
-BLOCK_MINUTES = 30
-
-
-def haversine_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    R = 6371000
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lng2 - lng1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-def build_feature_matrix(readings: list[TelemetryReading], sex: Optional[str]) -> np.ndarray:
-    """
-    Replica exactamente el feature engineering de preprocess.py (clean()) fila por fila,
-    a partir de lecturas crudas del backend. `readings` debe venir ordenado cronológicamente.
-    """
-    sexo_num = 1.0 if (sex or "").upper() == "MALE" else 0.0
-
+def build_feature_matrix(readings: List[TelemetryReading], sex: Optional[str]) -> np.ndarray:
+    """Extrae la matriz de features sin escalar en el orden exacto de FEATURE_COLS."""
     rows = []
     prev = None
     for r in readings:
-        ts = datetime.fromisoformat(r.timestamp.replace("Z", "+00:00"))
-
-        # distancia_rodeo: metros recorridos en el bloque de 30 min. El backend la calcula sumando
-        # los tramos entre todas las lecturas crudas del bloque (distance_m). Si no viene, se
-        # aproxima con Haversine contra el bloque anterior (subestima: solo mide desplazamiento neto).
         if r.distance_m is not None:
             distancia = r.distance_m
         else:
             distancia = 0.0 if prev is None else haversine_meters(prev.lat, prev.lng, r.lat, r.lng)
         prev = r
 
-        bloque_horario = (ts.hour * 60 + ts.minute) // BLOCK_MINUTES
-        hour_frac = bloque_horario / 2.0
-        hour_sin = math.sin(2 * math.pi * hour_frac / 24)
-        hour_cos = math.cos(2 * math.pi * hour_frac / 24)
-        es_noche = 1.0 if (ts.hour >= NIGHT_START_HOUR or ts.hour < NIGHT_END_HOUR) else 0.0
-
-        feature_row = {
-            "temp_corporal": r.temperature,
-            "distancia_rodeo": distancia,
-            "es_noche": es_noche,
-            "sexo_num": sexo_num,
-            "hour_sin": hour_sin,
-            "hour_cos": hour_cos,
-        }
-        rows.append([feature_row[col] for col in bundle.feature_cols])
+        f_row = compute_feature_row(r.temperature, distancia, r.timestamp, sex)
+        rows.append(f_row)
 
     return np.array(rows, dtype="float32")
 
+
+# ── Lógica de Predicción ─────────────────────────────────────────
 
 def predict_health(request: PredictionRequest) -> PredictionResponse:
     if bundle.load_error:
         raise HTTPException(status_code=503, detail=f"Modelo no disponible: {bundle.load_error}")
 
     readings = sorted(request.readings, key=lambda r: r.timestamp)
-    window_size = min(len(readings), bundle.lookback)
+    window_size = len(readings)
+    req_lookback = getattr(bundle, "lookback_6h", bundle.lookback)
 
-    if len(readings) < bundle.lookback:
+    # Si vienen menos bloques que los requeridos por el modelo de 6h
+    if window_size < req_lookback:
         return PredictionResponse(
             animal_id=request.animal_id,
             ready=False,
-            window_size=len(readings),
-            required_window_size=bundle.lookback,
+            window_size=window_size,
+            required_window_size=req_lookback,
         )
 
-    window = readings[-bundle.lookback:]
+    # Tomar los últimos req_lookback bloques
+    window = readings[-req_lookback:]
     X = build_feature_matrix(window, request.sex)
     X_scaled = bundle.scaler.transform(X).astype("float32")
-    X_scaled = X_scaled.reshape(1, bundle.lookback, len(bundle.feature_cols))
+    X_scaled = X_scaled.reshape(1, req_lookback, len(bundle.feature_cols))
 
-    raw_preds = bundle.model.predict(X_scaled, verbose=0)
+    raw_preds = bundle.model_6h.predict(X_scaled, verbose=0)
 
     features = None
     if request.include_features:
@@ -204,16 +227,78 @@ def predict_health(request: PredictionRequest) -> PredictionResponse:
     events = {}
     for name in bundle.event_labels:
         prob = float(np.asarray(raw_preds[name]).ravel()[0])
-        threshold = float(bundle.thresholds.get(name, 0.5))
-        events[name] = EventPrediction(probability=round(prob, 4), threshold=threshold, detected=prob >= threshold)
+        events[name] = EventPrediction(probability=round(prob, 4))
 
     return PredictionResponse(
         animal_id=request.animal_id,
         ready=True,
         window_size=window_size,
-        required_window_size=bundle.lookback,
+        required_window_size=req_lookback,
         events=events,
         features=features,
+    )
+
+
+def predict_trajectory_48h(request: PredictionRequest) -> TrajectoryPredictionResponse:
+    if bundle.load_error or bundle.model_48h is None:
+        raise HTTPException(status_code=503, detail="Modelo de trayectoria de 48h no disponible.")
+
+    readings = sorted(request.readings, key=lambda r: r.timestamp)
+    window_size = len(readings)
+
+    if window_size < bundle.lookback_48h:
+        return TrajectoryPredictionResponse(
+            animal_id=request.animal_id,
+            ready=False,
+            window_size=window_size,
+            required_window_size=bundle.lookback_48h,
+        )
+
+    window = readings[-bundle.lookback_48h:]
+    X = build_feature_matrix(window, request.sex)
+    X_scaled = bundle.scaler.transform(X).astype("float32")
+    X_scaled = X_scaled.reshape(1, bundle.lookback_48h, len(bundle.feature_cols))
+
+    raw_preds = bundle.model_48h.predict(X_scaled, verbose=0)
+
+    stage_labels = ["0-12h", "12-24h", "24-36h", "36-48h"]
+    stages_res = []
+    max_event_probs = {e: 0.0 for e in bundle.event_labels}
+    peak_stages = {e: "0-12h" for e in bundle.event_labels}
+
+    for s_idx, stage_name in enumerate(STAGES_48H):
+        probs = raw_preds[stage_name][0]
+        stage_dict = {}
+
+        for e_idx, event in enumerate(bundle.event_labels):
+            p = float(probs[e_idx])
+            stage_dict[event] = round(p, 4)
+            if p > max_event_probs[event]:
+                max_event_probs[event] = p
+                peak_stages[event] = stage_labels[s_idx]
+
+        stages_res.append(
+            StagePrediction(
+                stage=stage_labels[s_idx],
+                probabilities=stage_dict,
+            )
+        )
+
+    passed_summary = {}
+    for event in bundle.event_labels:
+        mp = max_event_probs[event]
+        passed_summary[event] = PassedStateSummary(
+            max_probability=round(mp, 4),
+            peak_stage=peak_stages[event],
+        )
+
+    return TrajectoryPredictionResponse(
+        animal_id=request.animal_id,
+        ready=True,
+        window_size=window_size,
+        required_window_size=bundle.lookback_48h,
+        passed_states_summary=passed_summary,
+        trajectory_stages=stages_res,
     )
 
 
@@ -224,22 +309,57 @@ def health_check():
     return {
         "status": "healthy" if not bundle.load_error else "degraded",
         "service": "ml-health-prediction",
-        "version": "1.0.0",
-        "model_loaded": bundle.load_error is None,
+        "version": "2.0.0",
+        "model_version": bundle.version,
+        "trained_at": bundle.trained_at,
+        "model_loaded": bundle.model_6h is not None,
+        "model_6h_loaded": bundle.model_6h is not None,
+        "model_48h_loaded": bundle.model_48h is not None,
         "model_load_error": bundle.load_error,
         "event_labels": bundle.event_labels,
-        "required_window_size": bundle.lookback,
+        "required_window_size": bundle.lookback_6h,
+        "required_window_size_6h": bundle.lookback_6h,
+        "required_window_size_48h": bundle.lookback_48h,
+        "stages_48h": ["0-12h", "12-24h", "24-36h", "36-48h"],
     }
 
 
 @app.post("/predict/health", response_model=PredictionResponse)
+@app.post("/predict/6h", response_model=PredictionResponse)
 def predict_health_endpoint(request: PredictionRequest):
     """
-    Predice, para cada tipo de evento, si va a estar activo en las próximas 6hs
-    a partir de la ventana de 24hs de telemetría más reciente del animal.
-
-    Si `readings` tiene menos lecturas que las que el modelo necesita
-    (`required_window_size`), devuelve `ready=false` sin intentar predecir —
-    no se rellena la ventana con datos inventados.
+    Predice si cada evento de salud estará activo en las próximas 6hs.
+    Requiere al menos `required_window_size_6h` bloques (default: 24 bloques = 12h).
     """
     return predict_health(request)
+
+
+@app.post("/predict/48h", response_model=TrajectoryPredictionResponse)
+@app.post("/predict/trajectory-48h", response_model=TrajectoryPredictionResponse)
+def predict_trajectory_endpoint(request: PredictionRequest):
+    """
+    Predice la trayectoria y estados por los que pasará el animal en las próximas 48hs
+    en 4 etapas de 12hs ('0-12h', '12-24h', '24-36h', '36-48h') y su estado final.
+    Requiere al menos `required_window_size_48h` bloques (96 bloques = 48h).
+    """
+    return predict_trajectory_48h(request)
+
+
+@app.post("/predict/all", response_model=CombinedPredictionResponse)
+def predict_all_endpoint(request: PredictionRequest):
+    """
+    Evalúa ambos horizontes (6h y 48h) en una sola llamada.
+    """
+    pred_6h = None
+    pred_48h = None
+
+    if len(request.readings) >= bundle.lookback_6h:
+        pred_6h = predict_health(request)
+    if len(request.readings) >= bundle.lookback_48h:
+        pred_48h = predict_trajectory_48h(request)
+
+    return CombinedPredictionResponse(
+        animal_id=request.animal_id,
+        prediction_6h=pred_6h,
+        trajectory_48h=pred_48h,
+    )
