@@ -25,7 +25,7 @@ import {
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, emulatedUser, logout } = useAuth();
-  const { adminFarmId } = useFarmPermissions();
+  const { isFarmAdmin } = useFarmPermissions();
 
   const isSuperAdmin = user?.globalRole === 'SUPER_ADMIN';
   const isEmulating = isSuperAdmin && !!emulatedUser;
@@ -183,14 +183,9 @@ export default function Sidebar() {
             <SidebarLink href="/gateways" label="Gateways" logo={<Router />} isCollapsed={isCollapsed} />
             <SidebarLink href="/alertas" label="Alertas" logo={<Bell />} isCollapsed={isCollapsed} />
             <SidebarLink href="/reportes" label="Reportes" logo={<FileDown />} isCollapsed={isCollapsed} />
-            {/* Personal: gestión de usuarios internos, exclusiva del administrador del campo (CU018) */}
-            {adminFarmId && (
-              <SidebarLink
-                href={`/farms/${adminFarmId}/users`}
-                label="Personal"
-                logo={<Users />}
-                isCollapsed={isCollapsed}
-              />
+            {/* Personal: operadores y lectores de todos sus campos, exclusivo del administrador de campos (CU018) */}
+            {isFarmAdmin && (
+              <SidebarLink href="/personal" label="Personal" logo={<Users />} isCollapsed={isCollapsed} />
             )}
           </div>
         )}

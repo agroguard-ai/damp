@@ -24,8 +24,6 @@ export interface FarmPermissions {
   canEdit: boolean;
   /** Gestionar el personal del campo, la configuración de alertas y el campo en sí (ADMIN). */
   canManageUsers: boolean;
-  /** Campo donde el usuario es ADMIN (para el acceso a "Personal" desde el menú). */
-  adminFarmId: string | null;
   /** La sesión todavía se está cargando: no decidir accesos hasta que sea false. */
   loading: boolean;
   /** Para listados con recursos de varios campos (ej. gateways): ¿puede escribir en ese campo? */
@@ -51,7 +49,6 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
         isFarmAdmin: false,
         canEdit: true,
         canManageUsers: true,
-        adminFarmId: null,
         loading,
         canEditIn: () => true,
       };
@@ -60,7 +57,6 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
     const effectiveUser = emulatedUser ?? user;
     const isFarmAdmin = effectiveUser?.globalRole === 'FARM_ADMIN';
     const memberships = effectiveUser?.farmUsers ?? [];
-    const adminFarmId = memberships.find((m) => m.role?.name === 'ADMIN')?.farmId ?? null;
     const canEditIn = (id: string | null | undefined) => {
       const name = id ? memberships.find((m) => m.farmId === id)?.role?.name : undefined;
       return name === 'ADMIN' || name === 'OPERATOR';
@@ -84,7 +80,6 @@ export function useFarmPermissions(farmId?: string | null): FarmPermissions {
       isFarmAdmin,
       canEdit: role === 'ADMIN' || role === 'OPERATOR',
       canManageUsers: role === 'ADMIN',
-      adminFarmId,
       loading,
       canEditIn,
     };

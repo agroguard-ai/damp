@@ -20,8 +20,7 @@ export function SidebarLink({ href, label, logo, isCollapsed }: SidebarLinkProps
     isActive = pathname === '/dashboard';
   } else if (href === '/farms') {
     // Campos is at /farms and includes subroutes like /farms/new or /farms/[id]
-    // (salvo /farms/[id]/users, que tiene su propia entrada "Personal")
-    isActive = pathname.startsWith('/farms') && !pathname.endsWith('/users');
+    isActive = pathname.startsWith('/farms');
   } else if (href === '/animals') {
     // Hacienda is active for /animals, but not when registering animal (/animals/new)
     isActive = pathname.startsWith('/animals') && !pathname.startsWith('/animals/new');

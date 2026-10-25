@@ -396,7 +396,7 @@ export default function FarmsPage() {
                           {/* Botón Usuarios / Equipo: solo el administrador del campo gestiona el personal */}
                           {isAdmin && (
                             <Link
-                              href={`/farms/${farm.id}/users`}
+                              href="/personal"
                               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-colors cursor-pointer"
                               title="Gestionar personal y accesos a este campo"
                             >
