@@ -56,7 +56,7 @@ export interface MapTrajectory {
 }
 
 export interface LiveTrackingMapProps {
-  /** Id del campo para detectar cambios de establecimiento */
+  /** Id del campo para detectar cambios de campo */
   farmId?: string;
   /** Centro sugerido del mapa (coordenada de la provincia o primer vértice) */
   center?: [number, number];

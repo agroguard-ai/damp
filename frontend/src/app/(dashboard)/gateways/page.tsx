@@ -463,7 +463,7 @@ export default function GatewaysPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Radio className="w-7 h-7 text-green-600 dark:text-green-500" />
-            {isSuperAdmin ? 'Inventario de Gateways LoRa' : 'Gateways de tu Establecimiento'}
+            {isSuperAdmin ? 'Inventario de Gateways LoRa' : 'Gateways de tu Campo'}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             {isSuperAdmin

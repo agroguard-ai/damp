@@ -43,7 +43,7 @@ export class AlertsService {
       },
     });
     if (!farm) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      throw new ForbiddenException('No tienes acceso a este campo.');
     }
     return farm;
   }

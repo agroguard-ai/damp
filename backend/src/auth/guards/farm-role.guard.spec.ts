@@ -250,7 +250,7 @@ describe('FarmRoleGuard', () => {
       });
 
       await expect(guard.canActivate(context)).rejects.toThrow(
-        'El servicio para este establecimiento se encuentra suspendido'
+        'El servicio para este campo se encuentra suspendido'
       );
     });
   });

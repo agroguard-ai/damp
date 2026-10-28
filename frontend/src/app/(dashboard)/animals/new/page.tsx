@@ -120,7 +120,7 @@ export default function NewAnimalPage() {
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
                   <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                    Seleccionar Campo / Establecimiento
+                    Seleccionar Campo
                   </label>
                   <Link href="/farms/new" className="text-xs text-green-600 dark:text-green-400 hover:underline">
                     Registrar Nuevo Campo

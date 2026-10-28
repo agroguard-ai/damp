@@ -38,7 +38,7 @@ export class GatewaysService {
           include: { role: true },
         });
         if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
-          throw new ForbiddenException('No tienes acceso a este establecimiento.');
+          throw new ForbiddenException('No tienes acceso a este campo.');
         }
       }
     }
@@ -223,7 +223,7 @@ export class GatewaysService {
           include: { role: true },
         });
         if (!member || !member.isActive || !['ADMIN', 'OPERATOR'].includes(member.role.name)) {
-          throw new ForbiddenException('No tienes acceso al establecimiento destino.');
+          throw new ForbiddenException('No tienes acceso al campo destino.');
         }
       }
     }

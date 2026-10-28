@@ -49,7 +49,7 @@ export function EmptyState({
 
 export function EmptyFarmState({
   title = 'No tienes campos registrados',
-  description = 'Primero debes registrar un campo para poder acceder a esta sección y gestionar tu establecimiento.',
+  description = 'Primero debes registrar un campo para poder acceder a esta sección.',
   actionLabel = 'Registrar Mi Primer Campo',
   actionHref = '/farms/new',
 }: Partial<EmptyStateProps>) {

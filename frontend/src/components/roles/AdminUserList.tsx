@@ -670,7 +670,7 @@ export function AdminUserList() {
                     className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono"
                   />
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    Cantidad de collares habilitados para asignar a sus establecimientos.
+                    Cantidad de collares habilitados para asignar a sus campos.
                   </p>
                 </div>
               )}

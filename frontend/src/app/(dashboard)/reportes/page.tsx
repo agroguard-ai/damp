@@ -67,7 +67,7 @@ export default function ReportesPage() {
 
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>
+              <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Campo</label>
               <Select
                 value={String(activeFarmId)}
                 onChange={(v) => setSelectedFarm(v)}
@@ -97,7 +97,7 @@ export default function ReportesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <ReportCard
               title="Listado de Animales"
-              description="Excel con el estado actual de todos los animales del establecimiento."
+              description="Excel con el estado actual de todos los animales del campo."
             >
               <a
                 href={`/api/reports/farms/${activeFarmId}/animals`}

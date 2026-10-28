@@ -102,7 +102,7 @@ export class FarmsService {
     // Suspension check: if the farm has an owner and that owner is inactive, block access
     if (farm.user && !farm.user.isActive) {
       throw new ForbiddenException(
-        'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'
+        'El servicio para este campo se encuentra suspendido. Comuníquese con soporte.'
       );
     }
 
@@ -189,7 +189,7 @@ export class FarmsService {
       if (conflictingGeofences.length > 0) {
         const geofenceNames = conflictingGeofences.join(', ');
         throw new BadRequestException(
-          `No se puede reducir el perímetro del campo: los siguientes cercos quedarían fuera de sus nuevos límites: ${geofenceNames}. Modificá o desactivá los cercos en conflicto antes de achicar el establecimiento.`
+          `No se puede reducir el perímetro del campo: los siguientes cercos quedarían fuera de sus nuevos límites: ${geofenceNames}. Modificá o desactivá los cercos en conflicto antes de achicar el campo.`
         );
       }
     }
@@ -214,7 +214,7 @@ export class FarmsService {
       });
       if (!member) {
         throw new ForbiddenException(
-          'Solo el propietario o un administrador del campo puede dar de baja el establecimiento'
+          'Solo el propietario o un administrador del campo puede dar de baja el campo'
         );
       }
     }
@@ -259,7 +259,7 @@ export class FarmsService {
         data: { isActive: false, removedAt: new Date() },
       });
 
-      // 5. Baja lógica del establecimiento
+      // 5. Baja lógica del campo
       return tx.farm.update({
         where: { id },
         data: {

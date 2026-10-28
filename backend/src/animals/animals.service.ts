@@ -34,7 +34,7 @@ export class AnimalsService {
     });
 
     if (!farm || farm.isActive === false) {
-      throw new NotFoundException('Establecimiento no encontrado o inactivo');
+      throw new NotFoundException('Campo no encontrado o inactivo');
     }
 
     const isOwner = farm.userId === userId;
@@ -46,7 +46,7 @@ export class AnimalsService {
     }
 
     if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
-      throw new ForbiddenException('No tenés acceso a este establecimiento');
+      throw new ForbiddenException('No tenés acceso a este campo');
     }
 
     return { farm, isAdmin, isOwner, canWrite: isAdmin || userRole === 'OPERATOR' };
@@ -117,7 +117,7 @@ export class AnimalsService {
     const { farmId, geofenceId, animalType, healthStatus, status, hasActiveAlert, hasCollar } = query;
     const whereClause: any = {};
 
-    // Filtrado por establecimiento del usuario autenticado (dueño o empleado activo)
+    // Filtrado por campo del usuario autenticado (dueño o empleado activo)
     if (farmId) {
       await this.checkFarmAccess(farmId, userId);
       whereClause.farmId = farmId;
@@ -255,7 +255,7 @@ export class AnimalsService {
 
     await this.checkFarmAccess(animal.farmId, userId);
 
-    // 1. Verificación de caravana duplicada en el mismo establecimiento
+    // 1. Verificación de caravana duplicada en el mismo campo
     if (updateAnimalDto.tag && updateAnimalDto.tag !== animal.tag) {
       const existingWithTag = await this.prisma.animal.findFirst({
         where: {
@@ -267,7 +267,7 @@ export class AnimalsService {
       });
       if (existingWithTag) {
         throw new ConflictException(
-          `Ya existe un animal activo con la caravana "${updateAnimalDto.tag}" en este establecimiento.`
+          `Ya existe un animal activo con la caravana "${updateAnimalDto.tag}" en este campo.`
         );
       }
     }
@@ -431,7 +431,7 @@ export class AnimalsService {
       });
       if (!geofence) {
         throw new NotFoundException(
-          'El cerco seleccionado no existe, no está activo o no pertenece a este establecimiento.'
+          'El cerco seleccionado no existe, no está activo o no pertenece a este campo.'
         );
       }
     }
@@ -493,7 +493,7 @@ export class AnimalsService {
     const { sourceFarmId, targetFarmId, animalIds } = dto;
 
     if (sourceFarmId === targetFarmId) {
-      throw new BadRequestException('El establecimiento de origen y destino deben ser distintos.');
+      throw new BadRequestException('El campo de origen y destino deben ser distintos.');
     }
 
     // El guard solo puede validar un campo; acá se exige rol de escritura en origen y destino.
@@ -502,7 +502,7 @@ export class AnimalsService {
       this.checkFarmAccess(targetFarmId, userId),
     ]);
     if (!source.canWrite || !target.canWrite) {
-      throw new ForbiddenException('Se requiere rol de administrador u operador en ambos establecimientos.');
+      throw new ForbiddenException('Se requiere rol de administrador u operador en ambos campos.');
     }
 
     const animals = await this.prisma.animal.findMany({
@@ -533,7 +533,7 @@ export class AnimalsService {
         data: { farmId: targetFarmId },
       });
 
-      // 3. Mantener collares alineados al nuevo establecimiento
+      // 3. Mantener collares alineados al nuevo campo
       if (collarIds.length > 0) {
         await tx.collar.updateMany({
           where: { id: { in: collarIds } },
@@ -547,7 +547,7 @@ export class AnimalsService {
           data: {
             animalId: animal.id,
             type: null,
-            description: 'Traslado de establecimiento hacia nuevo campo.',
+            description: 'Traslado hacia nuevo campo.',
             occurredAt: now,
           },
         });
@@ -556,7 +556,7 @@ export class AnimalsService {
 
     return {
       count: targetAnimalIds.length,
-      message: `Se trasladaron ${targetAnimalIds.length} animales al nuevo establecimiento exitosamente.`,
+      message: `Se trasladaron ${targetAnimalIds.length} animales al nuevo campo exitosamente.`,
     };
   }
 
@@ -683,7 +683,7 @@ export class AnimalsService {
     }
 
     if (geofence.farmId !== animal.farmId) {
-      throw new ForbiddenException('El cerco virtual pertenece a otro establecimiento.');
+      throw new ForbiddenException('El cerco virtual pertenece a otro campo.');
     }
 
     await this.prisma.$transaction(async (tx) => {

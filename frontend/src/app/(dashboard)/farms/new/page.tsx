@@ -134,7 +134,7 @@ export default function NewFarmPage() {
         polygonCoordinates: polygonPoints.length > 0 ? polygonPoints : undefined,
       });
 
-      toast.success('Establecimiento registrado con éxito');
+      toast.success('Campo registrado con éxito');
       // Item 3.1.4 del análisis UX/UI: redirigir directo a alta de animal era un salto abrupto
       // — sin cercos todavía, no hay dónde contener al animal. El paso lógico siguiente
       // es dibujar los cercos del campo.
@@ -150,7 +150,7 @@ export default function NewFarmPage() {
 
   if (!farmPerms.loading && !farmPerms.isFarmAdmin) {
     return (
-      <AccessDeniedState description="Solo el administrador de campos puede registrar nuevos establecimientos." />
+      <AccessDeniedState description="Solo el administrador de campos puede registrar nuevos campos." />
     );
   }
 
@@ -226,7 +226,7 @@ export default function NewFarmPage() {
             {/* Nombre del campo */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
-                Nombre del Campo / Establecimiento *
+                Nombre del Campo *
               </label>
               <input
                 required
@@ -311,11 +311,11 @@ export default function NewFarmPage() {
                 <Ruler className="w-5 h-5 text-green-600" /> Paso 2: Delimitación del Campo
               </h2>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Trazá el perímetro sobre el mapa satelital. Marcá los vértices de cada esquina de tu establecimiento.
+                Trazá el perímetro sobre el mapa satelital. Marcá los vértices de cada esquina de tu campo.
               </p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
-              {formData.name || 'Establecimiento'}
+              {formData.name || 'Campo'}
             </span>
           </div>
 

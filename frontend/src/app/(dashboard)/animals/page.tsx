@@ -365,7 +365,7 @@ function AnimalsContent() {
     const ok = await confirm({
       title: `Transferir ${selectedIds.length} animales a "${targetFarm?.name || 'otro campo'}"`,
       description:
-        'Los animales pasarán al nuevo establecimiento sin cerco asignado (se cierran sus cercos virtuales actuales). Los collares asignados continuarán con ellos.',
+        'Los animales pasarán al nuevo campo sin cerco asignado (se cierran sus cercos virtuales actuales). Los collares asignados continuarán con ellos.',
       confirmLabel: 'Confirmar Traslado',
       danger: false,
     });
@@ -572,7 +572,7 @@ function AnimalsContent() {
                 )}
               </div>
 
-              {/* Establecimiento Selector */}
+              {/* Selector de Campo */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider shrink-0">Campo:</span>
                 <Select
@@ -1023,7 +1023,7 @@ function AnimalsContent() {
               <div>
                 <h3 className="font-bold text-base text-zinc-900 dark:text-white">Transferir Hacienda a otro Campo</h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Mover {selectedIds.length} animales a otro establecimiento
+                  Mover {selectedIds.length} animales a otro campo
                 </p>
               </div>
               <button
@@ -1036,7 +1036,7 @@ function AnimalsContent() {
             <div className="p-6 space-y-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  Establecimiento Destino
+                  Campo Destino
                 </label>
                 <Select
                   value={String(targetFarmId)}
@@ -1191,7 +1191,7 @@ function AnimalsContent() {
                   />
                   {activeFarmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos.
+                      No hay cercos virtuales activos en este campo. Podés crearlos desde el menú Cercos.
                     </span>
                   )}
                 </div>

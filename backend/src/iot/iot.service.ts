@@ -72,13 +72,13 @@ export class IotService {
       throw new NotFoundException(`Collar with id ${payload.collar_id} not found`);
     }
 
-    // Validación de pertenencia estricta: el collar debe pertenecer al mismo establecimiento que el gateway autenticado
+    // Validación de pertenencia estricta: el collar debe pertenecer al mismo campo que el gateway autenticado
     if (authenticatedGateway?.farmId && collar.farmId && collar.farmId !== authenticatedGateway.farmId) {
       this.logger.warn(
         `[IoT Telemetry] Rechazado 403: El collar ${collar.id} pertenece al campo ${collar.farmId}, pero fue retransmitido por un gateway del campo ${authenticatedGateway.farmId}.`
       );
       throw new ForbiddenException(
-        `El collar con ID ${payload.collar_id} no pertenece al establecimiento de este gateway.`
+        `El collar con ID ${payload.collar_id} no pertenece al campo de este gateway.`
       );
     }
 

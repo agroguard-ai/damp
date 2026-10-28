@@ -3,7 +3,8 @@
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Undo2, Redo2, Trash2 } from 'lucide-react';
+import { Undo2, Redo2, Trash2, Eye, EyeOff, Zap } from 'lucide-react';
+import { isPointInPolygon } from '@/lib/geo/spatial';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MapActionControls from './controls/MapActionControls';
 import AnimalMarkersLayer from './AnimalMarkersLayer';
@@ -26,6 +27,12 @@ export interface ExistingPolygon {
   name?: string;
   points: [number, number][];
   color?: string;
+  fillColor?: string;
+  fillOpacity?: number;
+  weight?: number;
+  dashArray?: string;
+  isConflicting?: boolean;
+  active?: boolean;
 }
 
 export interface PolygonDrawerMapProps {
@@ -34,6 +41,8 @@ export interface PolygonDrawerMapProps {
   center?: [number, number];
   zoom?: number;
   existingPolygons?: ExistingPolygon[];
+  showExistingPolygons?: boolean;
+  onToggleExistingPolygons?: () => void;
   strokeColor?: string;
   fillColor?: string;
   selectedVertexIndex?: number | null;
@@ -259,6 +268,8 @@ export default function PolygonDrawerMap({
   center = [-34.6037, -58.3816],
   zoom = 14,
   existingPolygons = [],
+  showExistingPolygons,
+  onToggleExistingPolygons,
   strokeColor = '#16a34a',
   fillColor = '#22c55e',
   selectedVertexIndex: controlledSelectedIndex,
@@ -266,6 +277,15 @@ export default function PolygonDrawerMap({
   farmId,
 }: PolygonDrawerMapProps) {
   const herd = useAnimalsToggle(farmId);
+  const [internalShowExisting, setInternalShowExisting] = useState<boolean>(true);
+  const showExisting = showExistingPolygons !== undefined ? showExistingPolygons : internalShowExisting;
+  const toggleExisting = useCallback(() => {
+    if (onToggleExistingPolygons) {
+      onToggleExistingPolygons();
+    } else {
+      setInternalShowExisting((prev) => !prev);
+    }
+  }, [onToggleExistingPolygons]);
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -523,18 +543,56 @@ export default function PolygonDrawerMap({
           <MapRecenter center={center} zoom={zoom} />
 
           {/* Render existing polygons (e.g. established farm boundary or existing fences) */}
-          {existingPolygons.map((poly) => (
-            <Polygon
-              key={poly.id}
-              positions={poly.points}
-              pathOptions={{
-                color: poly.color || '#3b82f6',
-                fillColor: poly.color || '#60a5fa',
-                fillOpacity: 0.2,
-                interactive: false,
-              }}
-            />
-          ))}
+          {showExisting &&
+            existingPolygons.map((poly) => {
+              const isConflict =
+                poly.isConflicting !== undefined
+                  ? poly.isConflicting
+                  : points.length >= 3 &&
+                    poly.points.some((pt) => !isPointInPolygon([pt[0], pt[1]], points));
+
+              const color = isConflict
+                ? '#ef4444'
+                : poly.color || (poly.active !== false ? '#06b6d4' : '#94a3b8');
+
+              const fillColor = isConflict
+                ? '#f87171'
+                : poly.fillColor || (poly.active !== false ? '#22d3ee' : '#cbd5e1');
+
+              return (
+                <Polygon
+                  key={poly.id}
+                  positions={poly.points}
+                  pathOptions={{
+                    color,
+                    fillColor,
+                    fillOpacity: isConflict ? 0.35 : poly.fillOpacity ?? 0.22,
+                    weight: isConflict ? 3 : poly.weight ?? 2,
+                    dashArray: isConflict ? '4, 4' : poly.dashArray ?? '5, 5',
+                    interactive: true,
+                  }}
+                >
+                  <Tooltip sticky>
+                    <div className="text-xs p-0.5">
+                      <div
+                        className={`font-bold flex items-center gap-1 ${
+                          isConflict ? 'text-red-600' : 'text-cyan-700 dark:text-cyan-400'
+                        }`}
+                      >
+                        {isConflict ? '⚠️' : '⚡'} {poly.name || 'Cerco virtual'}
+                      </div>
+                      <div className={`text-[10px] ${isConflict ? 'text-red-500 font-semibold' : 'text-zinc-500'}`}>
+                        {isConflict
+                          ? '¡Queda fuera del nuevo límite!'
+                          : poly.active === false
+                          ? 'Cerco Inactivo'
+                          : 'Cerco Activo (Contenido)'}
+                      </div>
+                    </div>
+                  </Tooltip>
+                </Polygon>
+              );
+            })}
 
           {/* Render active polygon being drawn */}
           {points.length > 0 && (

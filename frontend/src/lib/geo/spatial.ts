@@ -159,7 +159,7 @@ export interface BoundaryPointValidationResult {
 export function validatePointInBoundary(
   clickedPoint: LatLngTuple,
   boundaryPolygon: LatLngTuple[],
-  boundaryLabel: string = 'del establecimiento',
+  boundaryLabel: string = 'del campo',
   snapThresholdMeters: number = 20,
   clampInfinite: boolean = true
 ): BoundaryPointValidationResult {

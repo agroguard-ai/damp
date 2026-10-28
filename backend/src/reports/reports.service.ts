@@ -34,7 +34,7 @@ export class ReportsService {
     const isOwner = farm.userId === userId;
     const isMember = farm.farmUsers && farm.farmUsers.length > 0;
     if (!isOwner && !isMember) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      throw new ForbiddenException('No tienes acceso a este campo.');
     }
     return farm;
   }
@@ -392,7 +392,7 @@ export class ReportsService {
     ]);
 
     const doc = new PDFDocument({ margin: 50 });
-    doc.fontSize(18).text(`Resumen del Rodeo — ${farm.name ?? 'Establecimiento'}`);
+    doc.fontSize(18).text(`Resumen del Rodeo — ${farm.name ?? 'Campo'}`);
     doc.fontSize(10).fillColor('#666').text(`Generado: ${new Date().toLocaleString()}`);
     doc.moveDown(1.5);
     doc.fillColor('#000').fontSize(13);

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- *  DAMP — Bootstrap de la granja de simulación
+ *  DAMP — Bootstrap del campo de simulación
  *  ------------------------------------------
  *  Crea de una todo lo que necesita fleet-simulator.js: un gateway,
  *  20 collares, 20 animales (uno por collar) y un geofence que los
@@ -15,15 +15,15 @@
  *  chequeo de dueño (`farm.userId !== userId`) que NO respeta el rol
  *  SUPER_ADMIN ni la membresía FarmUser — así que crear el gateway/
  *  animales/geofence hay que hacerlo logueado como el DUEÑO real de la
- *  granja, no como SUPER_ADMIN. Solo el alta de collares (`POST /collars`)
+ *  campo, no como SUPER_ADMIN. Solo el alta de collares (`POST /collars`)
  *  exige sí o sí SUPER_ADMIN. Por eso este script pide dos logins.
  *
  *  Uso:
  *    node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD>
- *      → sin más argumentos, lista las granjas del sistema (requiere
+ *      → sin más argumentos, lista los campos del sistema (requiere
  *        SUPER_ADMIN) y no crea nada.
  *    node scripts/bootstrap-simulation.js <ADMIN_EMAIL> <ADMIN_PASSWORD> <FARM_ID> <OWNER_EMAIL> <OWNER_PASSWORD>
- *      → crea todo dentro de esa granja (OWNER_EMAIL tiene que ser el
+ *      → crea todo dentro de ese campo (OWNER_EMAIL tiene que ser el
  *        dueño real de FARM_ID, o el paso del cerco va a fallar con 403).
  *
  *  Opcional: CENTER_LAT / CENTER_LNG (env vars) para elegir dónde
@@ -87,16 +87,16 @@ async function main() {
 
   if (!FARM_ID) {
     const farms = await api(adminToken, 'GET', '/admin/farms');
-    console.log('Pasame el farmId (+ credenciales del dueño) como argumentos. Granjas del sistema:');
+    console.log('Pasame el farmId (+ credenciales del dueño) como argumentos. Campos del sistema:');
     farms.forEach((f) => console.log(`  ${f.id}  ${f.name ?? '(sin nombre)'}  (dueño: ${f.user?.email ?? '—'})`));
     return;
   }
 
   if (!OWNER_EMAIL || !OWNER_PASSWORD) {
-    throw new Error('Con FARM_ID hacen falta también OWNER_EMAIL y OWNER_PASSWORD (dueño real de esa granja).');
+    throw new Error('Con FARM_ID hacen falta también OWNER_EMAIL y OWNER_PASSWORD (dueño real de ese campo).');
   }
 
-  console.log(`Logueando como ${OWNER_EMAIL} (dueño de la granja)...`);
+  console.log(`Logueando como ${OWNER_EMAIL} (dueño del campo)...`);
   const ownerToken = await login(OWNER_EMAIL, OWNER_PASSWORD);
 
   console.log('Creando gateway...');

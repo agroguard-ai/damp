@@ -288,7 +288,7 @@ export default function CollaresPage() {
     if (!assigningCollar) return;
 
     if (!assignFarmId) {
-      toast.error('Por favor seleccioná el establecimiento/campo a asignar');
+      toast.error('Por favor seleccioná el campo a asignar');
       return;
     }
 
@@ -380,7 +380,7 @@ export default function CollaresPage() {
     const ok = await confirm({
       title: `Archivar collar ${collar.identifier}`,
       description:
-        'El collar pasará a estado fuera de servicio, liberará cualquier animal vinculado y el cupo en el establecimiento, conservando intacto su historial de telemetría y trazabilidad. ¿Deseas archivar este dispositivo?',
+        'El collar pasará a estado fuera de servicio, liberará cualquier animal vinculado y el cupo en el campo, conservando intacto su historial de telemetría y trazabilidad. ¿Deseas archivar este dispositivo?',
       confirmLabel: 'Archivar Collar',
       danger: true,
     });
@@ -564,7 +564,7 @@ export default function CollaresPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Radio className="w-7 h-7 text-green-600 dark:text-green-500" />
-            {isSuperAdmin ? 'Gestión e Inventario de Collares LoRa' : 'Collares LoRa de tu Establecimiento'}
+            {isSuperAdmin ? 'Gestión e Inventario de Collares LoRa' : 'Collares LoRa de tu Campo'}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
             {isSuperAdmin
@@ -607,7 +607,7 @@ export default function CollaresPage() {
           <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
             {collars.filter((c) => !c.isArchived && Boolean(c.farmId)).length}
           </div>
-          <p className="text-xs text-zinc-400">Asignados activamente a un establecimiento/productor</p>
+          <p className="text-xs text-zinc-400">Asignados activamente a un campo/productor</p>
         </div>
 
         {/* 3. Collares Disponibles */}
@@ -755,7 +755,7 @@ export default function CollaresPage() {
             <p className="text-xs text-zinc-500 max-w-md mx-auto">
               {isSuperAdmin
                 ? 'Podés registrar un nuevo collar usando el botón "Registrar Collar".'
-                : 'Comunícate con el administrador para que te asigne nuevos collares a tus establecimientos.'}
+                : 'Comunícate con el administrador para que te asigne nuevos collares a tus campos.'}
             </p>
             {isSuperAdmin && (
               <button
@@ -1172,7 +1172,7 @@ export default function CollaresPage() {
                 <div>
                   <p className="font-semibold">Collar en Stock Central Libre</p>
                   <p className="text-[11px] opacity-80 mt-0.5">
-                    Al seleccionar el administrador y establecimiento, este dispositivo quedará inmediatamente
+                    Al seleccionar el administrador y campo, este dispositivo quedará inmediatamente
                     habilitado en su cuenta.
                   </p>
                 </div>
@@ -1216,10 +1216,10 @@ export default function CollaresPage() {
                 />
               </div>
 
-              {/* Paso 2: Establecimiento / Campo */}
+              {/* Paso 2: Campo */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider block">
-                  2. Establecimiento / Campo Asignado *
+                  2. Campo Asignado *
                 </label>
                 {!assignProducerId ? (
                   <div className="text-xs text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5">
@@ -1227,7 +1227,7 @@ export default function CollaresPage() {
                   </div>
                 ) : farmsForAssignModal.length === 0 ? (
                   <div className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl px-3.5 py-2.5">
-                    Este administrador no tiene campos o establecimientos registrados actualmente.
+                    Este administrador no tiene campos registrados actualmente.
                   </div>
                 ) : (
                   <Select

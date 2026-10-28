@@ -20,7 +20,7 @@ export class AlertSettingsService {
       throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
     }
     if (farm.userId !== userId) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      throw new ForbiddenException('No tienes acceso a este campo.');
     }
     return farm;
   }

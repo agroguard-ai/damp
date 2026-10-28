@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 export type FarmRoleName = 'ADMIN' | 'OPERATOR' | 'VIEWER';
 
 export const FARM_ROLE_LABELS: Record<FarmRoleName, string> = {
-  ADMIN: 'Administrador de campo',
+  ADMIN: 'Administrador del campo',
   OPERATOR: 'Operador',
   VIEWER: 'Solo lectura',
 };

@@ -14,7 +14,10 @@ import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { getProvinces, getDepartments, getProvinceCenter } from '@/data/argentinaLocations';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
-import type { Farm } from '@/types';
+import type { Farm, Geofence } from '@/types';
+import { geofencesApi } from '@/lib/api/geofences';
+import { parsePolygon, isPointInPolygon } from '@/lib/geo/spatial';
+import type { ExistingPolygon } from '@/components/maps/PolygonDrawerMap';
 import {
   Tractor,
   Plus,
@@ -29,6 +32,8 @@ import {
   RotateCcw,
   Save,
   AlertTriangle,
+  Eye,
+  EyeOff,
   Check,
   Flame,
   Route,
@@ -61,6 +66,9 @@ export default function FarmsPage() {
 
   // Rigid Perimeter Map Modal State
   const [perimeterModalFarm, setPerimeterModalFarm] = useState<Farm | null>(null);
+  const [farmFences, setFarmFences] = useState<Geofence[]>([]);
+  const [loadingFences, setLoadingFences] = useState<boolean>(false);
+  const [showFences, setShowFences] = useState<boolean>(true);
   const [editPolygonPoints, setEditPolygonPoints] = useState<[number, number][]>([]);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
 
@@ -91,7 +99,7 @@ export default function FarmsPage() {
     if (!user) return false;
     // SuperAdmin without emulation has no tenant farm creation capability
     if (user.globalRole === 'SUPER_ADMIN' && !emulatedUser) return false;
-    // Operadores y lectores no crean establecimientos (el backend también lo rechaza):
+    // Operadores y lectores no crean campos (el backend también lo rechaza):
     // solo los administradores de campos.
     return isFarmAdmin;
   }, [user, emulatedUser, isFarmAdmin]);
@@ -126,7 +134,39 @@ export default function FarmsPage() {
     return calculatePolygonAreaHa(editPolygonPoints);
   }, [editPolygonPoints]);
 
-  // Open rigid perimeter map modal
+  // Cercos mapeados para visualización dentro del mapa de perímetro
+  const existingFencePolygons = useMemo<ExistingPolygon[]>(() => {
+    return farmFences
+      .map((f) => {
+        const pts = parsePolygon(f.polygonCoordinates);
+        if (pts.length < 3) return null;
+        const isConflicting =
+          editPolygonPoints.length >= 3 &&
+          f.active &&
+          pts.some((pt) => !isPointInPolygon(pt, editPolygonPoints));
+        return {
+          id: f.id,
+          name: f.name,
+          points: pts,
+          active: f.active,
+          isConflicting,
+        };
+      })
+      .filter(Boolean) as ExistingPolygon[];
+  }, [farmFences, editPolygonPoints]);
+
+  // Detección preventiva de cercos activos que quedarían fuera del nuevo perímetro
+  const conflictingFences = useMemo(() => {
+    if (editPolygonPoints.length < 3) return [];
+    return farmFences.filter((f) => {
+      if (!f.active) return false;
+      const pts = parsePolygon(f.polygonCoordinates);
+      if (pts.length < 3) return false;
+      return pts.some((pt) => !isPointInPolygon(pt, editPolygonPoints));
+    });
+  }, [farmFences, editPolygonPoints]);
+
+  // Open rigid perimeter map modal & fetch existing fences for preview
   const handleOpenPerimeterModal = (farm: Farm) => {
     let initialPoints: [number, number][] = [];
     if (farm.polygonCoordinates) {
@@ -141,6 +181,22 @@ export default function FarmsPage() {
     setEditPolygonPoints(initialPoints);
     setSelectedVertexIndex(null);
     setPerimeterModalFarm(farm);
+    setShowFences(true);
+
+    // Cargar cercos virtuales del campo para previsualización preventiva
+    setLoadingFences(true);
+    geofencesApi
+      .getByFarm(farm.id)
+      .then((fences) => {
+        setFarmFences(fences || []);
+      })
+      .catch((err) => {
+        console.error('Error al cargar cercos para previsualización:', err);
+        setFarmFences([]);
+      })
+      .finally(() => {
+        setLoadingFences(false);
+      });
   };
 
   // Close rigid perimeter map modal explicitly
@@ -148,6 +204,7 @@ export default function FarmsPage() {
     setPerimeterModalFarm(null);
     setEditPolygonPoints([]);
     setSelectedVertexIndex(null);
+    setFarmFences([]);
   };
 
   // Save modified perimeter & auto-calculated hectares
@@ -156,6 +213,14 @@ export default function FarmsPage() {
 
     if (editPolygonPoints.length > 0 && editPolygonPoints.length < 3) {
       toast.warning('Se requieren al menos 3 vértices para formar un polígono delimitado.');
+      return;
+    }
+
+    if (conflictingFences.length > 0) {
+      const fenceNames = conflictingFences.map((f) => `"${f.name}"`).join(', ');
+      toast.error(
+        `No se puede reducir el perímetro del campo: los siguientes cercos quedarían fuera de sus nuevos límites: ${fenceNames}. Modificá o desactivá los cercos en conflicto antes de achicar el campo.`
+      );
       return;
     }
 
@@ -213,7 +278,7 @@ export default function FarmsPage() {
         address: editFormData.address.trim() || undefined,
       });
 
-      toast.success('Establecimiento actualizado con éxito');
+      toast.success('Campo actualizado con éxito');
       setEditingFarm(null);
       refetchFarms();
     } catch (err: unknown) {
@@ -240,7 +305,7 @@ export default function FarmsPage() {
   );
 
   if (user?.globalRole === 'SUPER_ADMIN' && !emulatedUser) {
-    return <EmulationRequiredState title="la Gestión de Campos y Establecimientos" />;
+    return <EmulationRequiredState title="la Gestión de Campos" />;
   }
 
   return (
@@ -250,10 +315,10 @@ export default function FarmsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
             <Tractor className="w-6 h-6 text-green-600 dark:text-green-500" />
-            Campos y Establecimientos
+            Campos
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Gestión centralizada de establecimientos agropecuarios, delimitación perimetral y administración de
+            Gestión centralizada de campos, delimitación perimetral y administración de
             recursos.
           </p>
         </div>
@@ -309,7 +374,7 @@ export default function FarmsPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-zinc-50 dark:bg-zinc-950/60 text-zinc-500 dark:text-zinc-400 uppercase tracking-wider font-semibold border-b border-zinc-100 dark:border-zinc-800">
                 <tr>
-                  <th className="px-5 py-3.5">Establecimiento</th>
+                  <th className="px-5 py-3.5">Campo</th>
                   <th className="px-5 py-3.5">Ubicación</th>
                   <th className="px-5 py-3.5">Superficie</th>
                   <th className="px-5 py-3.5 text-right">Acciones</th>
@@ -321,7 +386,7 @@ export default function FarmsPage() {
 
                   return (
                     <tr key={farm.id} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
-                      {/* Establecimiento */}
+                      {/* Campo */}
                       <td className="px-5 py-4">
                         <div>
                           <div className="font-bold text-zinc-900 dark:text-white text-sm">{farm.name}</div>
@@ -412,7 +477,7 @@ export default function FarmsPage() {
                                 type="button"
                                 onClick={() => handleOpenEdit(farm)}
                                 className="p-1.5 text-zinc-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 dark:hover:text-green-400 rounded-lg transition-colors cursor-pointer"
-                                title="Editar datos del establecimiento"
+                                title="Editar datos del campo"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
@@ -466,12 +531,28 @@ export default function FarmsPage() {
                   </span>
                 </div>
                 <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-                  Trazado de Perímetro del Establecimiento
+                  Trazado de Perímetro del Campo
                 </h3>
               </div>
 
               {/* Status metrics in header */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                {farmFences.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFences((prev) => !prev)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                      showFences
+                        ? 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800 text-cyan-700 dark:text-cyan-300 shadow-xs'
+                        : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                    title={showFences ? 'Ocultar cercos virtuales' : 'Mostrar cercos virtuales'}
+                  >
+                    {showFences ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    <span>Cercos ({farmFences.length})</span>
+                  </button>
+                )}
+
                 <div className="hidden sm:flex items-center gap-3 text-xs bg-white dark:bg-zinc-950 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
                   <div>
                     <span className="text-zinc-400">Vértices:</span>{' '}
@@ -497,6 +578,30 @@ export default function FarmsPage() {
               </div>
             </div>
 
+            {/* Conflict warning banner if fences are outside perimeter */}
+            {conflictingFences.length > 0 && (
+              <div className="px-5 py-2.5 bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800/60 flex items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>
+                    <strong>Atención:</strong> {conflictingFences.length === 1 ? 'El cerco' : 'Los cercos'}{' '}
+                    <strong>{conflictingFences.map((f) => `"${f.name}"`).join(', ')}</strong>{' '}
+                    {conflictingFences.length === 1 ? 'quedaría fuera' : 'quedarían fuera'} de los nuevos límites del campo.
+                    Ajustá el perímetro para contenerlos antes de guardar.
+                  </span>
+                </div>
+                {!showFences && (
+                  <button
+                    type="button"
+                    onClick={() => setShowFences(true)}
+                    className="underline font-bold text-amber-700 dark:text-amber-300 hover:text-amber-900 shrink-0 cursor-pointer"
+                  >
+                    Mostrar cercos
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Modal Body: Map Drawer */}
             <div className="flex-1 relative min-h-[420px] h-[55vh] w-full bg-zinc-100 dark:bg-zinc-950">
               <PolygonDrawerMap
@@ -504,11 +609,14 @@ export default function FarmsPage() {
                 onChangePoints={setEditPolygonPoints}
                 center={perimeterMapCenter}
                 zoom={14}
-                strokeColor="#f59e0b"
-                fillColor="#fbbf24"
+                strokeColor={conflictingFences.length > 0 ? '#ea580c' : '#f59e0b'}
+                fillColor={conflictingFences.length > 0 ? '#f97316' : '#fbbf24'}
                 selectedVertexIndex={selectedVertexIndex}
                 onSelectVertex={setSelectedVertexIndex}
                 farmId={perimeterModalFarm?.id}
+                existingPolygons={existingFencePolygons}
+                showExistingPolygons={showFences}
+                onToggleExistingPolygons={() => setShowFences((prev) => !prev)}
               />
             </div>
 
@@ -546,7 +654,16 @@ export default function FarmsPage() {
                   <button
                     type="button"
                     onClick={handleSavePerimeter}
-                    disabled={updatingFarm || (editPolygonPoints.length > 0 && editPolygonPoints.length < 3)}
+                    disabled={
+                      updatingFarm ||
+                      (editPolygonPoints.length > 0 && editPolygonPoints.length < 3) ||
+                      conflictingFences.length > 0
+                    }
+                    title={
+                      conflictingFences.length > 0
+                        ? 'No se puede guardar: hay cercos virtuales fuera de los nuevos límites'
+                        : undefined
+                    }
                     className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-green-600 hover:bg-green-700 text-white shadow-sm transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -560,7 +677,7 @@ export default function FarmsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: EDITAR METADATOS DEL ESTABLECIMIENTO                             */}
+      {/* MODAL 2: EDITAR METADATOS DEL CAMPO                                       */}
       {/* ========================================================================= */}
       {editingFarm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in-0 duration-150">
@@ -568,7 +685,7 @@ export default function FarmsPage() {
             <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
               <h3 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <Edit3 className="w-5 h-5 text-green-600" />
-                Editar Establecimiento
+                Editar Campo
               </h3>
               <button
                 onClick={() => setEditingFarm(null)}
@@ -697,7 +814,7 @@ export default function FarmsPage() {
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-zinc-900 dark:text-white">Dar de baja establecimiento</h3>
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">Dar de baja campo</h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Campo: <strong className="text-zinc-800 dark:text-zinc-200">{deletingTargetFarm.name}</strong>
                 </p>
@@ -712,7 +829,7 @@ export default function FarmsPage() {
               </div>
 
               <div className="text-xs space-y-1.5 leading-relaxed">
-                <p>Este establecimiento cuenta actualmente con:</p>
+                <p>Este campo cuenta actualmente con:</p>
                 <div className="grid grid-cols-2 gap-2 my-2">
                   <div className="bg-white/80 dark:bg-zinc-900/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900 text-center">
                     <span className="text-[11px] text-zinc-500 block">Animales activos</span>
@@ -741,7 +858,7 @@ export default function FarmsPage() {
                     quedarán archivados y desvinculados de este campo.
                   </li>
                   <li>
-                    El establecimiento quedará en estado <strong>archivado</strong>.
+                    El campo quedará en estado <strong>archivado</strong>.
                   </li>
                 </ul>
               </div>

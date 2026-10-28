@@ -106,7 +106,7 @@ export class FarmRoleGuard implements CanActivate {
           throw new NotFoundException(`${resolveFrom.resource} "${resourceId}" not found`);
         }
         if (farmId && farmId !== resourceFarmId) {
-          throw new ForbiddenException('El recurso no pertenece al establecimiento indicado');
+          throw new ForbiddenException('El recurso no pertenece al campo indicado');
         }
         farmId = resourceFarmId;
       } else if (!farmId) {
@@ -145,7 +145,7 @@ export class FarmRoleGuard implements CanActivate {
     // se inhabilita el acceso para todos los miembros de ese campo
     if (farmUser.farm?.user && !farmUser.farm.user.isActive) {
       throw new ForbiddenException(
-        'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.'
+        'El servicio para este campo se encuentra suspendido. Comuníquese con soporte.'
       );
     }
 

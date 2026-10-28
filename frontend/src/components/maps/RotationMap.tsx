@@ -179,7 +179,7 @@ export default function RotationMap({
             <Popup>
               <div className="p-1.5 text-xs text-zinc-900">
                 <p className="font-bold text-green-700">🌱 Campo: {farm.name ?? 'Sin nombre'}</p>
-                <p className="text-[11px] text-zinc-600">Perímetro general del establecimiento.</p>
+                <p className="text-[11px] text-zinc-600">Perímetro general del campo.</p>
               </div>
             </Popup>
           </Polygon>

@@ -420,12 +420,12 @@ export class CollarsService {
     if (targetFarmId) {
       if (!collar.farmId) {
         throw new BadRequestException(
-          `El collar ${collar.identifier} se encuentra en Stock Central. Debe ser asignado a este establecimiento por el Superadministrador antes de colocarlo en ganado.`
+          `El collar ${collar.identifier} se encuentra en Stock Central. Debe ser asignado a este campo por el Superadministrador antes de colocarlo en ganado.`
         );
       }
       if (collar.farmId !== targetFarmId) {
         throw new BadRequestException(
-          `El collar ${collar.identifier} pertenece a otro establecimiento. No puede ser colocado en ganado de este campo.`
+          `El collar ${collar.identifier} pertenece a otro campo. No puede ser colocado en ganado de este campo.`
         );
       }
     }

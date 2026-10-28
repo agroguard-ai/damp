@@ -11,7 +11,7 @@ const faqs = [
   },
   {
     question: '¿Qué hardware requiere la plataforma para funcionar?',
-    answer: 'Un collar LoRa con microcontrolador ESP32-S3 por animal y un gateway Heltec V3 por establecimiento.',
+    answer: 'Un collar LoRa con microcontrolador ESP32-S3 por animal y un gateway Heltec V3 por campo.',
   },
   {
     question: '¿Cómo detecta la IA los problemas de salud?',
@@ -21,7 +21,7 @@ const faqs = [
   {
     question: '¿Mis datos están aislados de los de otros campos?',
     answer:
-      'Sí. Vada establecimiento accede de forma aislada a sus propios animales, collares y alertas, con control de acceso por roles.',
+      'Sí. Cada campo accede de forma aislada a sus propios animales, collares y alertas, con control de acceso por roles.',
   },
   {
     question: '¿Necesito internet en todo el potrero para que funcione?',

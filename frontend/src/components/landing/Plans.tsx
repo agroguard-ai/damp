@@ -6,7 +6,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 const INCLUDED_FEATURES = [
   {
     title: 'Campos y cercos sin límite',
-    description: 'Creá, modificá o eliminá todos los establecimientos y geocercas virtuales que necesites.',
+    description: 'Creá, modificá o eliminá todos los campos y geocercas virtuales que necesites.',
     badge: 'Ilimitado',
   },
   {
@@ -26,7 +26,7 @@ const INCLUDED_FEATURES = [
   },
   {
     title: 'Usuarios y roles para todo tu equipo',
-    description: 'Sumá operadores de campo, veterinarios y administradores con permisos por establecimiento.',
+    description: 'Sumá operadores, veterinarios y administradores con permisos por campo.',
     badge: 'Multi-rol',
   },
 ];
@@ -85,7 +85,7 @@ export function Plans() {
                     <Layers className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-foreground">1. Habilitación del establecimiento</h4>
+                    <h4 className="text-sm font-bold text-foreground">1. Habilitación del campo</h4>
                     <p className="text-xs text-muted mt-1 leading-relaxed">
                       Dejamos operativo el enlace LoRa en el casco y tu cuenta lista para crear o dar de baja campos y
                       cercos con total libertad.
@@ -168,7 +168,7 @@ export function Plans() {
 
             <div className="mt-8 rounded-2xl bg-surface-raised border border-border p-4 flex flex-wrap items-center justify-between gap-4 text-xs text-muted">
               <span>
-                ¿Querés probar el sistema en tu campo? Estamos sumando establecimientos para nuestra prueba piloto.
+                ¿Querés probar el sistema en tu campo? Estamos sumando campos para nuestra prueba piloto.
               </span>
               <a
                 href="mailto:ventas@damp.com"

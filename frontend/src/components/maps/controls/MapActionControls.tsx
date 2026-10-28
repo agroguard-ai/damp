@@ -1,6 +1,6 @@
 'use client';
 
-import { Layers, Maximize2, Minimize2, LocateFixed, PawPrint } from 'lucide-react';
+import { Layers, Maximize2, Minimize2, LocateFixed, PawPrint, Zap } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { type MapLayerType } from './MapLayerControl';
 
@@ -9,6 +9,14 @@ export interface AnimalsToggleControl {
   enabled: boolean;
   onToggle: () => void;
   /** Animales con posición conocida (se muestra con la capa prendida). */
+  count?: number;
+  loading?: boolean;
+}
+
+/** Botón para mostrar/ocultar los cercos virtuales sobre el mapa. */
+export interface FencesToggleControl {
+  enabled: boolean;
+  onToggle: () => void;
   count?: number;
   loading?: boolean;
 }
@@ -23,6 +31,8 @@ export interface MapActionControlsProps {
   onRecenter?: () => void;
   /** Opcional — solo los mapas asociados a un campo muestran el botón de animales. */
   animalsToggle?: AnimalsToggleControl;
+  /** Opcional — botón para previsualizar/ocultar cercos virtuales. */
+  fencesToggle?: FencesToggleControl;
 }
 
 export default function MapActionControls({
@@ -33,6 +43,7 @@ export default function MapActionControls({
   onToggleLabels,
   onRecenter,
   animalsToggle,
+  fencesToggle,
 }: MapActionControlsProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLayerMenuOpen, setIsLayerMenuOpen] = useState(false);
@@ -132,6 +143,32 @@ export default function MapActionControls({
           {animalsToggle.enabled && !animalsToggle.loading && animalsToggle.count !== undefined && (
             <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-white text-green-700 text-[10px] font-bold flex items-center justify-center shadow">
               {animalsToggle.count}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Cercos virtuales: prender/apagar la visualización de cercos */}
+      {fencesToggle && (
+        <button
+          type="button"
+          onClick={fencesToggle.onToggle}
+          className={`relative w-10 h-10 rounded-full backdrop-blur-md border shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            fencesToggle.enabled
+              ? 'bg-cyan-600/95 hover:bg-cyan-500 border-cyan-400 text-white'
+              : 'bg-zinc-900/90 hover:bg-zinc-800 border-zinc-700/70 text-zinc-400'
+          }`}
+          title={fencesToggle.enabled ? 'Ocultar cercos virtuales' : 'Mostrar cercos virtuales'}
+          aria-pressed={fencesToggle.enabled}
+        >
+          {fencesToggle.loading ? (
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          ) : (
+            <Zap className="w-5 h-5" />
+          )}
+          {fencesToggle.enabled && !fencesToggle.loading && fencesToggle.count !== undefined && (
+            <span className="absolute -bottom-1 -left-1 min-w-5 h-5 px-1 rounded-full bg-white text-cyan-700 text-[10px] font-bold flex items-center justify-center shadow">
+              {fencesToggle.count}
             </span>
           )}
         </button>

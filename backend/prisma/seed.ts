@@ -134,7 +134,7 @@ function computeAnimalTelemetryAt(
 async function main() {
   console.log('--- Iniciando Seed DAMP ---');
 
-  // 1. Crear roles estándar de granja
+  // 1. Crear roles estándar de campo
   const roleNames = ['ADMIN', 'OPERATOR', 'VIEWER'];
   const rolesMap: Record<string, string> = {};
   for (const name of roleNames) {
@@ -338,7 +338,7 @@ async function main() {
   const existingFarmIds = existingFarms.map((f) => f.id);
 
   if (existingFarmIds.length > 0) {
-    console.log('Limpiando datos previos del establecimiento de Juan Pérez para regenerar seed limpio...');
+    console.log('Limpiando datos previos del campo de Juan Pérez para regenerar seed limpio...');
     await prisma.iotRequestLog.deleteMany({ where: { farmId: { in: existingFarmIds } } });
     await prisma.healthPrediction.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
     await prisma.alert.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
@@ -416,7 +416,7 @@ async function main() {
     },
   });
 
-  // Configurar umbrales de alertas del establecimiento
+  // Configurar umbrales de alertas del campo
   await prisma.alertSettings.create({
     data: {
       farmId: farm.id,
@@ -1035,7 +1035,7 @@ async function main() {
   console.log('============================================================');
   console.log(`👤 Productor:       Juan Pérez (${juanUser.email} / clave: Juan1234!)`);
   console.log(`🔑 SuperAdmin:      ${superAdmin.email} (clave: Admin1234!)`);
-  console.log(`🌾 Establecimiento: ${farm.name} (${farm.province} - ${farm.location}, ${farm.totalAreaHa} Ha)`);
+  console.log(`🌾 Campo:           ${farm.name} (${farm.province} - ${farm.location}, ${farm.totalAreaHa} Ha)`);
   console.log(`⚡ Cerco Virtual:   ${activeGeofence.name} (Activo desde hace 92 días)`);
   console.log(`📡 Gateway LoRa:    ${gateway.name} (ONLINE)`);
   console.log(`🐄 Ganados:         ${createdAnimals.length} cabezas (ER-1001 a ER-1010) con 10 collares asignados`);
