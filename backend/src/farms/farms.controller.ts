@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Delete, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { FarmsService } from './farms.service';
 import { CreateFarmDto } from './dto/create-farm.dto';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
@@ -15,8 +15,10 @@ export class FarmsController {
   }
 
   @Get()
-  findAll(@CurrentUser('sub') userId: string) {
-    return this.farmsService.findAll(userId);
+  findAll(@CurrentUser('sub') userId: string, @Query('includeInactive') includeInactive?: string) {
+    return this.farmsService.findAll(userId, {
+      includeInactive: includeInactive === 'true' || includeInactive === '1',
+    });
   }
 
   @Get(':id')
@@ -30,7 +32,7 @@ export class FarmsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @CurrentUser('sub') userId: string) {
-    return this.farmsService.remove(id, userId);
+  remove(@Param('id') id: string, @CurrentUser('sub') userId: string, @Query('permanent') permanent?: string) {
+    return this.farmsService.remove(id, userId, permanent === 'true' || permanent === '1');
   }
 }

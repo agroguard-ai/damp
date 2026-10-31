@@ -15,9 +15,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   });
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ farmId: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ farmId: string }> }) {
   const { farmId } = await params;
-  return proxyRequest(`/farms/${farmId}`, {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.toString();
+  return proxyRequest(`/farms/${farmId}${query ? `?${query}` : ''}`, {
     method: 'DELETE',
   });
 }

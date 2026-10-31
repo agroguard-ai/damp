@@ -40,7 +40,7 @@ export class FarmsService {
     });
   }
 
-  async findAll(userId: string) {
+  async findAll(userId: string, query?: { includeInactive?: boolean }) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
     // Superadmin without emulation has no tenant farm context
@@ -49,23 +49,25 @@ export class FarmsService {
       return [];
     }
 
-    // Regular users see farms where they are owner or active member, and farm is active
+    const includeInactive = query?.includeInactive === true;
+
+    // Regular users see farms where they are owner or member
     return this.prisma.farm.findMany({
       where: {
-        isActive: true,
+        ...(includeInactive ? {} : { isActive: true }),
         AND: [
           {
-            OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
+            OR: [{ userId }, { farmUsers: { some: { userId, ...(includeInactive ? {} : { isActive: true }) } } }],
           },
           {
             OR: [{ user: null }, { user: { isActive: true } }],
           },
         ],
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
       include: {
         farmUsers: {
-          where: { userId, isActive: true },
+          where: { userId },
           include: { role: true },
         },
         _count: {
@@ -88,7 +90,7 @@ export class FarmsService {
       },
     });
 
-    if (!farm || !farm.isActive) {
+    if (!farm) {
       throw new NotFoundException('Farm not found');
     }
 
@@ -101,9 +103,7 @@ export class FarmsService {
 
     // Suspension check: if the farm has an owner and that owner is inactive, block access
     if (farm.user && !farm.user.isActive) {
-      throw new ForbiddenException(
-        'El servicio para este campo se encuentra suspendido. Comuníquese con soporte.'
-      );
+      throw new ForbiddenException('El servicio para este campo se encuentra suspendido. Comuníquese con soporte.');
     }
 
     // Owner check
@@ -111,14 +111,16 @@ export class FarmsService {
       return farm;
     }
 
-    // Membership check
-    const member = await this.prisma.farmUser.findUnique({
+    // Membership check (permit viewing historical records if previously assigned)
+    const member = await this.prisma.farmUser.findFirst({
       where: {
-        farmId_userId: { farmId: id, userId },
+        farmId: id,
+        userId,
+        ...(farm.isActive ? { isActive: true } : {}),
       },
     });
 
-    if (!member || !member.isActive) {
+    if (!member) {
       throw new ForbiddenException('You do not have access to this farm');
     }
 
@@ -131,6 +133,10 @@ export class FarmsService {
 
     if (!farm) {
       throw new NotFoundException('Farm not found');
+    }
+
+    if (!farm.isActive) {
+      throw new BadRequestException('El campo se encuentra archivado/inactivo y no puede ser modificado.');
     }
 
     if (user?.globalRole !== GlobalRole.SUPER_ADMIN && farm.userId !== userId) {
@@ -168,7 +174,7 @@ export class FarmsService {
         try {
           geofenceCoords =
             typeof geofence.polygonCoordinates === 'string'
-              ? JSON.parse(geofence.polygonCoordinates as string)
+              ? JSON.parse(geofence.polygonCoordinates)
               : (geofence.polygonCoordinates as [number, number][]);
         } catch {
           geofenceCoords = [];
@@ -200,27 +206,68 @@ export class FarmsService {
     });
   }
 
-  async remove(id: string, userId: string) {
+  async remove(id: string, userId: string, permanent: boolean = false) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     const farm = await this.prisma.farm.findUnique({ where: { id } });
 
-    if (!farm || !farm.isActive) {
+    if (!farm) {
       throw new NotFoundException('Farm not found');
     }
 
     if (user?.globalRole !== GlobalRole.SUPER_ADMIN && farm.userId !== userId) {
       const member = await this.prisma.farmUser.findFirst({
-        where: { farmId: id, userId, isActive: true, role: { name: 'ADMIN' } },
+        where: { farmId: id, userId, role: { name: 'ADMIN' } },
       });
       if (!member) {
-        throw new ForbiddenException(
-          'Solo el propietario o un administrador del campo puede dar de baja el campo'
-        );
+        throw new ForbiddenException('Solo el propietario o un administrador del campo puede dar de baja el campo');
       }
     }
 
+    // Eliminación definitiva / Purga física de registros (solo sobre un campo ya archivado)
+    if (permanent) {
+      if (farm.isActive) {
+        throw new BadRequestException(
+          'Primero debés dar de baja lógica el campo. La eliminación definitiva solo está disponible para campos archivados.'
+        );
+      }
+
+      return this.prisma.$transaction(async (tx) => {
+        const farmAnimals = await tx.animal.findMany({
+          where: { farmId: id },
+          select: { id: true },
+        });
+        const animalIds = farmAnimals.map((a) => a.id);
+
+        if (animalIds.length > 0) {
+          await tx.animalCollar.deleteMany({ where: { animalId: { in: animalIds } } });
+          await tx.animalGeofence.deleteMany({ where: { animalId: { in: animalIds } } });
+          await tx.medicalEvent.deleteMany({ where: { animalId: { in: animalIds } } });
+          await tx.alert.deleteMany({ where: { animalId: { in: animalIds } } });
+          await tx.healthPrediction.deleteMany({ where: { animalId: { in: animalIds } } });
+          await tx.animal.deleteMany({ where: { farmId: id } });
+        }
+
+        // Las asignaciones históricas animal-cerco referencian las geocercas del campo:
+        // en la purga definitiva se eliminan antes de borrar los cercos.
+        await tx.animalGeofence.deleteMany({ where: { geofence: { farmId: id } } });
+        await tx.collar.updateMany({ where: { farmId: id }, data: { farmId: null } });
+        await tx.gateway.updateMany({ where: { farmId: id }, data: { farmId: null } });
+        await tx.rotationPlan.deleteMany({ where: { farmId: id } });
+        await tx.geofence.deleteMany({ where: { farmId: id } });
+        await tx.alertSettings.deleteMany({ where: { farmId: id } });
+        await tx.farmUser.deleteMany({ where: { farmId: id } });
+
+        return tx.farm.delete({ where: { id } });
+      });
+    }
+
+    // Baja lógica / Archivado (no destructivo)
+    if (!farm.isActive) {
+      throw new BadRequestException('El campo ya se encuentra dado de baja / archivado.');
+    }
+
     return this.prisma.$transaction(async (tx) => {
-      // 1. Obtener animales del campo para cerrar asignaciones de collares y geocercas
+      // 1. Cerrar únicamente asignaciones a cercos virtuales del campo archivado
       const farmAnimals = await tx.animal.findMany({
         where: { farmId: id },
         select: { id: true },
@@ -228,38 +275,37 @@ export class FarmsService {
       const animalIds = farmAnimals.map((a) => a.id);
 
       if (animalIds.length > 0) {
-        await tx.animalCollar.updateMany({
-          where: { animalId: { in: animalIds }, endAt: null },
-          data: { endAt: new Date() },
-        });
         await tx.animalGeofence.updateMany({
           where: { animalId: { in: animalIds }, endAt: null },
           data: { endAt: new Date() },
         });
+        // Los animales NO se archivan: conservan estado, historial y collar, pero quedan
+        // libres de campo (farmId = null) para poder reasignarlos a otro campo.
         await tx.animal.updateMany({
           where: { farmId: id },
-          data: { isArchived: true },
+          data: { farmId: null },
         });
       }
 
-      // 2. Liberar collares asignados al campo para que vuelvan a la flota disponible
-      await tx.collar.updateMany({
+      // 2. Desactivar (no borrar) las geocercas: conservan el histórico de asignaciones
+      // animal-cerco y evitan romper la clave foránea de animal_geofences.
+      const now = new Date();
+      await tx.geofence.updateMany({
         where: { farmId: id },
-        data: { farmId: null },
+        data: { active: false, deactivatedAt: now },
       });
 
-      // 3. Eliminar geocercas del campo
-      await tx.geofence.deleteMany({
-        where: { farmId: id },
+      // 3. Cancelar planes de rotación activos y desactivar el personal del campo
+      await tx.rotationPlan.updateMany({
+        where: { farmId: id, status: 'ACTIVE' },
+        data: { status: 'CANCELLED', completedAt: now },
       });
-
-      // 4. Inactivar miembros del campo
       await tx.farmUser.updateMany({
         where: { farmId: id },
-        data: { isActive: false, removedAt: new Date() },
+        data: { isActive: false, removedAt: now },
       });
 
-      // 5. Baja lógica del campo
+      // 4. Baja lógica / Archivado del campo
       return tx.farm.update({
         where: { id },
         data: {

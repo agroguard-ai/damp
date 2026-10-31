@@ -7,6 +7,7 @@ import { LinkAnimalCollarDto } from './dto/link-animal-collar.dto';
 import { AssignAnimalGeofenceDto } from './dto/assign-animal-geofence.dto';
 import { BulkAssignGeofenceDto } from './dto/bulk-assign-geofence.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
+import { BulkAssignFarmDto } from './dto/bulk-assign-farm.dto';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
 import { CurrentUser } from '@/auth/current-user.decorator';
 import { GlobalRolesGuard } from '@/auth/guards/global-roles.guard';
@@ -43,6 +44,11 @@ export class AnimalsController {
     return this.animalsService.bulkTransferFarm(dto, userId);
   }
 
+  @Post('bulk/assign-farm')
+  bulkAssignFarm(@Body() dto: BulkAssignFarmDto, @CurrentUser('sub') userId: string) {
+    return this.animalsService.bulkAssignFarm(dto, userId);
+  }
+
   @Get()
   findAll(
     @CurrentUser('sub') userId: string,
@@ -52,7 +58,8 @@ export class AnimalsController {
     @Query('healthStatus') healthStatus?: string,
     @Query('status') status?: string,
     @Query('hasActiveAlert') hasActiveAlert?: string,
-    @Query('hasCollar') hasCollar?: string
+    @Query('hasCollar') hasCollar?: string,
+    @Query('unassigned') unassigned?: string
   ) {
     return this.animalsService.findAll(
       {
@@ -63,6 +70,7 @@ export class AnimalsController {
         status,
         hasActiveAlert,
         hasCollar,
+        unassigned,
       },
       userId
     );

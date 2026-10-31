@@ -28,8 +28,8 @@ export class GatewaysService {
 
     if (dto.farmId) {
       const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
-      if (!farm) {
-        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe.`);
+      if (!farm || !farm.isActive) {
+        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe o se encuentra inactivo.`);
       }
 
       if (!isSuperAdmin && farm.userId !== userId) {
@@ -98,6 +98,7 @@ export class GatewaysService {
 
     const userFarms = await this.prisma.farm.findMany({
       where: {
+        isActive: true,
         OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
       },
       select: { id: true },
@@ -124,8 +125,8 @@ export class GatewaysService {
 
   async findByFarm(farmId: string, userId: string) {
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
-    if (!farm) {
-      throw new NotFoundException('Farm not found');
+    if (!farm || !farm.isActive) {
+      throw new NotFoundException('Campo no encontrado o inactivo');
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -211,8 +212,8 @@ export class GatewaysService {
 
     if (dto.farmId && dto.farmId !== gateway.farmId) {
       const farm = await this.prisma.farm.findUnique({ where: { id: dto.farmId } });
-      if (!farm) {
-        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe.`);
+      if (!farm || !farm.isActive) {
+        throw new NotFoundException(`El campo con ID ${dto.farmId} no existe o se encuentra inactivo.`);
       }
 
       // Mover el gateway a otro campo requiere permisos de escritura también en el campo destino.

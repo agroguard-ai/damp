@@ -28,6 +28,7 @@ export class AlertsService {
   private async getAccessibleFarmIds(userId: string): Promise<string[]> {
     const userFarms = await this.prisma.farm.findMany({
       where: {
+        isActive: true,
         OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
       },
       select: { id: true },
@@ -39,11 +40,12 @@ export class AlertsService {
     const farm = await this.prisma.farm.findFirst({
       where: {
         id: farmId,
+        isActive: true,
         OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
       },
     });
     if (!farm) {
-      throw new ForbiddenException('No tienes acceso a este campo.');
+      throw new ForbiddenException('No tienes acceso a este campo o el campo está inactivo.');
     }
     return farm;
   }
@@ -120,8 +122,12 @@ export class AlertsService {
       throw new NotFoundException(`Alerta con ID ${id} no encontrada.`);
     }
 
-    const isOwner = alert.animal.farm.userId === userId;
-    const isMember = alert.animal.farm.farmUsers.length > 0;
+    const farm = alert.animal.farm;
+    if (!farm) {
+      throw new ForbiddenException('La alerta pertenece a un animal sin campo asignado.');
+    }
+    const isOwner = farm.userId === userId;
+    const isMember = farm.farmUsers.length > 0;
     if (!isOwner && !isMember) {
       throw new ForbiddenException('No tienes acceso a esta alerta.');
     }
@@ -159,8 +165,12 @@ export class AlertsService {
       throw new NotFoundException(`Alerta con ID ${id} no encontrada.`);
     }
 
-    const isOwner = alert.animal.farm.userId === userId;
-    const isMember = alert.animal.farm.farmUsers.length > 0;
+    const farm = alert.animal.farm;
+    if (!farm) {
+      throw new ForbiddenException('La alerta pertenece a un animal sin campo asignado.');
+    }
+    const isOwner = farm.userId === userId;
+    const isMember = farm.farmUsers.length > 0;
     if (!isOwner && !isMember) {
       throw new ForbiddenException('No tienes acceso a esta alerta.');
     }
@@ -310,6 +320,9 @@ export class AlertsService {
     });
     if (!prediction) {
       throw new NotFoundException('Predicción no encontrada.');
+    }
+    if (!prediction.animal.farmId) {
+      throw new ForbiddenException('La predicción pertenece a un animal sin campo asignado.');
     }
     await this.assertFarmAccess(prediction.animal.farmId, userId);
 

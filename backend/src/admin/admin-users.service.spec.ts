@@ -11,9 +11,11 @@ describe('AdminUsersService', () => {
       findUnique: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
+      count: jest.Mock;
     };
     farm: {
       findMany: jest.Mock;
+      count: jest.Mock;
     };
   };
 
@@ -28,6 +30,7 @@ describe('AdminUsersService', () => {
       },
       farm: {
         findMany: jest.fn(),
+        count: jest.fn().mockResolvedValue(1),
       },
     };
 

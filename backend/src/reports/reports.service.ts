@@ -22,8 +22,8 @@ export class ReportsService {
         },
       },
     });
-    if (!farm) {
-      throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
+    if (!farm || !farm.isActive) {
+      throw new NotFoundException(`El campo con ID ${farmId} no existe o se encuentra inactivo.`);
     }
 
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -58,6 +58,13 @@ export class ReportsService {
 
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
     if (dbUser?.globalRole === 'SUPER_ADMIN') {
+      return animal;
+    }
+
+    if (!animal.farm) {
+      if (animal.ownerId !== userId) {
+        throw new ForbiddenException('No tienes acceso a este animal.');
+      }
       return animal;
     }
 

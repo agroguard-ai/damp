@@ -20,7 +20,7 @@ describe('GatewaysService', () => {
 
   describe('create', () => {
     it('genera un apiKey aleatorio distinto en cada gateway y lo persiste', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true });
       prisma.gateway.create.mockImplementation(({ data }: any) =>
         Promise.resolve({ id: 'gw-1', ...data, lastSeenAt: null })
       );
@@ -34,7 +34,7 @@ describe('GatewaysService', () => {
     });
 
     it('respeta un apiKey personalizado si es provisto', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true });
       prisma.gateway.findUnique.mockResolvedValue(null); // uniqueness check
       prisma.gateway.create.mockImplementation(({ data }: any) =>
         Promise.resolve({ id: 'gw-1', ...data, lastSeenAt: null })
@@ -67,7 +67,7 @@ describe('GatewaysService', () => {
 
   describe('findByFarm', () => {
     it('nunca devuelve el apiKey en el listado (omit)', async () => {
-      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1' });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true });
       prisma.gateway.findMany.mockResolvedValue([{ id: 'gw-1', name: 'A', lastSeenAt: null }]);
 
       await service.findByFarm('farm-1', 'user-1');

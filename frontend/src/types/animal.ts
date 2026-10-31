@@ -15,7 +15,8 @@ export interface AnimalCollar {
 
 export interface Animal {
   id: string;
-  farmId: string;
+  farmId: string | null;
+  ownerId?: string | null;
   tag: string | null;
   sex: 'MALE' | 'FEMALE' | string;
   birthDate: string | null;
@@ -42,7 +43,8 @@ export interface AnimalLocation extends Pick<Animal, 'id' | 'tag' | 'breed' | 'w
 }
 
 export interface AnimalsQueryParams {
-  farmId: string;
+  farmId?: string;
+  unassigned?: string;
   geofenceId?: string;
   animalType?: string;
   healthStatus?: string;
@@ -85,6 +87,11 @@ export interface BulkTransferFarmPayload {
   targetFarmId: string;
   animalIds: string[];
   farmId?: string;
+}
+
+export interface BulkAssignFarmPayload {
+  targetFarmId: string;
+  animalIds: string[];
 }
 
 export interface LinkAnimalCollarPayload {

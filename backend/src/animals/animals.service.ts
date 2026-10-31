@@ -13,7 +13,8 @@ import { CreateAnimalDto } from './dto/create-animal.dto';
 import { UpdateAnimalDto } from './dto/update-animal.dto';
 import { BulkAssignGeofenceDto } from './dto/bulk-assign-geofence.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
-import { Prisma } from '@generated/prisma';
+import { BulkAssignFarmDto } from './dto/bulk-assign-farm.dto';
+import { GlobalRole, Prisma } from '@generated/prisma';
 
 @Injectable()
 export class AnimalsService {
@@ -22,23 +23,37 @@ export class AnimalsService {
     private readonly collarsService: CollarsService
   ) {}
 
-  private async checkFarmAccess(farmId: string, userId: string, requireAdmin: boolean = false) {
+  private async checkFarmAccess(
+    farmId: string | null,
+    userId: string,
+    requireAdmin: boolean = false,
+    allowArchived: boolean = false
+  ) {
+    if (!farmId) {
+      throw new NotFoundException('Campo no encontrado');
+    }
+
     const farm = await this.prisma.farm.findUnique({
       where: { id: farmId },
       include: {
         farmUsers: {
-          where: { userId, isActive: true },
+          where: { userId },
           include: { role: true },
         },
       },
     });
 
-    if (!farm || farm.isActive === false) {
+    if (!farm) {
+      throw new NotFoundException('Campo no encontrado');
+    }
+
+    if (!farm.isActive && !allowArchived) {
       throw new NotFoundException('Campo no encontrado o inactivo');
     }
 
     const isOwner = farm.userId === userId;
-    const userRole = farm.farmUsers?.[0]?.role?.name;
+    const activeMember = farm.farmUsers?.find((fu) => (farm.isActive ? fu.isActive : true));
+    const userRole = activeMember?.role?.name;
     const isAdmin = isOwner || userRole === 'ADMIN';
 
     if (requireAdmin && !isAdmin) {
@@ -52,13 +67,33 @@ export class AnimalsService {
     return { farm, isAdmin, isOwner, canWrite: isAdmin || userRole === 'OPERATOR' };
   }
 
+  /** Acceso a un animal: por su campo actual o, si quedó libre, por su dueño. */
+  private async checkAnimalAccess(
+    animal: { farmId: string | null; ownerId?: string | null },
+    userId: string,
+    allowArchived: boolean = false,
+    requireAdmin: boolean = false
+  ) {
+    if (animal.farmId) {
+      return this.checkFarmAccess(animal.farmId, userId, requireAdmin, allowArchived);
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+    if (!isSuperAdmin && animal.ownerId !== userId) {
+      throw new ForbiddenException('No tenés acceso a este animal');
+    }
+
+    return { farm: null, isAdmin: true, isOwner: true, canWrite: true };
+  }
+
   async create(createAnimalDto: CreateAnimalDto, userId: string) {
     const { farmId, tag, breed, weightKg, ageMonths, collarId, animalTypeId } = createAnimalDto;
 
     const birthDate = new Date();
     birthDate.setMonth(birthDate.getMonth() - ageMonths);
 
-    await this.checkFarmAccess(farmId, userId);
+    const { farm } = await this.checkFarmAccess(farmId, userId);
 
     if (collarId) {
       await this.collarsService.assertAvailableForAssignment(collarId, farmId);
@@ -67,6 +102,7 @@ export class AnimalsService {
     const animal = await this.prisma.animal.create({
       data: {
         farmId,
+        ownerId: farm.userId ?? userId,
         tag,
         breed,
         weightKg,
@@ -111,16 +147,25 @@ export class AnimalsService {
       status?: string;
       hasActiveAlert?: string;
       hasCollar?: string;
+      unassigned?: string;
     },
     userId: string
   ) {
-    const { farmId, geofenceId, animalType, healthStatus, status, hasActiveAlert, hasCollar } = query;
+    const { farmId, geofenceId, animalType, healthStatus, status, hasActiveAlert, hasCollar, unassigned } =
+      query;
     const whereClause: any = {};
 
-    // Filtrado por campo del usuario autenticado (dueño o empleado activo)
+    // Filtrado por campo activo del usuario autenticado (dueño o empleado)
     if (farmId) {
       await this.checkFarmAccess(farmId, userId);
       whereClause.farmId = farmId;
+    } else if (unassigned === 'true') {
+      // Animales libres: sin campo, pero con dueño para no mezclar tenants.
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      whereClause.farmId = null;
+      if (user?.globalRole !== GlobalRole.SUPER_ADMIN) {
+        whereClause.ownerId = userId;
+      }
     } else {
       const userFarms = await this.prisma.farm.findMany({
         where: {
@@ -236,7 +281,7 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    await this.checkAnimalAccess(animal, userId);
 
     return animal;
   }
@@ -253,13 +298,13 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    await this.checkAnimalAccess(animal, userId);
 
     // 1. Verificación de caravana duplicada en el mismo campo
     if (updateAnimalDto.tag && updateAnimalDto.tag !== animal.tag) {
       const existingWithTag = await this.prisma.animal.findFirst({
         where: {
-          farmId: animal.farmId,
+          ...(animal.farmId ? { farmId: animal.farmId } : { farmId: null, ownerId: animal.ownerId }),
           tag: updateAnimalDto.tag,
           isArchived: false,
           id: { not: id },
@@ -361,7 +406,7 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    await this.checkAnimalAccess(animal, userId);
 
     const now = new Date();
 
@@ -430,9 +475,7 @@ export class AnimalsService {
         where: { id: geofenceId, farmId, active: true },
       });
       if (!geofence) {
-        throw new NotFoundException(
-          'El cerco seleccionado no existe, no está activo o no pertenece a este campo.'
-        );
+        throw new NotFoundException('El cerco seleccionado no existe, no está activo o no pertenece a este campo.');
       }
     }
 
@@ -527,10 +570,10 @@ export class AnimalsService {
         data: { endAt: now },
       });
 
-      // 2. Transferir animales al nuevo campo
+      // 2. Transferir animales al nuevo campo (y su dueño, si cambia de administrador)
       await tx.animal.updateMany({
         where: { id: { in: targetAnimalIds } },
-        data: { farmId: targetFarmId },
+        data: { farmId: targetFarmId, ownerId: target.farm.userId ?? userId },
       });
 
       // 3. Mantener collares alineados al nuevo campo
@@ -560,6 +603,69 @@ export class AnimalsService {
     };
   }
 
+  /** Asigna al campo indicado un lote de animales que quedaron sin campo (farmId = null). */
+  async bulkAssignFarm(dto: BulkAssignFarmDto, userId: string) {
+    const { targetFarmId, animalIds } = dto;
+
+    const { farm: target } = await this.checkFarmAccess(targetFarmId, userId);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const isSuperAdmin = user?.globalRole === GlobalRole.SUPER_ADMIN;
+
+    const animals = await this.prisma.animal.findMany({
+      where: {
+        id: { in: animalIds },
+        farmId: null,
+        ...(isSuperAdmin ? {} : { ownerId: userId }),
+      },
+      include: {
+        animalCollars: { where: { endAt: null } },
+      },
+    });
+
+    if (animals.length === 0) {
+      return { count: 0, message: 'No se encontraron animales libres para asignar' };
+    }
+
+    const targetAnimalIds = animals.map((a) => a.id);
+    const collarIds = animals.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.animalGeofence.updateMany({
+        where: { animalId: { in: targetAnimalIds }, endAt: null },
+        data: { endAt: now },
+      });
+
+      await tx.animal.updateMany({
+        where: { id: { in: targetAnimalIds } },
+        data: { farmId: targetFarmId, ownerId: target.userId ?? userId },
+      });
+
+      if (collarIds.length > 0) {
+        await tx.collar.updateMany({
+          where: { id: { in: collarIds } },
+          data: { farmId: targetFarmId },
+        });
+      }
+
+      for (const animal of animals) {
+        await tx.medicalEvent.create({
+          data: {
+            animalId: animal.id,
+            type: null,
+            description: 'Asignación a nuevo campo.',
+            occurredAt: now,
+          },
+        });
+      }
+    });
+
+    return {
+      count: targetAnimalIds.length,
+      message: `Se asignaron ${targetAnimalIds.length} animales al campo exitosamente.`,
+    };
+  }
+
   async linkCollar(id: string, collarId: number, userId: string) {
     const animal = await this.prisma.animal.findUnique({
       where: { id },
@@ -570,8 +676,8 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
-    await this.collarsService.assertAvailableForAssignment(collarId, animal.farmId);
+    await this.checkAnimalAccess(animal, userId);
+    await this.collarsService.assertAvailableForAssignment(collarId, animal.farmId ?? undefined);
 
     const now = new Date();
 
@@ -618,7 +724,7 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    await this.checkAnimalAccess(animal, userId);
 
     const now = new Date();
 
@@ -655,7 +761,7 @@ export class AnimalsService {
       throw new NotFoundException(`El animal con ID ${id} no existe.`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    await this.checkAnimalAccess(animal, userId);
 
     const now = new Date();
 
@@ -820,7 +926,8 @@ export class AnimalsService {
       throw new NotFoundException(`Animal con ID "${animalId}" no encontrado`);
     }
 
-    await this.checkFarmAccess(animal.farmId, userId);
+    // Los recorridos históricos también deben poder consultarse desde un animal sin campo.
+    await this.checkAnimalAccess(animal, userId, true);
 
     const collarIds = animal.animalCollars.map((ac) => ac.collarId);
     if (collarIds.length === 0) {
@@ -874,20 +981,61 @@ export class AnimalsService {
     };
   }
 
-  async getFarmHeatmap(farmId: string, userId: string, days = 7, from?: string, to?: string) {
-    await this.checkFarmAccess(farmId, userId);
-
-    const animalCollars = await this.prisma.animalCollar.findMany({
-      where: {
-        animal: { farmId, isArchived: false },
-      },
-      select: { collarId: true },
+  /**
+   * Atribuye on-demand las lecturas históricas que todavía tienen `farmId = null`.
+   * Solo considera vínculos Animal–Collar de animales del campo y respeta la ventana
+   * startAt/endAt del vínculo: una vez atribuida, la lectura queda asociada a ese campo
+   * aunque el animal luego se traslade o el campo se archive.
+   */
+  private async attributeOrphanTelemetry(farmId: string, timestampFilter: Prisma.DateTimeFilter) {
+    const links = await this.prisma.animalCollar.findMany({
+      where: { animal: { farmId, isArchived: false } },
+      select: { collarId: true, startAt: true, endAt: true },
     });
 
-    const collarIds = Array.from(new Set(animalCollars.map((ac) => ac.collarId)));
-    if (collarIds.length === 0) {
-      return { points: [], totalPoints: 0 };
+    if (links.length === 0) return;
+
+    const intervalsByCollar = new Map<number, { startAt: Date; endAt: Date | null }[]>();
+    for (const link of links) {
+      const intervals = intervalsByCollar.get(link.collarId) ?? [];
+      intervals.push({ startAt: link.startAt, endAt: link.endAt });
+      intervalsByCollar.set(link.collarId, intervals);
     }
+
+    const candidates = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: [...intervalsByCollar.keys()] },
+        farmId: null,
+        timestamp: timestampFilter,
+        ...ONLY_WITH_GPS_FIX,
+      },
+      select: { id: true, collarId: true, timestamp: true },
+      take: 10000,
+    });
+
+    const ids = candidates
+      .filter((reading) =>
+        intervalsByCollar
+          .get(reading.collarId)!
+          .some(
+            (interval) =>
+              reading.timestamp >= interval.startAt &&
+              (!interval.endAt || reading.timestamp <= interval.endAt)
+          )
+      )
+      .map((reading) => reading.id);
+
+    if (ids.length > 0) {
+      await this.prisma.telemetryReading.updateMany({
+        where: { id: { in: ids }, farmId: null },
+        data: { farmId },
+      });
+    }
+  }
+
+  async getFarmHeatmap(farmId: string, userId: string, days = 7, from?: string, to?: string) {
+    // El mapa de calor histórico de un campo archivado sigue siendo consultable (solo lectura).
+    await this.checkFarmAccess(farmId, userId, false, true);
 
     const timestampFilter: Prisma.DateTimeFilter = {};
     if (from || to) {
@@ -898,9 +1046,12 @@ export class AnimalsService {
       timestampFilter.gte = since;
     }
 
+    // Lecturas previas a esta migración: se sellan con el campo en la primera consulta.
+    await this.attributeOrphanTelemetry(farmId, timestampFilter);
+
     const readings = await this.prisma.telemetryReading.findMany({
       where: {
-        collarId: { in: collarIds },
+        farmId,
         timestamp: timestampFilter,
         // Sin fix GPS el collar manda 0,0: no se dibuja en el mapa de calor
         ...ONLY_WITH_GPS_FIX,

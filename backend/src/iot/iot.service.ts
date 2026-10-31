@@ -84,12 +84,22 @@ export class IotService {
 
     const readingTime = this.resolveReadingTime(payload);
 
+    const animalCollar = await this.prisma.animalCollar.findFirst({
+      where: { collarId: payload.collar_id, endAt: null },
+      select: { animalId: true, animal: { select: { farmId: true } } },
+    });
+
+    // Se guarda el campo como snapshot de la lectura: si el animal o el campo cambian
+    // después, el histórico sigue perteneciendo al campo donde ocurrió la lectura.
+    const readingFarmId = animalCollar?.animal.farmId ?? collar.farmId ?? null;
+
     const reading = await this.prisma.telemetryReading.create({
       data: {
         collarId: payload.collar_id,
         latitude: payload.lat,
         longitude: payload.lng,
         temperature: payload.temp,
+        farmId: readingFarmId,
         ...(readingTime ? { timestamp: readingTime } : {}),
       },
     });
@@ -102,16 +112,15 @@ export class IotService {
     // gateway_id ya se validó en IotDeviceAuthGuard (existe y el X-API-Key matchea) antes de llegar acá.
     await this.gatewaysService.recordHeartbeat(payload.gateway_id, payload.rssi, payload.snr);
 
-    const animalCollar = await this.prisma.animalCollar.findFirst({
-      where: { collarId: payload.collar_id, endAt: null },
-      select: { animalId: true, animal: { select: { farmId: true } } },
-    });
-
     if (!animalCollar) {
       return { downlink: 'NONE' };
     }
 
-    await this.checkHealthThresholds(animalCollar.animalId, animalCollar.animal.farmId, payload);
+    const animalFarmId = animalCollar.animal.farmId;
+
+    if (animalFarmId) {
+      await this.checkHealthThresholds(animalCollar.animalId, animalFarmId, payload);
+    }
 
     // La predicción del modelo (consultas + llamada HTTP a ml-service) corre en segundo plano:
     // la respuesta al gateway trae el downlink del cerco y no puede esperarla, porque el collar
@@ -128,10 +137,10 @@ export class IotService {
     // Si el campo tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
     // las coordenadas rotadas / incrementales hora a hora para enviar en el downlink al gateway.
     let activeFence: { polygon: [number, number][]; geofenceName: string } | null = null;
-    if (this.rotationsService) {
+    if (this.rotationsService && animalFarmId) {
       activeFence = await this.rotationsService.resolveActiveCoordinatesForAnimal(
         animalCollar.animalId,
-        animalCollar.animal.farmId
+        animalFarmId
       );
     } else {
       const animalGeofence = await this.prisma.animalGeofence.findFirst({

@@ -16,8 +16,8 @@ export class AlertSettingsService {
 
   private async getOwnedFarm(farmId: string, userId: string) {
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
-    if (!farm) {
-      throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
+    if (!farm || !farm.isActive) {
+      throw new NotFoundException(`El campo con ID ${farmId} no existe o se encuentra inactivo.`);
     }
     if (farm.userId !== userId) {
       throw new ForbiddenException('No tienes acceso a este campo.');

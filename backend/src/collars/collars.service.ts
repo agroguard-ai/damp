@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { CollarStatus, GlobalRole, Prisma } from '@generated/prisma';
 import { CreateCollarDto } from './dto/create-collar.dto';
@@ -34,6 +40,7 @@ export class CollarsService {
   private async getUserFarmIds(userId: string): Promise<string[]> {
     const userFarms = await this.prisma.farm.findMany({
       where: {
+        isActive: true,
         OR: [{ userId }, { farmUsers: { some: { userId, isActive: true } } }],
       },
       select: { id: true },
@@ -175,7 +182,7 @@ export class CollarsService {
 
       const belongsToFarm = collar.farmId && farmIds.includes(collar.farmId);
       const assignedToFarmAnimal = collar.animalCollars.some(
-        (ac) => ac.endAt === null && farmIds.includes(ac.animal.farmId)
+        (ac) => ac.endAt === null && !!ac.animal.farmId && farmIds.includes(ac.animal.farmId)
       );
 
       if (!belongsToFarm && !assignedToFarmAnimal) {
@@ -361,9 +368,11 @@ export class CollarsService {
 
     // Verificar si el animal tiene cerco activo o si el campo tiene plan de rotación activo
     const hasGeofence = activeAssignment.animal.animalGeofences.length > 0;
-    const hasRotationPlan = await this.prisma.rotationPlan.findFirst({
-      where: { farmId: activeAssignment.animal.farmId, status: 'ACTIVE' },
-    });
+    const hasRotationPlan = activeAssignment.animal.farmId
+      ? await this.prisma.rotationPlan.findFirst({
+          where: { farmId: activeAssignment.animal.farmId, status: 'ACTIVE' },
+        })
+      : null;
 
     if (!hasGeofence && !hasRotationPlan) {
       throw new BadRequestException(
@@ -438,7 +447,6 @@ export class CollarsService {
     return collar;
   }
 
-
   private async assertCollarQuota(farmId: string, excludeCollarId?: number) {
     const farm = await this.prisma.farm.findUnique({
       where: { id: farmId },
@@ -465,7 +473,7 @@ export class CollarsService {
     const owner = farm.user;
     const currentAssigned = await this.prisma.collar.count({
       where: {
-        farm: { userId: owner.id },
+        farm: { userId: owner.id, isActive: true },
         isArchived: false,
         ...(excludeCollarId ? { id: { not: excludeCollarId } } : {}),
       },

@@ -13,6 +13,8 @@ interface FarmAdminRecord {
   province: string | null;
   location: string | null;
   totalAreaHa: number | null;
+  isActive: boolean;
+  archivedAt: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -48,13 +50,13 @@ export default function AdminFarmsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [meta, setMeta] = useState<(PaginationMeta & { activeItems?: number }) | null>(null);
 
   useEffect(() => {
     async function loadFarms() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/admin/farms?page=${page}&limit=${limit}`);
+        const res = await fetch(`/api/admin/farms?page=${page}&limit=${limit}&includeInactive=true`);
         if (!res.ok) {
           throw new Error('No se pudo cargar la lista global de campos.');
         }
@@ -102,23 +104,41 @@ export default function AdminFarmsPage() {
           </h1>
         </div>
         <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
-          Total: {meta ? meta.totalItems : farms.length}
+          Activos: {meta?.activeItems ?? farms.filter((f) => f.isActive !== false).length}
+          {meta && meta.totalItems > (meta.activeItems ?? 0) && (
+            <span className="text-zinc-400 dark:text-zinc-500">
+              {' '}
+              · Archivados: {meta.totalItems - (meta.activeItems ?? 0)}
+            </span>
+          )}
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {farms.map((f) => {
           const adminMember = f.farmUsers.find((fu) => fu.role.name === 'ADMIN')?.user;
+          const isArchived = f.isActive === false;
           return (
             <div
               key={f.id}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              className={`bg-white dark:bg-zinc-900 border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${
+                isArchived ? 'border-zinc-200 dark:border-zinc-800 opacity-75' : 'border-zinc-200 dark:border-zinc-800'
+              }`}
             >
               <div className="space-y-3">
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <h3 className="font-bold text-lg text-zinc-900 dark:text-white leading-tight">
                     {f.name || 'Campo sin nombre'}
                   </h3>
+                  <span
+                    className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                      isArchived
+                        ? 'border-zinc-300 dark:border-zinc-700 bg-zinc-200/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                        : 'border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400'
+                    }`}
+                  >
+                    {isArchived ? 'Archivado' : 'Activo'}
+                  </span>
                 </div>
 
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -173,7 +193,7 @@ export default function AdminFarmsPage() {
               </div>
 
               {/* Gestión de empleados: el personal es del administrador de campos, así que se entra emulándolo */}
-              {adminMember && (
+              {adminMember && !isArchived && (
                 <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
                   <button
                     onClick={() =>

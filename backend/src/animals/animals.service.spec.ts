@@ -19,12 +19,12 @@ function makePrismaMock() {
     animalCollar: { create: jest.fn(), updateMany: jest.fn(), findMany: jest.fn() },
     animalGeofence: { create: jest.fn(), createMany: jest.fn(), updateMany: jest.fn() },
     medicalEvent: { create: jest.fn() },
-    telemetryReading: { findMany: jest.fn() },
+    telemetryReading: { findMany: jest.fn(), updateMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(prisma)),
   };
 }
 
-let prisma: ReturnType<typeof makePrismaMock>;
+let prisma: any;
 
 describe('AnimalsService', () => {
   let collarsServiceMock: any;
@@ -294,20 +294,45 @@ describe('AnimalsService', () => {
 
     it('obtiene puntos para el mapa de calor del campo', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
-      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10 }, { collarId: 20 }]);
-      prisma.telemetryReading.findMany.mockResolvedValue([
-        { latitude: -34.5, longitude: -58.5 },
-        { latitude: -34.501, longitude: -58.502 },
+      prisma.animalCollar.findMany.mockResolvedValue([
+        { collarId: 10, startAt: new Date('2026-01-01'), endAt: null },
+        { collarId: 20, startAt: new Date('2026-01-01'), endAt: null },
       ]);
+      prisma.telemetryReading.findMany
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { latitude: -34.5, longitude: -58.5 },
+          { latitude: -34.501, longitude: -58.502 },
+        ]);
 
       const res = await service.getFarmHeatmap('farm-1', 'user-1', 7);
 
       expect(res.totalPoints).toBe(2);
-      expect(prisma.telemetryReading.findMany).toHaveBeenCalledWith(
+      expect(prisma.telemetryReading.findMany).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ collarId: { in: [10, 20] } }),
+          where: expect.objectContaining({ farmId: 'farm-1' }),
         })
       );
+    });
+
+    it('atribuye on-demand lecturas viejas sin farmId usando el vínculo animal-collar', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animalCollar.findMany.mockResolvedValue([
+        { collarId: 10, startAt: new Date('2026-01-01'), endAt: new Date('2026-06-01') },
+      ]);
+      prisma.telemetryReading.findMany
+        .mockResolvedValueOnce([
+          { id: 'r-1', collarId: 10, timestamp: new Date('2026-03-01') },
+          { id: 'r-2', collarId: 10, timestamp: new Date('2026-07-01') },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await service.getFarmHeatmap('farm-1', 'user-1', 7);
+
+      expect(prisma.telemetryReading.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['r-1'] }, farmId: null },
+        data: { farmId: 'farm-1' },
+      });
     });
   });
 });

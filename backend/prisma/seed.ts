@@ -579,6 +579,7 @@ async function main() {
     const animal = await prisma.animal.create({
       data: {
         farmId: farm.id,
+        ownerId: farm.userId,
         tag: spec.tag,
         sex: spec.sex,
         birthDate,

@@ -69,6 +69,7 @@ describe('FarmsService', () => {
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
+        isActive: true,
         polygonCoordinates: farmPolygon,
       });
       prisma.geofence.findMany.mockResolvedValue([
@@ -107,6 +108,7 @@ describe('FarmsService', () => {
       prisma.farm.findUnique.mockResolvedValue({
         id: 'farm-1',
         userId: 'user-1',
+        isActive: true,
         polygonCoordinates: farmPolygon,
       });
       // Geofence exists at latitude -34.2
@@ -139,6 +141,64 @@ describe('FarmsService', () => {
       ).rejects.toThrow(BadRequestException);
 
       expect(prisma.farm.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza modificar un campo archivado (inmutable)', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.FARM_ADMIN });
+      prisma.farm.findUnique.mockResolvedValue({
+        id: 'farm-1',
+        userId: 'user-1',
+        isActive: false,
+        archivedAt: new Date(),
+      });
+
+      await expect(service.update('farm-1', { name: 'Nuevo Nombre' } as any, 'user-1')).rejects.toThrow(
+        BadRequestException
+      );
+    });
+  });
+
+  describe('remove — baja lógica vs eliminación definitiva', () => {
+    it('la baja lógica archiva el campo y desactiva cercos, sin archivar animales ni devolver collares', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1', globalRole: GlobalRole.FARM_ADMIN });
+      prisma.farm.findUnique.mockResolvedValue({
+        id: 'farm-1',
+        userId: 'user-1',
+        isActive: true,
+      });
+
+      const tx = {
+        animal: {
+          findMany: jest.fn().mockResolvedValue([{ id: 'a-1' }]),
+          updateMany: jest.fn(),
+        },
+        animalGeofence: { updateMany: jest.fn() },
+        geofence: { updateMany: jest.fn() },
+        rotationPlan: { updateMany: jest.fn() },
+        farmUser: { updateMany: jest.fn() },
+        farm: { update: jest.fn().mockResolvedValue({ id: 'farm-1', isActive: false }) },
+      };
+      prisma.$transaction.mockImplementation((fn: (t: typeof tx) => unknown) => fn(tx));
+
+      const result = await service.remove('farm-1', 'user-1', false);
+
+      expect(tx.animalGeofence.updateMany).toHaveBeenCalledWith({
+        where: { animalId: { in: ['a-1'] }, endAt: null },
+        data: { endAt: expect.any(Date) },
+      });
+      expect(tx.animal.updateMany).toHaveBeenCalledWith({
+        where: { farmId: 'farm-1' },
+        data: { farmId: null },
+      });
+      expect(tx.geofence.updateMany).toHaveBeenCalledWith({
+        where: { farmId: 'farm-1' },
+        data: { active: false, deactivatedAt: expect.any(Date) },
+      });
+      expect(tx.farm.update).toHaveBeenCalledWith({
+        where: { id: 'farm-1' },
+        data: { isActive: false, archivedAt: expect.any(Date) },
+      });
+      expect(result).toBeDefined();
     });
   });
 });

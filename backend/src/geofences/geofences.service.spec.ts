@@ -41,6 +41,7 @@ describe('GeofencesService', () => {
         id: 'farm-1',
         name: 'Estancia A',
         userId: 'user-1',
+        isActive: true,
         polygonCoordinates: farmPolygon,
       });
       prisma.animal.findMany.mockResolvedValue([]);
@@ -80,6 +81,7 @@ describe('GeofencesService', () => {
         id: 'farm-1',
         name: 'Estancia A',
         userId: 'user-1',
+        isActive: true,
         polygonCoordinates: farmPolygon,
       });
 
@@ -106,6 +108,7 @@ describe('GeofencesService', () => {
         id: 'farm-1',
         name: 'Estancia A',
         userId: 'user-1',
+        isActive: true,
         polygonCoordinates: null,
       });
       prisma.animal.findMany.mockResolvedValue([

@@ -28,6 +28,17 @@ export class MedicalEventsService {
       return animal;
     }
 
+    if (!animal.farm) {
+      if (animal.ownerId !== userId) {
+        throw new ForbiddenException('No tienes acceso a este animal.');
+      }
+      return animal;
+    }
+
+    if (!animal.farm.isActive) {
+      throw new NotFoundException('El campo del animal se encuentra inactivo.');
+    }
+
     const isOwner = animal.farm.userId === userId;
     const isMember = animal.farm.farmUsers && animal.farm.farmUsers.length > 0;
     if (!isOwner && !isMember) {

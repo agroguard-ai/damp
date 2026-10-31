@@ -11,8 +11,8 @@ export class GeofencesService {
 
   private async getOwnedFarm(farmId: string, userId: string) {
     const farm = await this.prisma.farm.findUnique({ where: { id: farmId } });
-    if (!farm) {
-      throw new NotFoundException('Farm not found');
+    if (!farm || !farm.isActive) {
+      throw new NotFoundException('Campo no encontrado o inactivo');
     }
     if (farm.userId !== userId) {
       throw new ForbiddenException('You do not have access to this farm');
