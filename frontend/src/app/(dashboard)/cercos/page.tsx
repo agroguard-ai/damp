@@ -161,7 +161,7 @@ function CercosContent() {
     const ok = await confirm({
       title: `Desactivar "${fenceName}"`,
       description:
-        'Al desactivar el cerco, los animales asignados dejarán de recibir estímulos de contención pero conservarán su collar.',
+        'Al desactivar el cerco, los animales asignados dejarán de recibir estímulos de contención pero conservarán su collar y su asignación para una futura reactivación.',
       confirmLabel: 'Desactivar',
       danger: true,
     });
@@ -180,7 +180,7 @@ function CercosContent() {
     const ok = await confirm({
       title: `Activar "${fenceName}"`,
       description:
-        'El cerco volverá a estar activo en el mapa y podrás asignarle hacienda con collar.',
+        'Para activarlo, todos los animales asignados deben tener una lectura GPS de la última hora dentro del cerco. Si alguno no cumple, la activación se rechaza.',
       confirmLabel: 'Activar',
       danger: false,
     });
@@ -549,7 +549,8 @@ function CercosContent() {
                   Activar este cerco al guardar
                 </span>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                  El cerco volverá a quedar activo en el mapa para contener hacienda.
+                  El cerco volverá a quedar activo en el mapa. Se validará que todos los animales asignados tengan
+                  lectura GPS de la última hora dentro del cerco.
                 </span>
               </div>
             </label>

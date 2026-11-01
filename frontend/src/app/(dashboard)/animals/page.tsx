@@ -997,14 +997,18 @@ function AnimalsContent() {
                   onChange={(v) => setTargetGeofenceId(v)}
                   options={[
                     { value: '', label: 'Sin cerco (liberar)' },
-                    ...activeFarmGeofences.map((g) => ({
+                    ...farmGeofences.map((g) => ({
                       value: String(g.id),
-                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
+                        g.active ? '' : ' · inactivo (sin descargas)'
+                      }`,
                     })),
                   ]}
                 />
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba.
+                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba. En un
+                  cerco activo deben estar dentro (última hora y 25 m del borde); si el cerco está inactivo se prepara
+                  la asignación y se valida al activarlo.
                 </p>
               </div>
 
@@ -1201,15 +1205,17 @@ function AnimalsContent() {
                     onChange={(v) => setTargetGeofenceId(v)}
                     options={[
                       { value: '', label: 'Sin cerco virtual (liberar)' },
-                      ...activeFarmGeofences.map((g) => ({
+                      ...farmGeofences.map((g) => ({
                         value: String(g.id),
-                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
+                          g.active ? '' : ' · inactivo (sin descargas)'
+                        }`,
                       })),
                     ]}
                   />
-                  {activeFarmGeofences.length === 0 && (
+                  {farmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este campo. Podés crearlos desde el menú Cercos.
+                      No hay cercos virtuales en este campo. Podés crearlos desde el menú Cercos.
                     </span>
                   )}
                 </div>

@@ -15,6 +15,7 @@ import { BulkAssignGeofenceDto } from './dto/bulk-assign-geofence.dto';
 import { BulkTransferFarmDto } from './dto/bulk-transfer-farm.dto';
 import { BulkAssignFarmDto } from './dto/bulk-assign-farm.dto';
 import { GlobalRole, Prisma } from '@generated/prisma';
+import { distancePointToPolygonEdgeMeters, isPointInPolygon } from '@/iot/utils/geofencing.utils';
 
 @Injectable()
 export class AnimalsService {
@@ -151,8 +152,7 @@ export class AnimalsService {
     },
     userId: string
   ) {
-    const { farmId, geofenceId, animalType, healthStatus, status, hasActiveAlert, hasCollar, unassigned } =
-      query;
+    const { farmId, geofenceId, animalType, healthStatus, status, hasActiveAlert, hasCollar, unassigned } = query;
     const whereClause: any = {};
 
     // Filtrado por campo activo del usuario autenticado (dueño o empleado)
@@ -461,6 +461,92 @@ export class AnimalsService {
     };
   }
 
+  private static readonly GEOFENCE_ASSIGNMENT_MARGIN_METERS = 25;
+
+  private parsePolygon(value: unknown): [number, number][] {
+    if (!value) return [];
+    try {
+      const coords: unknown = typeof value === 'string' ? JSON.parse(value) : value;
+      return Array.isArray(coords) ? (coords as [number, number][]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Para asignar a un cerco ACTIVO, cada animal debe estar dentro del polígono con un
+   * margen de seguridad, según su última lectura GPS de la última hora.
+   */
+  private async assertAnimalsInsideGeofence(
+    animals: { id: string; animalCollars: { collarId: number }[] }[],
+    geofence: { polygonCoordinates: unknown }
+  ) {
+    const polygon = this.parsePolygon(geofence.polygonCoordinates);
+    if (polygon.length < 3) return;
+
+    const collarIds = animals.flatMap((a) => a.animalCollars.map((ac) => ac.collarId));
+    if (collarIds.length === 0) return;
+
+    const collarToAnimal = new Map<number, string>();
+    for (const animal of animals) {
+      for (const ac of animal.animalCollars) collarToAnimal.set(ac.collarId, animal.id);
+    }
+
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const readings = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: collarIds },
+        timestamp: { gte: since },
+        ...ONLY_WITH_GPS_FIX,
+      },
+      orderBy: { timestamp: 'desc' },
+      select: { collarId: true, latitude: true, longitude: true },
+    });
+
+    const latestByAnimal = new Map<string, { latitude: number; longitude: number }>();
+    for (const reading of readings) {
+      const animalId = collarToAnimal.get(reading.collarId);
+      if (!animalId || latestByAnimal.has(animalId)) continue;
+      latestByAnimal.set(animalId, reading);
+    }
+
+    let withoutReading = 0;
+    let outside = 0;
+
+    for (const animal of animals) {
+      const reading = latestByAnimal.get(animal.id);
+      if (!reading) {
+        withoutReading++;
+        continue;
+      }
+
+      const point: [number, number] = [reading.latitude, reading.longitude];
+      const inside =
+        isPointInPolygon(point, polygon) &&
+        distancePointToPolygonEdgeMeters(point, polygon) >= AnimalsService.GEOFENCE_ASSIGNMENT_MARGIN_METERS;
+
+      if (!inside) outside++;
+    }
+
+    if (withoutReading > 0) {
+      const animalsLabel = withoutReading === 1 ? '1 animal' : `${withoutReading} animales`;
+      const verb = withoutReading === 1 ? 'no tiene' : 'no tienen';
+      const insideVerb = withoutReading === 1 ? 'esté' : 'estén';
+      throw new BadRequestException(
+        `No se puede asignar al cerco activo: ${animalsLabel} ${verb} lectura GPS en la última hora. Se necesita una lectura GPS reciente para validar que ${insideVerb} dentro del cerco. Podés desactivar el cerco para preparar la asignación y validarla al reactivarlo.`
+      );
+    }
+
+    if (outside > 0) {
+      const animalsLabel = outside === 1 ? '1 animal' : `${outside} animales`;
+      const verb = outside === 1 ? 'está' : 'están';
+      const insideVerb = outside === 1 ? 'esté' : 'estén';
+      throw new BadRequestException(
+        `No se puede asignar al cerco activo: ${animalsLabel} ${verb} fuera del cerco o a menos de ${AnimalsService.GEOFENCE_ASSIGNMENT_MARGIN_METERS} m del borde. Su última lectura GPS no confirma que ${insideVerb} dentro. Podés desactivar el cerco para preparar la asignación y validarla al reactivarlo.`
+      );
+    }
+  }
+
   /**
    * Asigna (o quita, con geofenceId null) varios animales a un cerco del campo.
    * Igual que la asignación individual: el cerco tiene que estar activo y cada animal
@@ -470,12 +556,13 @@ export class AnimalsService {
     const { farmId, animalIds, geofenceId } = dto;
     await this.checkFarmAccess(farmId, userId);
 
+    let geofence: { id: string; active: boolean; polygonCoordinates: unknown } | null = null;
     if (geofenceId) {
-      const geofence = await this.prisma.geofence.findFirst({
-        where: { id: geofenceId, farmId, active: true },
+      geofence = await this.prisma.geofence.findFirst({
+        where: { id: geofenceId, farmId },
       });
       if (!geofence) {
-        throw new NotFoundException('El cerco seleccionado no existe, no está activo o no pertenece a este campo.');
+        throw new NotFoundException('El cerco seleccionado no existe o no pertenece a este campo.');
       }
     }
 
@@ -488,7 +575,7 @@ export class AnimalsService {
       return { count: 0, message: 'No se encontraron animales para actualizar' };
     }
 
-    if (geofenceId) {
+    if (geofence && geofenceId) {
       const withoutCollar = animals.filter((a) => a.animalCollars.length === 0);
       if (withoutCollar.length > 0) {
         throw new BadRequestException(
@@ -496,6 +583,12 @@ export class AnimalsService {
             .map((a) => a.tag ?? a.id)
             .join(', ')}`
         );
+      }
+
+      // Al asignar directo a un cerco activo, los animales deben estar ya dentro.
+      // A un cerco inactivo se permite prepararlos sin enviar descargas al collar.
+      if (geofence.active) {
+        await this.assertAnimalsInsideGeofence(animals, geofence);
       }
     }
 
@@ -515,7 +608,8 @@ export class AnimalsService {
           data: targetAnimalIds.map((animalId) => ({ animalId, geofenceId, startAt: now })),
         });
 
-        if (collarIds.length > 0) {
+        // Un cerco inactivo todavía no rige: no se manda nada al collar hasta activarlo.
+        if (geofence?.active && collarIds.length > 0) {
           await tx.collar.updateMany({
             where: { id: { in: collarIds } },
             data: { fenceNotificationPending: true },
@@ -784,12 +878,18 @@ export class AnimalsService {
       where: { id: geofenceId },
     });
 
-    if (!geofence || !geofence.active) {
-      throw new NotFoundException('El cerco virtual especificado no existe o no está activo.');
+    if (!geofence) {
+      throw new NotFoundException('El cerco virtual especificado no existe.');
     }
 
     if (geofence.farmId !== animal.farmId) {
       throw new ForbiddenException('El cerco virtual pertenece a otro campo.');
+    }
+
+    // Cerco activo: el animal debe estar ya dentro (con margen). Cerco inactivo:
+    // se permite dejarlo preparado y se valida recién al activarlo.
+    if (geofence.active) {
+      await this.assertAnimalsInsideGeofence([{ id: animal.id, animalCollars: animal.animalCollars }], geofence);
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -806,8 +906,8 @@ export class AnimalsService {
         },
       });
 
-      // Marcar el collar activo del animal como pendiente de notificación de cerco
-      if (animal.animalCollars.length > 0) {
+      // Solo se notifica al collar si el cerco destino ya está activo.
+      if (geofence.active && animal.animalCollars.length > 0) {
         const collarIds = animal.animalCollars.map((ac) => ac.collarId);
         await tx.collar.updateMany({
           where: { id: { in: collarIds } },
@@ -1019,8 +1119,7 @@ export class AnimalsService {
           .get(reading.collarId)!
           .some(
             (interval) =>
-              reading.timestamp >= interval.startAt &&
-              (!interval.endAt || reading.timestamp <= interval.endAt)
+              reading.timestamp >= interval.startAt && (!interval.endAt || reading.timestamp <= interval.endAt)
           )
       )
       .map((reading) => reading.id);

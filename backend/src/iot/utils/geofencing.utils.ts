@@ -40,6 +40,43 @@ export function isPointOnPolygonEdge(
 }
 
 /**
+ * Distancia aproximada en metros desde un punto [lat, lng] hasta el borde más cercano del polígono.
+ * Usa una proyección local equirectangular, suficiente para cercos de escala predial.
+ */
+export function distancePointToPolygonEdgeMeters(point: [number, number], polygon: [number, number][]): number {
+  if (!polygon || polygon.length < 2) return Infinity;
+
+  const [lat, lng] = point;
+  const metersPerDegLat = 111320;
+  const metersPerDegLng = 111320 * Math.cos((lat * Math.PI) / 180);
+
+  let min = Infinity;
+
+  for (let i = 0; i < polygon.length; i++) {
+    const p1 = polygon[i];
+    const p2 = polygon[(i + 1) % polygon.length];
+
+    const ax = (p1[1] - lng) * metersPerDegLng;
+    const ay = (p1[0] - lat) * metersPerDegLat;
+    const bx = (p2[1] - lng) * metersPerDegLng;
+    const by = (p2[0] - lat) * metersPerDegLat;
+
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / lenSq));
+    const projX = ax + t * dx;
+    const projY = ay + t * dy;
+    const dist = Math.sqrt(projX * projX + projY * projY);
+
+    if (dist < min) min = dist;
+  }
+
+  return min;
+}
+
+/**
  * Evaluates if a point (lat, lng) is inside a polygon using the Ray-Casting algorithm.
  * Also treats points resting on the polygon perimeter edge as inside.
  * @param point The coordinate of the animal [latitude, longitude]
