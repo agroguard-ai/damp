@@ -21,7 +21,7 @@ import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3 } from 'lucide-react';
+import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3, Eye } from 'lucide-react';
 import type { Geofence } from '@/types';
 
 const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
@@ -297,12 +297,7 @@ function CercosContent() {
           {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
             {activeFarm && (
-              <FarmMapView
-                key={activeFarm.id}
-                farm={activeFarm}
-                geofences={geofences}
-                center={mapCenter}
-              />
+              <FarmMapView key={activeFarm.id} farm={activeFarm} geofences={geofences} center={mapCenter} />
             )}
           </div>
 
@@ -364,7 +359,7 @@ function CercosContent() {
                       <th className="pb-3 px-4">Pastura</th>
                       <th className="pb-3 px-4">Estado</th>
                       <th className="pb-3 px-4">Superficie</th>
-                      <th className="pb-3 px-4">Animales</th>
+                      <th className="pb-3 px-4">Hacienda</th>
                       <th className="pb-3 pl-4 text-right">Acción</th>
                     </tr>
                   </thead>
@@ -384,7 +379,9 @@ function CercosContent() {
                                 className={`w-3.5 h-3.5 shrink-0 ${fence.active ? 'text-cyan-500' : 'text-zinc-400'}`}
                               />
                               <span
-                                className={fence.active ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}
+                                className={
+                                  fence.active ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'
+                                }
                               >
                                 {fence.name}
                               </span>
@@ -418,14 +415,27 @@ function CercosContent() {
                             )}
                           </td>
 
-                          <td className="py-4 px-4 text-xs text-zinc-600 dark:text-zinc-400">
+                          <td className="py-4 px-4">
                             <Link
                               href={`/animals?farmId=${activeFarmId}&geofenceId=${fence.id}`}
-                              className="hover:text-cyan-700 dark:hover:text-cyan-400 transition-colors"
-                              title="Ver la hacienda de este cerco"
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                fence.active
+                                  ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200 dark:border-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-950/60'
+                                  : 'text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                              }`}
+                              title={`Ir a Hacienda para ver los animales asignados al cerco "${fence.name}"`}
                             >
-                              <span className="font-semibold text-zinc-900 dark:text-white">{assignedCount}</span>{' '}
-                              cabezas
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>Ver hacienda</span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded-md font-bold ${
+                                  fence.active
+                                    ? 'bg-white dark:bg-zinc-900/70 text-cyan-700 dark:text-cyan-300'
+                                    : 'bg-white dark:bg-zinc-900/70 text-zinc-600 dark:text-zinc-300'
+                                }`}
+                              >
+                                {assignedCount}
+                              </span>
                             </Link>
                           </td>
 

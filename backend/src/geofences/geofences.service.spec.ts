@@ -36,6 +36,26 @@ describe('GeofencesService', () => {
     service = new GeofencesService(prisma as any);
   });
 
+  describe('findAllByFarm — ocupación del cerco (CUU-029)', () => {
+    it('solo cuenta animales activos del mismo campo', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true });
+      prisma.geofence.findMany.mockResolvedValue([]);
+
+      await service.findAllByFarm('farm-1', 'user-1');
+
+      expect(prisma.geofence.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            animalGeofences: {
+              where: { endAt: null, animal: { farmId: 'farm-1', isArchived: false } },
+              include: { animal: true },
+            },
+          },
+        })
+      );
+    });
+  });
+
   describe('create — boundary validation', () => {
     it('crea el cerco exitosamente si todos los puntos están dentro del polígono del campo', async () => {
       prisma.farm.findUnique.mockResolvedValue({

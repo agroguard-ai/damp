@@ -658,19 +658,14 @@ export class AnimalsService {
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
-      // 1. Cerrar cercos virtuales activos (pertenecían al campo origen)
-      await tx.animalGeofence.updateMany({
-        where: { animalId: { in: targetAnimalIds }, endAt: null },
-        data: { endAt: now },
-      });
-
-      // 2. Transferir animales al nuevo campo (y su dueño, si cambia de administrador)
+      // 1. Transferir animales al nuevo campo (y su dueño, si cambia de administrador).
+      // No se realizan cambios sobre las asignaciones a cercos virtuales.
       await tx.animal.updateMany({
         where: { id: { in: targetAnimalIds } },
         data: { farmId: targetFarmId, ownerId: target.farm.userId ?? userId },
       });
 
-      // 3. Mantener collares alineados al nuevo campo
+      // 2. Mantener collares alineados al nuevo campo
       if (collarIds.length > 0) {
         await tx.collar.updateMany({
           where: { id: { in: collarIds } },
@@ -678,7 +673,7 @@ export class AnimalsService {
         });
       }
 
-      // 4. Registrar en historial del animal
+      // 3. Registrar en historial del animal
       for (const animal of animals) {
         await tx.medicalEvent.create({
           data: {
@@ -725,11 +720,7 @@ export class AnimalsService {
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.animalGeofence.updateMany({
-        where: { animalId: { in: targetAnimalIds }, endAt: null },
-        data: { endAt: now },
-      });
-
+      // No se realizan cambios sobre las asignaciones a cercos virtuales.
       await tx.animal.updateMany({
         where: { id: { in: targetAnimalIds } },
         data: { farmId: targetFarmId, ownerId: target.userId ?? userId },

@@ -337,7 +337,8 @@ export class GeofencesService {
       orderBy: { createdAt: 'desc' },
       include: {
         animalGeofences: {
-          where: { endAt: null },
+          // CUU-029: la ocupación del cerco solo cuenta animales activos de este campo.
+          where: { endAt: null, animal: { farmId, isArchived: false } },
           include: { animal: true },
         },
       },

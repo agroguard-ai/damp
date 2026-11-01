@@ -87,6 +87,21 @@ describe('AnimalsService', () => {
         })
       );
     });
+
+    it('filtra por cerco virtual solo con asignaciones vigentes (CUU-029)', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([]);
+
+      await service.findAll({ farmId: 'farm-1', geofenceId: 'geo-1' }, 'user-1');
+
+      expect(prisma.animal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            animalGeofences: { some: { geofenceId: 'geo-1', endAt: null } },
+          }),
+        })
+      );
+    });
   });
 
   describe('CU005 - Asignación y Reglas de Negocio', () => {
@@ -477,6 +492,27 @@ describe('AnimalsService', () => {
       expect(prisma.telemetryReading.updateMany).toHaveBeenCalledWith({
         where: { id: { in: ['r-1'] }, farmId: null },
         data: { farmId: 'farm-1' },
+      });
+    });
+  });
+
+  describe('bulkTransferFarm — sin cambios sobre cercos virtuales', () => {
+    it('mueve los animales al campo destino sin tocar sus asignaciones a cercos', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([
+        { id: 'animal-1', farmId: 'farm-1', animalCollars: [{ collarId: 10 }] },
+      ]);
+
+      const res = await service.bulkTransferFarm(
+        { sourceFarmId: 'farm-1', targetFarmId: 'farm-2', animalIds: ['animal-1'] },
+        'user-1'
+      );
+
+      expect(res.count).toBe(1);
+      expect(prisma.animalGeofence.updateMany).not.toHaveBeenCalled();
+      expect(prisma.animal.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['animal-1'] } },
+        data: { farmId: 'farm-2', ownerId: 'user-1' },
       });
     });
   });
