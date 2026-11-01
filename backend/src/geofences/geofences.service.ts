@@ -4,6 +4,7 @@ import { CreateGeofenceDto } from './dto/create-geofence.dto';
 import { UpdateGeofenceDto } from './dto/update-geofence.dto';
 import type { Farm } from '@generated/prisma';
 import { isPointInPolygon } from '@/iot/utils/geofencing.utils';
+import { ONLY_WITH_GPS_FIX } from '@/common/gps';
 
 @Injectable()
 export class GeofencesService {
@@ -45,6 +46,124 @@ export class GeofencesService {
           );
         }
       }
+    }
+  }
+
+  private parsePolygon(value: unknown): [number, number][] {
+    if (!value) return [];
+    try {
+      const coords: unknown = typeof value === 'string' ? JSON.parse(value) : value;
+      return Array.isArray(coords) ? (coords as [number, number][]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Impide achicar/mover el cerco de modo que algún animal asignado quede afuera.
+   * Se evalúa la telemetría de la última hora: si un animal estaba dentro del trazado
+   * anterior y con el nuevo trazado quedaría fuera, se rechaza la edición.
+   */
+  private async assertAnimalsStayInside(
+    geofenceId: string,
+    previousPolygon: [number, number][],
+    nextPolygon: [number, number][]
+  ) {
+    const assignments = await this.prisma.animalGeofence.findMany({
+      where: { geofenceId, endAt: null },
+      select: { animalId: true, animal: { select: { tag: true } } },
+    });
+    if (assignments.length === 0) return;
+
+    const activeCollars = await this.prisma.animalCollar.findMany({
+      where: { animalId: { in: assignments.map((a) => a.animalId) }, endAt: null },
+      select: { collarId: true, animalId: true },
+    });
+    if (activeCollars.length === 0) return;
+
+    const animalIdByCollar = new Map(activeCollars.map((c) => [c.collarId, c.animalId]));
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+
+    const readings = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: activeCollars.map((c) => c.collarId) },
+        timestamp: { gte: since },
+        ...ONLY_WITH_GPS_FIX,
+      },
+      select: { collarId: true, latitude: true, longitude: true },
+    });
+
+    const tagByAnimal = new Map(assignments.map((a) => [a.animalId, a.animal.tag ?? a.animalId]));
+    const offenders = new Set<string>();
+
+    for (const reading of readings) {
+      const animalId = animalIdByCollar.get(reading.collarId);
+      if (!animalId || offenders.has(animalId)) continue;
+
+      const point: [number, number] = [reading.latitude, reading.longitude];
+      const wasInside = previousPolygon.length < 3 || isPointInPolygon(point, previousPolygon);
+      const willBeInside = isPointInPolygon(point, nextPolygon);
+
+      if (wasInside && !willBeInside) {
+        offenders.add(animalId);
+      }
+    }
+
+    if (offenders.size > 0) {
+      const labels = [...offenders].map((id) => tagByAnimal.get(id) ?? id);
+      throw new BadRequestException(
+        `No se puede modificar el cerco virtual: en la última hora hubo animales que quedarían fuera de los nuevos límites (${labels.join(', ')}). Esperá a que vuelvan a entrar al cerco o ajustá el polígono.`
+      );
+    }
+  }
+
+  /**
+   * Al reactivar un cerco que todavía tiene animales asignados, cada uno debe estar
+   * dentro del polígono según su última lectura GPS de la última hora.
+   */
+  private async assertAssignedAnimalsInside(geofenceId: string, polygon: [number, number][]) {
+    if (polygon.length < 3) return;
+
+    const assignments = await this.prisma.animalGeofence.findMany({
+      where: { geofenceId, endAt: null },
+      select: { animalId: true, animal: { select: { tag: true } } },
+    });
+    if (assignments.length === 0) return;
+
+    const activeCollars = await this.prisma.animalCollar.findMany({
+      where: { animalId: { in: assignments.map((a) => a.animalId) }, endAt: null },
+      select: { collarId: true, animalId: true },
+    });
+    if (activeCollars.length === 0) return;
+
+    const animalIdByCollar = new Map(activeCollars.map((c) => [c.collarId, c.animalId]));
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+
+    const readings = await this.prisma.telemetryReading.findMany({
+      where: {
+        collarId: { in: activeCollars.map((c) => c.collarId) },
+        timestamp: { gte: since },
+        ...ONLY_WITH_GPS_FIX,
+      },
+      orderBy: { timestamp: 'desc' },
+      select: { collarId: true, latitude: true, longitude: true },
+    });
+
+    const latestByAnimal = new Map<string, { latitude: number; longitude: number }>();
+    for (const reading of readings) {
+      const animalId = animalIdByCollar.get(reading.collarId);
+      if (!animalId || latestByAnimal.has(animalId)) continue;
+      latestByAnimal.set(animalId, reading);
+    }
+
+    const offenders = [...latestByAnimal.entries()]
+      .filter(([, reading]) => !isPointInPolygon([reading.latitude, reading.longitude], polygon))
+      .map(([animalId]) => assignments.find((a) => a.animalId === animalId)?.animal.tag ?? animalId);
+
+    if (offenders.length > 0) {
+      throw new BadRequestException(
+        `No se puede reactivar el cerco virtual: en la última hora los animales (${offenders.join(', ')}) quedaron fuera de sus límites. Mové los animales dentro del cerco o ampliá el área del cerco para poder reactivarlo.`
+      );
     }
   }
 
@@ -169,6 +288,7 @@ export class GeofencesService {
 
     if (dto.polygonCoordinates) {
       this.assertInsideFarm(geofence.farm, dto.polygonCoordinates);
+      await this.assertAnimalsStayInside(id, this.parsePolygon(geofence.polygonCoordinates), dto.polygonCoordinates);
     }
 
     const updated = await this.prisma.geofence.update({
@@ -282,6 +402,7 @@ export class GeofencesService {
       }
       if (Array.isArray(coords) && coords.length >= 3) {
         this.assertInsideFarm(geofence.farm, coords);
+        await this.assertAssignedAnimalsInside(id, coords);
       }
     }
 

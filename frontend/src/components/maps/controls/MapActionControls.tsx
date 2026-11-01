@@ -90,19 +90,9 @@ export default function MapActionControls({
       description: 'Foto satelital con rutas y ciudades',
     },
     {
-      id: 'streets',
-      label: 'Calles y Rutas',
-      description: 'Mapa vial detallado y poblados',
-    },
-    {
       id: 'topo',
       label: 'Topográfica',
       description: 'Relieve y curvas de nivel',
-    },
-    {
-      id: 'dark',
-      label: 'Modo Oscuro',
-      description: 'Vectorial de alto contraste',
     },
   ];
 

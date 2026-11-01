@@ -9,6 +9,7 @@ function makePrismaMock() {
     animalCollar: { findMany: jest.fn() },
     collar: { updateMany: jest.fn() },
     animalGeofence: { updateMany: jest.fn(), findMany: jest.fn() },
+    telemetryReading: { findMany: jest.fn() },
     geofence: {
       create: jest.fn(),
       findMany: jest.fn(),
@@ -159,7 +160,15 @@ describe('GeofencesService', () => {
         id: 'geo-1',
         animalGeofences: [{ animalId: 'a-1' }, { animalId: 'a-2' }],
       });
-      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10 }, { collarId: 11 }]);
+      prisma.animalGeofence.findMany.mockResolvedValue([
+        { animalId: 'a-1', animal: { tag: '001' } },
+        { animalId: 'a-2', animal: { tag: '002' } },
+      ]);
+      prisma.animalCollar.findMany.mockResolvedValue([
+        { collarId: 10, animalId: 'a-1' },
+        { collarId: 11, animalId: 'a-2' },
+      ]);
+      prisma.telemetryReading.findMany.mockResolvedValue([]);
 
       await service.update('geo-1', { polygonCoordinates: insidePolygon }, 'user-1');
 
@@ -186,6 +195,83 @@ describe('GeofencesService', () => {
         )
       ).rejects.toThrow(BadRequestException);
       expect(prisma.geofence.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza la edición si un animal quedó fuera del nuevo polígono en la última hora', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: insidePolygon,
+      });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1', animal: { tag: '001' } }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10, animalId: 'a-1' }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.52, longitude: -58.48 }]);
+
+      const narrower: [number, number][] = [
+        [-34.55, -58.55],
+        [-34.55, -58.5],
+        [-34.5, -58.5],
+        [-34.5, -58.55],
+      ];
+
+      await expect(service.update('geo-1', { polygonCoordinates: narrower }, 'user-1')).rejects.toThrow(
+        BadRequestException
+      );
+      expect(prisma.telemetryReading.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ timestamp: { gte: expect.any(Date) } }),
+        })
+      );
+      expect(prisma.geofence.update).not.toHaveBeenCalled();
+    });
+
+    it('permite la edición si las lecturas de la última hora siguen dentro del nuevo polígono', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: insidePolygon,
+      });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1', animal: { tag: '001' } }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10, animalId: 'a-1' }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.51, longitude: -58.51 }]);
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', animalGeofences: [] });
+
+      const wider: [number, number][] = [
+        [-34.56, -58.56],
+        [-34.56, -58.44],
+        [-34.44, -58.44],
+        [-34.44, -58.56],
+      ];
+
+      await service.update('geo-1', { polygonCoordinates: wider }, 'user-1');
+
+      expect(prisma.geofence.update).toHaveBeenCalled();
+    });
+
+    it('no bloquea si el animal ya estaba fuera del trazado anterior', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: insidePolygon,
+      });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1', animal: { tag: '001' } }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10, animalId: 'a-1' }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.59, longitude: -58.59 }]);
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', animalGeofences: [] });
+
+      const narrower: [number, number][] = [
+        [-34.55, -58.55],
+        [-34.55, -58.5],
+        [-34.5, -58.5],
+        [-34.5, -58.55],
+      ];
+
+      await service.update('geo-1', { polygonCoordinates: narrower }, 'user-1');
+
+      expect(prisma.geofence.update).toHaveBeenCalled();
     });
   });
 
@@ -228,6 +314,7 @@ describe('GeofencesService', () => {
           [-34.45, -58.45],
         ],
       });
+      prisma.animalGeofence.findMany.mockResolvedValue([]);
       prisma.geofence.update.mockResolvedValue({ id: 'geo-1', active: true });
 
       const result = await service.activate('geo-1', 'user-1');
@@ -247,6 +334,47 @@ describe('GeofencesService', () => {
         },
       });
       expect(result.active).toBe(true);
+    });
+
+    it('rechaza reactivar si un animal asignado está fuera del cerco en la última hora', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: [
+          [-34.55, -58.55],
+          [-34.55, -58.45],
+          [-34.45, -58.45],
+        ],
+      });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1', animal: { tag: '001' } }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10, animalId: 'a-1' }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.51, longitude: -58.44 }]);
+
+      await expect(service.activate('geo-1', 'user-1')).rejects.toThrow(/Mové los animales dentro del cerco/);
+      expect(prisma.geofence.update).not.toHaveBeenCalled();
+    });
+
+    it('permite reactivar si los animales asignados están dentro del cerco en la última hora', async () => {
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        farmId: 'farm-1',
+        farm,
+        polygonCoordinates: [
+          [-34.55, -58.55],
+          [-34.55, -58.45],
+          [-34.45, -58.45],
+        ],
+      });
+      prisma.animalGeofence.findMany.mockResolvedValue([{ animalId: 'a-1', animal: { tag: '001' } }]);
+      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10, animalId: 'a-1' }]);
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.54, longitude: -58.54 }]);
+      prisma.geofence.update.mockResolvedValue({ id: 'geo-1', active: true });
+
+      const result = await service.activate('geo-1', 'user-1');
+
+      expect(result.active).toBe(true);
+      expect(prisma.geofence.update).toHaveBeenCalled();
     });
 
     it('rechaza activar si el usuario no tiene acceso', async () => {

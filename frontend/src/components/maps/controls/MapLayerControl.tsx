@@ -3,7 +3,7 @@
 import { Layers } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-export type MapLayerType = 'satellite' | 'streets' | 'topo' | 'dark';
+export type MapLayerType = 'satellite' | 'topo';
 
 export interface MapLayerControlProps {
   currentLayer: MapLayerType;
@@ -33,22 +33,10 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
       badge: 'Recomendado',
     },
     {
-      id: 'streets',
-      label: 'Calles y Rutas',
-      description: 'Mapa vial detallado y poblados',
-      badge: 'Vial',
-    },
-    {
       id: 'topo',
       label: 'Topográfica',
       description: 'Relieve y curvas de nivel',
       badge: 'Líneas de nivel',
-    },
-    {
-      id: 'dark',
-      label: 'Modo Oscuro',
-      description: 'Vectorial de alto contraste',
-      badge: 'Dispositivos IoT',
     },
   ];
 
