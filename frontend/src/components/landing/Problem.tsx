@@ -4,30 +4,10 @@ import { AlertTriangle, Thermometer, ClipboardList, Layers } from 'lucide-react'
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
 const problems = [
-  {
-    icon: AlertTriangle,
-    title: 'Fugas y abigeato sin detectar',
-    description:
-      'Un alambre roto o un robo nocturno tarda días en descubrirse. Sin alertas inmediatas, recuperar la hacienda es casi imposible.',
-  },
-  {
-    icon: Thermometer,
-    title: 'Enfermedades que se notan tarde',
-    description:
-      'La fiebre, la hipotermia o el letargamiento se observan cuando el cuadro es grave, elevando la mortalidad y el costo veterinario.',
-  },
-  {
-    icon: ClipboardList,
-    title: 'Control manual e ineficiente',
-    description:
-      'A caballo, en camioneta o en planillas Excel: el esquema tradicional requiere horas de trabajo y no deja historial confiable.',
-  },
-  {
-    icon: Layers,
-    title: 'Pérdida de control al escalar',
-    description:
-      'Sumar potreros, collares o puesteros sin una plataforma central multiplica los errores humanos y destruye la trazabilidad.',
-  },
+  { icon: AlertTriangle, title: 'Fugas y abigeato sin detectar' },
+  { icon: Thermometer, title: 'Enfermedades que se notan tarde' },
+  { icon: ClipboardList, title: 'Control manual e ineficiente' },
+  { icon: Layers, title: 'Pérdida de control al escalar' },
 ];
 
 export function Problem() {
@@ -43,7 +23,7 @@ export function Problem() {
           La ganadería extensiva no puede depender de la suerte o de un aviso tardío
         </h2>
         <p className="mt-4 text-muted text-lg leading-relaxed">
-          Recorrer cientos de hectáreas a caballo o en camioneta deja espacios vacíos de información. En la ganadería
+          Recorrer cientos de hectáreas deja espacios vacíos de información. En la ganadería
           tradicional, cuando te enterás de un problema, generalmente ya costó plata.
         </p>
       </div>
@@ -58,7 +38,6 @@ export function Problem() {
               <problem.icon className="w-5 h-5" />
             </div>
             <h3 className="mt-5 font-semibold text-lg">{problem.title}</h3>
-            <p className="mt-2 text-sm text-muted leading-relaxed">{problem.description}</p>
           </div>
         ))}
       </div>
