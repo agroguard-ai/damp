@@ -122,16 +122,7 @@ export default function SignInPage() {
         <div className="pt-4 border-t border-zinc-800 text-center space-y-2">
           <p className="text-xs text-zinc-400">¿No tenés una cuenta en DAMP?</p>
           <div className="p-3 bg-zinc-800/40 rounded-xl border border-zinc-700/50 text-xs text-zinc-300">
-            Comunicate con nuestro equipo de <span className="text-green-400 font-semibold">Ventas</span> para dar de
-            alta tu empresa y obtener tus credenciales de acceso:
-            <div className="mt-1 font-medium text-white select-all">
-              <a
-                href="mailto:ventas@damp.com"
-                className="hover:text-green-400 underline underline-offset-2 transition-colors"
-              >
-                ventas@damp.com
-              </a>
-            </div>
+            Comunicate con nuestro equipo para dar de alta tu empresa y obtener tus credenciales de acceso.
           </div>
         </div>
       </div>
