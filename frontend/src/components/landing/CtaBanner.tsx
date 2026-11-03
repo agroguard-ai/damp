@@ -12,7 +12,7 @@ export function CtaBanner() {
   useNavDarkSection(sectionRef);
 
   return (
-    <section ref={sectionRef} className="mx-auto max-w-7xl px-6 pb-24">
+    <section ref={sectionRef} className="mx-auto max-w-7xl px-page-sm sm:px-page pb-section-sm sm:pb-section">
       <div className="relative overflow-hidden rounded-3xl bg-primary-950 px-8 py-16 sm:px-16 text-center">
         <div
           aria-hidden
@@ -23,19 +23,19 @@ export function CtaBanner() {
           <h2 className="mt-4 font-display text-3xl sm:text-4xl font-bold text-white tracking-tight">
             Llevá la gestión de tu campo al siguiente nivel
           </h2>
-          <p className="mt-3 text-primary-100 max-w-xl mx-auto leading-relaxed">
+          <p className="mt-stack text-primary-100 max-w-xl mx-auto leading-relaxed">
             Probá el mapa en vivo, configurá cercos virtuales y conocé el poder de la telemetría IoT combinada con IA.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <a
               href="mailto:ventas@damp.com"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-white text-primary-900 hover:bg-primary-50 transition-colors shadow-md"
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm font-semibold bg-white text-primary-900 hover:bg-primary-50 transition-colors shadow-md"
             >
               Solicitar Demo
             </a>
             <Link
               href="/sign-in"
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm font-semibold border border-white/30 text-white hover:bg-white/10 transition-colors"
             >
               Iniciar sesión
             </Link>

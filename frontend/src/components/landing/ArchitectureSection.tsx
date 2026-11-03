@@ -51,7 +51,7 @@ export function ArchitectureSection() {
   return (
     <section
       id="arquitectura"
-      className="relative border-y border-border bg-surface/40 py-16 sm:py-20 overflow-hidden scroll-mt-20"
+      className="relative border-y border-border bg-surface/40 py-section-sm sm:py-section overflow-hidden scroll-mt-20"
     >
       {/* Subtle tech background */}
       <div
@@ -59,26 +59,26 @@ export function ArchitectureSection() {
         className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-size-[48px_48px] opacity-40 mask-[radial-gradient(ellipse_60%_50%_at_50%_50%,black,transparent)]"
       />
 
-      <div className="relative mx-auto max-w-7xl px-6">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+      <div className="relative mx-auto max-w-7xl px-page-sm sm:px-page">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-gutter mb-8">
           <div className="max-w-2xl">
-            <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider flex items-center gap-2">
               <Cpu className="w-4 h-4" />
               Ingeniería Hardware & Software
             </span>
-            <h2 className="mt-2.5 font-display text-3xl sm:text-4xl font-bold tracking-tight">
+            <h2 className="mt-stack-tight font-display text-3xl sm:text-4xl font-bold tracking-tight">
               Diseñado para resistir la intemperie y la falta de señal
             </h2>
-            <p className="mt-3 text-muted text-base sm:text-lg leading-relaxed">
+            <p className="mt-stack text-muted text-base sm:text-lg leading-relaxed">
               La tecnología de DAMP Agro está pensada para la realidad rural. Los collares LoRa (ESP32-S3) transmiten
               hacia el gateway del campo (Heltec V3), requiriendo conexión a internet únicamente en el casco.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-4 shrink-0">
             <Link
               href="/arquitectura"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-md hover:shadow-lg"
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-md hover:shadow-lg"
             >
               Explorar arquitectura interactiva
               <ArrowRight className="w-4 h-4" />
@@ -87,7 +87,7 @@ export function ArchitectureSection() {
               href="/architecture.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors text-muted hover:text-foreground"
+              className="inline-flex items-center gap-2 px-4 py-4 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors text-muted hover:text-foreground"
               title="Abrir diagrama en pantalla completa"
             >
               <Maximize2 className="w-4 h-4" />
@@ -97,13 +97,13 @@ export function ArchitectureSection() {
         </div>
 
         {/* Compact 4-stage summary strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {ARCH_STEPS.map((step) => {
             const Icon = step.icon;
             return (
               <div
                 key={step.tag}
-                className="rounded-xl border border-border bg-surface/80 backdrop-blur-xs p-3.5 flex items-start gap-3"
+                className="rounded-xl border border-border bg-surface/80 backdrop-blur-xs p-4 flex items-start gap-4"
               >
                 <div className="w-8 h-8 rounded-lg bg-primary-500/10 border border-primary-500/20 flex items-center justify-center shrink-0 text-primary-600 mt-0.5">
                   <Icon className="w-4 h-4" />

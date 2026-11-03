@@ -1,0 +1,12 @@
+/* Ritmo de la landing. Base 8px; 4px y 2px solo como mitad y cuarto.
+   El resto de la app sigue en la escala numérica de Tailwind. */
+@theme {
+  --spacing-page-sm: 1rem; /* 16 */
+  --spacing-page: 1.5rem; /* 24 */
+  --spacing-stack-tight: 0.5rem; /* 8 — ceja ↔ título */
+  --spacing-stack: 1rem; /* 16 — título ↔ texto */
+  --spacing-gutter: 1.5rem; /* 24 — entre columnas */
+  --spacing-group: 3rem; /* 48 — entre grupos */
+  --spacing-section-sm: 4rem; /* 64 — sección en mobile */
+  --spacing-section: 6rem; /* 96 — sección en desktop */
+}
