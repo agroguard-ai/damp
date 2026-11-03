@@ -325,9 +325,6 @@ export function AdminUserList() {
                   {createdCredentials.pass}
                 </code>
               </div>
-              <div className="text-[11px] text-amber-700 dark:text-amber-400">
-                * El cliente deberá cambiar esta clave obligatoriamente en su primer inicio de sesión.
-              </div>
             </div>
             <button
               onClick={handleCopyCredentials}
