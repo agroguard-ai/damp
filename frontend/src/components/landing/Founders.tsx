@@ -1,16 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { Mail } from 'lucide-react';
+import { Link, Mail } from 'lucide-react';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-
-function LinkedinIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <path d="M6.94 5a1.94 1.94 0 1 1-3.88 0 1.94 1.94 0 0 1 3.88 0ZM3.5 8.75h3.32V21H3.5V8.75Zm6.13 0h3.18v1.68h.05c.44-.83 1.53-1.71 3.15-1.71 3.37 0 4 2.22 4 5.1V21h-3.32v-5.63c0-1.34-.02-3.07-1.87-3.07-1.87 0-2.16 1.46-2.16 2.97V21H9.63V8.75Z" />
-    </svg>
-  );
-}
 
 const founders = [
   {
@@ -100,7 +92,7 @@ export function Founders() {
                 aria-label={`Perfil de LinkedIn de ${founder.name}`}
                 className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted hover:text-primary-700 hover:border-primary-600 transition-colors"
               >
-                <LinkedinIcon className="w-4 h-4" />
+                <Link className="w-4 h-4" />
               </a>
               <a
                 href={founder.email}

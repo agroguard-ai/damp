@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Maximize2,
   PawPrint,
+  Thermometer,
   LocateFixed,
   Layers,
   RotateCcw,
@@ -267,7 +268,7 @@ function HeroMockup() {
             title="Caravana #B04 · 38.6 °C"
           >
             <div className="w-8 h-8 rounded-full bg-linear-to-br from-green-500 to-green-700 text-white text-sm flex items-center justify-center border-2 border-white shadow-[0_4px_10px_rgba(0,0,0,0.4)]">
-              🐄
+              <PawPrint className="w-4 h-4" />
             </div>
           </div>
 
@@ -285,7 +286,7 @@ function HeroMockup() {
           <div className="absolute bottom-[18%] right-[17%] translate-x-1/2 translate-y-1/2 flex items-center justify-center">
             <span className="absolute w-12 h-12 rounded-full bg-red-500/35 animate-ping" />
             <div className="relative w-9 h-9 rounded-full bg-linear-to-br from-red-500 to-red-700 text-white text-sm flex items-center justify-center border-[2.5px] border-white shadow-[0_4px_14px_rgba(239,68,68,0.6)]">
-              🐄
+              <PawPrint className="w-4 h-4" />
               <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-500 border-2 border-white" />
             </div>
           </div>
@@ -297,7 +298,9 @@ function HeroMockup() {
               <span>#A21 · Fuera de cerco</span>
             </div>
             <div className="mt-0.5 flex items-center gap-2 text-zinc-300">
-              <span>🌡️ 39.4 °C</span>
+              <span className="inline-flex items-center gap-1">
+                <Thermometer className="w-3 h-3" /> 39.4 °C
+              </span>
               <span className="text-zinc-500">•</span>
               <span>hace 12 s</span>
             </div>

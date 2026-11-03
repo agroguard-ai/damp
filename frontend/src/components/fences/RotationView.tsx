@@ -17,6 +17,7 @@ import {
   Trash2,
   Plus,
   ArrowRight,
+  Radio,
 } from 'lucide-react';
 import { rotationsApi } from '@/lib/api/rotations';
 import { useToast } from '@/context/ToastContext';
@@ -461,9 +462,9 @@ export default function RotationView({
                         />
                       </div>
                     </div>
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                      📡 Transición gradual activa: los collares reciben las coordenadas intermedias actualizadas en
-                      cada reporte telemétrico (~cada 5 min).
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 inline-flex items-start gap-1">
+                      <Radio className="w-3 h-3 mt-0.5 shrink-0" /> Transición gradual activa: los collares reciben las
+                      coordenadas intermedias actualizadas en cada reporte telemétrico (~cada 5 min).
                     </p>
                   </div>
                 )}

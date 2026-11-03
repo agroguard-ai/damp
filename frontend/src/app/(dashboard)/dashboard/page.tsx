@@ -21,13 +21,6 @@ export default function Home() {
 
   return (
     <div className="p-6 md:p-8 space-y-8">
-      {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">Bienvenido</h1>
-        </div>
-      </div>
-
       {/* KPI Cards Grid */}
       <KpiGrid farms={farms} alertsLength={alerts.length} loadingFarms={loadingFarms} loadingAlerts={loadingAlerts} />
 

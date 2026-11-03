@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Undo2, Redo2, Trash2 } from 'lucide-react';
+import { MapPin, Redo2, Trash2, Undo2, X } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MapActionControls from './controls/MapActionControls';
 import AnimalMarkersLayer from './AnimalMarkersLayer';
@@ -440,7 +440,7 @@ export default function PolygonDrawerMap({
                 className="text-amber-800 dark:text-amber-200 hover:text-red-500 ml-0.5 cursor-pointer"
                 title="Deseleccionar"
               >
-                ✕
+                <X className="w-3 h-3" />
               </button>
             </span>
           )}
@@ -579,8 +579,8 @@ export default function PolygonDrawerMap({
         ) : selectedIndex !== null ? (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-amber-500/95 backdrop-blur-md text-zinc-950 text-xs px-4 py-2 rounded-full shadow-xl font-medium border border-amber-300 flex items-center gap-2 animate-in fade-in zoom-in-95">
             <span>
-              📍 <strong>Vértice #{selectedIndex + 1} seleccionado:</strong> El próximo clic insertará un punto a su
-              lado.
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <strong>Vértice #{selectedIndex + 1} seleccionado:</strong> El próximo clic insertará un punto a su lado.
             </span>
             <button
               type="button"

@@ -15,7 +15,19 @@ import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import FalsePositiveModal from '@/components/alerts/FalsePositiveModal';
 import PredictiveHealthMonitoring from '@/components/alerts/PredictiveHealthMonitoring';
-import { Bell, BrainCircuit, AlertTriangle, CheckCircle2, SlidersHorizontal, Clock, Zap } from 'lucide-react';
+import {
+  Bell,
+  BrainCircuit,
+  AlertTriangle,
+  CheckCircle2,
+  SlidersHorizontal,
+  Clock,
+  Zap,
+  Bot,
+  PersonStanding,
+  Siren,
+  Check,
+} from 'lucide-react';
 import type { Alert, AlertType } from '@/types';
 import { Select } from '@/components/ui/Select';
 
@@ -223,9 +235,9 @@ export default function AlertasPage() {
                       onChange={(v) => setFilters({ ...filters, source: v })}
                       options={[
                         { value: '', label: 'Todos los orígenes' },
-                        { value: 'ML', label: '🤖 Modelo Predictivo (IA)' },
-                        { value: 'THRESHOLD', label: '⚡ Sensor / Umbral Físico' },
-                        { value: 'ESCAPE', label: '🏃 Escape de Cerco' },
+                        { value: 'ML', label: 'Modelo Predictivo (IA)', icon: Bot },
+                        { value: 'THRESHOLD', label: 'Sensor / Umbral Físico', icon: Zap },
+                        { value: 'ESCAPE', label: 'Escape de Cerco', icon: PersonStanding },
                       ]}
                       size="sm"
                     />
@@ -276,9 +288,9 @@ export default function AlertasPage() {
                       onChange={(v) => setFilters({ ...filters, resolved: v })}
                       options={[
                         { value: '', label: 'Todas las alertas' },
-                        { value: 'false', label: '🚨 Solo activas (Sin resolver)' },
-                        { value: 'true', label: '✓ Resueltas / Validadas' },
-                        { value: 'fp', label: '⚠️ Falsos Positivos' },
+                        { value: 'false', label: 'Solo activas (Sin resolver)', icon: Siren },
+                        { value: 'true', label: 'Resueltas / Validadas', icon: Check },
+                        { value: 'fp', label: 'Falsos Positivos', icon: AlertTriangle },
                       ]}
                       size="sm"
                     />

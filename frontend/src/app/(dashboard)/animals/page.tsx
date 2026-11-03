@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import BreedSelect from '@/components/animals/BreedSelect';
-import { EmptyFarmState } from '@/components/ui/EmptyState';
+import { EmptyFarmState, EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
@@ -24,6 +24,7 @@ import { animalsApi, type Animal } from '@/lib/api/animals';
 import type { MedicalEventType } from '@/types';
 import {
   CirclePlus,
+  ClipboardList,
   Search,
   Filter,
   Radio,
@@ -33,7 +34,6 @@ import {
   ArrowRightLeft,
   X,
   AlertTriangle,
-  Tag,
   CheckCircle2,
   Edit2,
   FileDown,
@@ -513,12 +513,22 @@ function AnimalsContent() {
     return <EmulationRequiredState title="la Hacienda y Animales" />;
   }
 
+  const listFiltered =
+    searchTerm.trim() !== '' ||
+    filters.animalType !== '' ||
+    filters.healthStatus !== '' ||
+    filters.geofenceId !== '' ||
+    filters.status !== 'ACTIVE' ||
+    filters.hasActiveAlert ||
+    filters.hasCollar !== '';
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+            <ClipboardList className="w-6 h-6 text-green-600 dark:text-green-500" />
             Gestión y Asignación de Hacienda
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
@@ -727,17 +737,21 @@ function AnimalsContent() {
                 <SkeletonRowList count={6} />
               </div>
             ) : filteredAnimals.length === 0 ? (
-              <div className="py-16 px-4 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto">
-                  <Tag className="w-6 h-6" />
+              listFiltered ? (
+                <div className="py-16 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+                  No se encontraron animales que coincidan con la búsqueda.
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm">
-                  No se encontraron animales registrados.
-                </p>
-                <p className="text-zinc-400 text-xs">
-                  Modificá el término de búsqueda o filtros, o añadí una nueva cabeza a este campo.
-                </p>
-              </div>
+              ) : (
+                <div className="p-8">
+                  <EmptyState
+                    icon={ClipboardList}
+                    title="No se encontraron animales registrados."
+                    description="Añadí el primer animal a este campo."
+                    actionLabel={canEdit ? 'Añadir animal' : undefined}
+                    onAction={canEdit ? () => setIsAddModalOpen(true) : undefined}
+                  />
+                </div>
+              )
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -1185,7 +1199,8 @@ function AnimalsContent() {
                       { value: '', label: 'Sin cerco virtual (liberar)' },
                       ...activeFarmGeofences.map((g) => ({
                         value: String(g.id),
-                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                        label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                        icon: Zap,
                       })),
                     ]}
                   />
