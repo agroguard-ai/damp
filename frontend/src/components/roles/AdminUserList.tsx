@@ -135,7 +135,7 @@ export function AdminUserList() {
     if (u.isActive) {
       const ok = await confirm({
         title: 'Suspender cliente / Inhabilitar acceso',
-        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará de inmediato su acceso al sistema y suspenderá los campos asociados para todos sus empleados. Los datos históricos se conservan para auditoría.`,
+        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará su acceso al sistema y suspenderá los campos asociados para todos sus empleados. Los datos históricos se conservan para auditoría.`,
         confirmLabel: 'Suspender cliente',
         danger: true,
       });

@@ -21,12 +21,12 @@ describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
   let jwtService: { verifyAsync: jest.Mock };
   let configService: { get: jest.Mock };
-  let prisma: { user: { findUnique: jest.Mock } };
+  let prisma: { user: { findUnique: jest.Mock }; farmUser: { findFirst: jest.Mock } };
 
   beforeEach(() => {
     jwtService = { verifyAsync: jest.fn() };
     configService = { get: jest.fn().mockReturnValue('test-secret') };
-    prisma = { user: { findUnique: jest.fn() } };
+    prisma = { user: { findUnique: jest.fn() }, farmUser: { findFirst: jest.fn().mockResolvedValue(null) } };
 
     guard = new JwtAuthGuard(
       jwtService as unknown as JwtService,
@@ -65,6 +65,36 @@ describe('JwtAuthGuard', () => {
     prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'test@example.com', isActive: false });
 
     await expect(guard.canActivate(context)).rejects.toThrow('Su cuenta se encuentra suspendida o inhabilitada');
+  });
+
+  it('lanza UnauthorizedException si el empleado pertenece a un dueño suspendido', async () => {
+    const { context } = makeContext({ authorization: 'Bearer valid-token' });
+    jwtService.verifyAsync.mockResolvedValue({ sub: 'u1', email: 'empleado@campo.com', globalRole: 'USER' });
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'empleado@campo.com', globalRole: 'USER', isActive: true });
+    prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu1' });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      'El servicio para este establecimiento se encuentra suspendido'
+    );
+  });
+
+  it('permite emular a un empleado cuyo dueño está suspendido', async () => {
+    const { context, request } = makeContext({
+      authorization: 'Bearer valid-token',
+      'x-emulate-user-id': 'u2-empleado',
+    });
+    const superAdminDbUser = { id: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN', isActive: true };
+    const employee = { id: 'u2-empleado', email: 'empleado@campo.com', globalRole: 'USER', isActive: true };
+
+    jwtService.verifyAsync.mockResolvedValue({ sub: 'u1-admin', email: 'admin@damp.com', globalRole: 'SUPER_ADMIN' });
+    prisma.user.findUnique.mockResolvedValueOnce(superAdminDbUser).mockResolvedValueOnce(employee);
+    prisma.farmUser.findFirst.mockResolvedValue({ id: 'fu1' });
+
+    const result = await guard.canActivate(context);
+
+    expect(result).toBe(true);
+    expect(request.user.isEmulated).toBe(true);
+    expect(prisma.farmUser.findFirst).not.toHaveBeenCalled();
   });
 
   it('permite el acceso y adjunta user y dbUser a la request', async () => {

@@ -57,7 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setEmulatedUser(null);
           if (typeof window !== 'undefined') {
-            window.location.href = '/';
+            window.location.href =
+              '/sign-in?aviso=' +
+              encodeURIComponent('Su cuenta se encuentra suspendida o inhabilitada. Comuníquese con el administrador.');
           }
           return;
         }
@@ -72,6 +74,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return next;
         });
       } else if (res.status === 401 || res.status === 403) {
+        const data = await res.json().catch(() => null);
+        const message = data && typeof data.message === 'string' ? data.message : '';
+        const passwordChange = res.status === 403 && data?.error === 'Password change required';
+        if (!passwordChange && message) {
+          try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+          } catch {
+            // ignore
+          }
+          setUser(null);
+          setEmulatedUser(null);
+          if (typeof window !== 'undefined') {
+            window.location.href = `/sign-in?aviso=${encodeURIComponent(message)}`;
+          }
+          return;
+        }
         setUser((prevUser) => {
           if (prevUser && typeof window !== 'undefined') {
             window.location.href = '/';

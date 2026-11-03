@@ -32,6 +32,9 @@ describe('AuthService', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
+      farmUser: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
     };
 
     jwtService = {
@@ -93,6 +96,19 @@ describe('AuthService', () => {
           password: 'TempPassword123!',
         })
       ).rejects.toThrow('Su cuenta se encuentra suspendida o inhabilitada');
+    });
+
+    it('should throw UnauthorizedException when the farm owner is suspended', async () => {
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      prismaService.farmUser.findFirst.mockResolvedValue({ id: 'fu1' });
+
+      await expect(
+        service.login({
+          email: 'test@example.com',
+          password: 'TempPassword123!',
+        })
+      ).rejects.toThrow('El servicio para este establecimiento se encuentra suspendido');
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException on wrong password', async () => {

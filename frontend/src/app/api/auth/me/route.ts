@@ -21,7 +21,14 @@ export async function GET() {
     });
 
     if (!backendRes.ok) {
-      return NextResponse.json({ user: null, emulatedUser: null }, { status: backendRes.status });
+      const data = await backendRes.json().catch(() => null);
+      const message =
+        data && typeof data.message === 'string'
+          ? data.message
+          : Array.isArray(data?.message)
+            ? data.message.filter((item: unknown) => typeof item === 'string').join(' ')
+            : undefined;
+      return NextResponse.json({ user: null, emulatedUser: null, message }, { status: backendRes.status });
     }
 
     const user = await backendRes.json();
