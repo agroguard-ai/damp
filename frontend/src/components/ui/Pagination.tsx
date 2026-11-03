@@ -26,7 +26,6 @@ export function Pagination({ meta, onPageChange, onLimitChange, limitOptions = [
   if (totalItems === 0) return null;
 
   const startItem = (page - 1) * limit + 1;
-  const endItem = Math.min(page * limit, totalItems);
 
   // Generate page numbers range around current page
   const getPageNumbers = () => {
@@ -60,8 +59,7 @@ export function Pagination({ meta, onPageChange, onLimitChange, limitOptions = [
       {/* Left side: Item count summary & Limit selector */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
         <span>
-          Mostrando <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{startItem}</strong> a{' '}
-          <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{endItem}</strong> de{' '}
+          Mostrando <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{startItem}</strong> de{' '}
           <strong className="font-semibold text-zinc-800 dark:text-zinc-200">{totalItems}</strong> resultados
         </span>
 
@@ -97,7 +95,7 @@ export function Pagination({ meta, onPageChange, onLimitChange, limitOptions = [
               onClick={() => onPageChange(p)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 p === page
-                  ? 'bg-purple-600 text-white shadow-sm'
+                  ? 'bg-primary text-on-primary shadow-sm'
                   : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700'
               }`}
             >
