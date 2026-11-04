@@ -7,8 +7,8 @@ import { useFarmPermissions, FARM_ROLE_LABELS } from '@/hooks/useFarmPermissions
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { Select } from '@/components/ui/Select';
-import { Button } from '@/components/ui/Button';
-import { UserPlus, Key, Copy, Check, X, Pencil, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { EmptyFarmState, EmptyState } from '@/components/ui/EmptyState';
+import { UserPlus, Users, Key, Copy, Check, X, Pencil, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 // El administrador de campos crea su personal solo como operador o lector, con el mismo rol en
 // todos los campos que le asigne (el backend valida que esos campos sean suyos).
@@ -278,35 +278,34 @@ export function StaffList() {
       )}
 
       <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tu personal</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Operadores y lectores de tus campos. Cada persona tiene el mismo rol en todos sus campos.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800">
-              Integrantes: {staff.length}
-            </span>
-            <button
-              onClick={openCreate}
-              disabled={farms.length === 0}
-              title={farms.length === 0 ? 'Registrá un campo antes de crear personal' : undefined}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UserPlus className="w-4 h-4" />
-              Nueva persona
-            </button>
-          </div>
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-end items-center gap-4">
+          <span className="bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800">
+            Integrantes: {staff.length}
+          </span>
+          <button
+            onClick={openCreate}
+            disabled={farms.length === 0}
+            title={farms.length === 0 ? 'Registrá un campo antes de crear personal' : undefined}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="w-4 h-4" />
+            Nuevo empleado
+          </button>
         </div>
 
         {farms.length === 0 ? (
-          <div className="px-6 py-10 text-center space-y-3">
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-              Todavía no tenés campos registrados. Registrá tu primer campo para poder asignarle personal.
-            </p>
-            <Button href="/farms/new" variant="success" size="md" label="Registrar campo" />
+          <div className="p-8">
+            <EmptyFarmState />
+          </div>
+        ) : staff.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              icon={Users}
+              title="Todavía no agregaste personal a tus campos."
+              description="Sumá un operador para que pueda entrar a tus campos."
+              actionLabel="Nuevo empleado"
+              onAction={openCreate}
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -383,13 +382,6 @@ export function StaffList() {
                     </td>
                   </tr>
                 ))}
-                {staff.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-400 dark:text-zinc-500">
-                      Todavía no agregaste personal a tus campos.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>

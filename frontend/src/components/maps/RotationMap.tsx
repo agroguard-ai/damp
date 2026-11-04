@@ -9,6 +9,7 @@ import HeatmapCanvasLayer from './HeatmapCanvasLayer';
 import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
+import { Circle, Radio, Sprout, Zap } from 'lucide-react';
 import type { Geofence } from '@/types';
 
 function parsePolygon(raw: unknown): [number, number][] {
@@ -178,7 +179,9 @@ export default function RotationMap({
           >
             <Popup>
               <div className="p-2 text-xs text-zinc-900">
-                <p className="font-bold text-green-700">🌱 Campo: {farm.name ?? 'Sin nombre'}</p>
+                <p className="font-bold text-green-700 inline-flex items-center gap-2">
+                  <Sprout className="w-4 h-4" /> Campo: {farm.name ?? 'Sin nombre'}
+                </p>
                 <p className="text-[11px] text-zinc-600">Perímetro general del establecimiento.</p>
               </div>
             </Popup>
@@ -229,7 +232,9 @@ export default function RotationMap({
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
                 <span className="inline-block bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                  🟢 Desde dónde partió (Paso previo)
+                  <span className="inline-flex items-center gap-1">
+                    <Circle className="w-3 h-3 fill-emerald-600 text-emerald-600" /> Desde dónde partió (Paso previo)
+                  </span>
                 </span>
                 <h4 className="font-bold text-sm">{fromGeofence?.name}</h4>
                 <p className="text-zinc-600 text-[11px]">Sector pastoreado en la etapa anterior de la rotación.</p>
@@ -253,7 +258,9 @@ export default function RotationMap({
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
                 <span className="inline-block bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                  🔵 A dónde va (Próximo destino)
+                  <span className="inline-flex items-center gap-1">
+                    <Circle className="w-3 h-3 fill-blue-600 text-blue-600" /> A dónde va (Próximo destino)
+                  </span>
                 </span>
                 <h4 className="font-bold text-sm">{nextGeofence?.name}</h4>
                 <p className="text-zinc-600 text-[11px]">
@@ -278,7 +285,9 @@ export default function RotationMap({
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
                 <span className="inline-block bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                  ⚡ ACTIVO AHORA (Hacienda Pastando)
+                  <span className="inline-flex items-center gap-1">
+                    <Zap className="w-3 h-3" /> ACTIVO AHORA (Hacienda Pastando)
+                  </span>
                 </span>
                 <h4 className="font-bold text-sm">{currentGeofence?.name}</h4>
                 <p className="text-zinc-600 text-[11px]">
@@ -304,7 +313,9 @@ export default function RotationMap({
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
                 <span className="inline-block bg-cyan-100 text-cyan-800 font-bold px-2 py-0.5 rounded text-[10px]">
-                  📡 Perímetro en Transición Gradual
+                  <span className="inline-flex items-center gap-1">
+                    <Radio className="w-3 h-3" /> Perímetro en Transición Gradual
+                  </span>
                 </span>
                 <h4 className="font-bold text-sm text-cyan-900">
                   {transitionInfo

@@ -15,6 +15,8 @@ import {
   SearchCode,
   CircleCheck,
   CircleAlert,
+  Siren,
+  ClipboardList,
 } from 'lucide-react';
 import { alertsApi } from '@/lib/api/alerts';
 import type { HealthPrediction, MlHealthMetrics, MlServiceStatus } from '@/types';
@@ -259,8 +261,8 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
               onChange={(v) => setFilterDetected(v)}
               options={[
                 { value: 'all', label: 'Todas las predicciones' },
-                { value: 'detected', label: '🚨 Alta certeza (Alerta disparada)' },
-                { value: 'subthreshold', label: '📋 Baja certeza (Guardadas para revisión)' },
+                { value: 'detected', label: 'Alta certeza (Alerta disparada)', icon: Siren },
+                { value: 'subthreshold', label: 'Baja certeza (Guardadas para revisión)', icon: ClipboardList },
               ]}
               size="sm"
             />
@@ -367,12 +369,12 @@ export default function PredictiveHealthMonitoring({ farmId, animals }: Predicti
                         {eventConfig.label}
                       </span>
                       {pred.detected ? (
-                        <span className="text-[10px] bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50 font-bold px-2 py-0.2 rounded">
-                          🚨 Alerta Disparada
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-900/50 font-bold px-2 py-0.5 rounded">
+                          <Siren className="w-3 h-3" /> Alerta Disparada
                         </span>
                       ) : (
-                        <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium px-2 py-0.2 rounded">
-                          📋 Guardada sin alertar (Preventiva)
+                        <span className="inline-flex items-center gap-1 text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium px-2 py-0.5 rounded">
+                          <ClipboardList className="w-3 h-3" /> Guardada sin alertar (Preventiva)
                         </span>
                       )}
                     </div>

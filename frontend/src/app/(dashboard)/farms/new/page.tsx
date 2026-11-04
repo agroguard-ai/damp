@@ -493,7 +493,10 @@ export default function NewFarmPage() {
 
                     {selectedVertexIndex !== null && (
                       <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
-                        <span>📍 Vértice #{selectedVertexIndex + 1} activo para inserción contigua.</span>
+                        <span className="inline-flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" /> Vértice #{selectedVertexIndex + 1} activo para inserción
+                          contigua.
+                        </span>
                         <button
                           type="button"
                           onClick={() => setSelectedVertexIndex(null)}

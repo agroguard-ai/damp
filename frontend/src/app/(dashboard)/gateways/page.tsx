@@ -34,6 +34,9 @@ import {
   Info,
   CheckCircle2,
   Layers,
+  Package,
+  WifiOff,
+  CircleDashed,
 } from 'lucide-react';
 import type { GatewayStatus, Gateway } from '@/types';
 import { Select } from '@/components/ui/Select';
@@ -558,8 +561,8 @@ export default function GatewaysPage() {
                 searchable={usersList.length > 5}
                 searchPlaceholder="Buscar productor..."
                 options={[
-                  { value: 'ALL', label: `👤 Todos los Productores (${usersList.length})` },
-                  { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
+                  { value: 'ALL', label: `Todos los Productores (${usersList.length})`, icon: UserIcon },
+                  { value: 'UNASSIGNED', label: 'Stock Libre (Sin asignar)', icon: Package },
                   ...usersList.map((u) => {
                     const userFarmsCount = allFarms.filter((f) => f.userId === u.id).length;
                     return {
@@ -585,14 +588,15 @@ export default function GatewaysPage() {
               options={[
                 {
                   value: 'ALL',
-                  label: `🏢 ${
+                  label: `${
                     selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
                       ? 'Todos los campos del productor'
                       : 'Todos los Campos'
                   } (${farmsForFilterToolbar.length})`,
+                  icon: Building2,
                 },
                 ...(isSuperAdmin && selectedUserFilter === 'ALL'
-                  ? [{ value: 'UNASSIGNED', label: '📦 Sin campo asignado' }]
+                  ? [{ value: 'UNASSIGNED', label: 'Sin campo asignado', icon: Package }]
                   : []),
                 ...farmsForFilterToolbar.map((f) => ({
                   value: f.id,
@@ -609,10 +613,10 @@ export default function GatewaysPage() {
               value={selectedStatusFilter}
               onChange={(v) => setSelectedStatusFilter(v)}
               options={[
-                { value: 'ALL', label: '📡 Todos los Estados' },
-                { value: 'ONLINE', label: `🟢 En línea (${onlineCount})` },
-                { value: 'OFFLINE', label: `🔴 Fuera de línea (${offlineCount})` },
-                { value: 'NO_DATA', label: '⚪ Sin datos' },
+                { value: 'ALL', label: 'Todos los Estados', icon: Radio },
+                { value: 'ONLINE', label: `En línea (${onlineCount})`, icon: Wifi },
+                { value: 'OFFLINE', label: `Fuera de línea (${offlineCount})`, icon: WifiOff },
+                { value: 'NO_DATA', label: 'Sin datos', icon: CircleDashed },
               ]}
               size="sm"
             />

@@ -10,6 +10,7 @@ import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS, DraggableVertex } from './PolygonDrawerMap';
 import { validatePointInBoundary } from '@/lib/geo/spatial';
+import { MapPin, Zap } from 'lucide-react';
 
 // Fix Leaflet marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -487,7 +488,9 @@ export default function FenceMap({
                   <Tooltip sticky>
                     <div className="text-xs">
                       <div className={`font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
-                        ⚡ {fence.name}
+                        <span className="inline-flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> {fence.name}
+                        </span>
                       </div>
                       <div className="text-[10px] text-zinc-500">
                         {isActive ? 'Cerco Activo' : 'Desactivado'}
@@ -558,7 +561,9 @@ export default function FenceMap({
             )
           ) : selectedIndex !== null ? (
             <div className="flex items-center gap-2">
-              <span className="text-amber-300 font-semibold">📍 Vértice #{selectedIndex + 1} seleccionado:</span>
+              <span className="text-amber-300 font-semibold inline-flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" /> Vértice #{selectedIndex + 1} seleccionado:
+              </span>
               <span>El próximo clic insertará un punto contiguo a este vértice.</span>
               <button
                 type="button"

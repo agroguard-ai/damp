@@ -38,6 +38,8 @@ import {
   Archive,
   RotateCcw,
   RefreshCw,
+  Package,
+  Circle,
 } from 'lucide-react';
 import { Select } from '@/components/ui/Select';
 
@@ -658,8 +660,12 @@ export default function CollaresPage() {
                   searchable={farmAdminsList.length > 5}
                   searchPlaceholder="Buscar administrador..."
                   options={[
-                    { value: 'ALL', label: `👤 Todos los Administradores de Campo (${farmAdminsList.length})` },
-                    { value: 'UNASSIGNED', label: '📦 Stock Libre (Sin asignar)' },
+                    {
+                      value: 'ALL',
+                      label: `Todos los Administradores de Campo (${farmAdminsList.length})`,
+                      icon: UserIcon,
+                    },
+                    { value: 'UNASSIGNED', label: 'Stock Libre (Sin asignar)', icon: Package },
                     ...farmAdminsList.map((u) => {
                       const userFarmsCount = allFarms.filter(
                         (f) => f.userId === u.id || f.farmUsers?.some((fu) => fu.userId === u.id)
@@ -687,14 +693,15 @@ export default function CollaresPage() {
                 options={[
                   {
                     value: 'ALL',
-                    label: `🏢 ${
+                    label: `${
                       selectedUserFilter !== 'ALL' && selectedUserFilter !== 'UNASSIGNED'
                         ? 'Todos los campos del productor'
                         : 'Todos los Campos'
                     } (${farmsForFilterToolbar.length})`,
+                    icon: Building2,
                   },
                   ...(isSuperAdmin && selectedUserFilter === 'ALL'
-                    ? [{ value: 'UNASSIGNED', label: '📦 Sin campo asignado' }]
+                    ? [{ value: 'UNASSIGNED', label: 'Sin campo asignado', icon: Package }]
                     : []),
                   ...farmsForFilterToolbar.map((f) => ({
                     value: f.id,
@@ -711,10 +718,10 @@ export default function CollaresPage() {
                 value={statusFilter}
                 onChange={(v) => setStatusFilter(v as 'ALL' | 'ASSIGNED' | 'AVAILABLE' | 'ARCHIVED')}
                 options={[
-                  { value: 'ALL', label: '📡 Todos los Estados' },
-                  { value: 'ASSIGNED', label: `🟢 En uso (${placedCount})` },
-                  { value: 'AVAILABLE', label: `🟡 Disponibles (${availableCount})` },
-                  { value: 'ARCHIVED', label: `⚪ Archivados / Fuera de servicio (${archivedCount})` },
+                  { value: 'ALL', label: 'Todos los Estados', icon: Radio },
+                  { value: 'ASSIGNED', label: `En uso (${placedCount})`, icon: CheckCircle2 },
+                  { value: 'AVAILABLE', label: `Disponibles (${availableCount})`, icon: Circle },
+                  { value: 'ARCHIVED', label: `Archivados / Fuera de servicio (${archivedCount})`, icon: Archive },
                 ]}
                 size="sm"
               />

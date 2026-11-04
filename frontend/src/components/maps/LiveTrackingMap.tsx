@@ -9,12 +9,18 @@ import AnimalMarkersLayer, { type MapAnimal } from './AnimalMarkersLayer';
 import HeatmapCanvasLayer from './HeatmapCanvasLayer';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
+import { Circle, Flag, Timer, Zap } from 'lucide-react';
 import type { TrajectoryPoint, HeatmapPoint } from '@/types';
+
+const START_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="6"/></svg>';
+const FLAG_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>';
 
 const createTrajectoryEndpointIcon = (type: 'start' | 'end', color: string) => {
   const isStart = type === 'start';
   const bg = isStart ? '#16a34a' : color;
-  const icon = isStart ? '🟢' : '🏁';
+  const icon = isStart ? START_SVG : FLAG_SVG;
   return new L.DivIcon({
     className: 'trajectory-endpoint-icon',
     html: `
@@ -226,8 +232,8 @@ function TrajectoryLayer({
       >
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
-            <span className="inline-block bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded text-[10px]">
-              🟢 Punto de Partida
+            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded text-[10px]">
+              <Circle className="w-3 h-3 fill-green-600 text-green-600" /> Punto de Partida
             </span>
             <h4 className="font-bold">{animalName}</h4>
             <p className="text-zinc-600">Fecha: {new Date(startPoint.timestamp).toLocaleString()}</p>
@@ -274,7 +280,15 @@ function TrajectoryLayer({
                   isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                 }`}
               >
-                {isAnimatedInProgress ? '⏱️ Progreso / En movimiento' : '🏁 Fin / Posición más reciente'}
+                {isAnimatedInProgress ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Timer className="w-3 h-3" /> Progreso / En movimiento
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <Flag className="w-3 h-3" /> Fin / Posición más reciente
+                  </span>
+                )}
               </span>
               <h4 className="font-bold">{animalName}</h4>
               <p className="text-zinc-600">Fecha: {new Date(currentPoint.timestamp).toLocaleString()}</p>
@@ -410,7 +424,7 @@ export default function LiveTrackingMap({
               <Popup>
                 <div className="p-2 text-xs space-y-1 text-zinc-900">
                   <div className={`flex items-center gap-2 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
-                    <span>⚡</span>
+                    <Zap className="w-4 h-4" />
                     <span>{geofence.name}</span>
                   </div>
                   <span

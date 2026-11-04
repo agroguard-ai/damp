@@ -32,6 +32,7 @@ import {
   Check,
   Flame,
   Route,
+  Lightbulb,
 } from 'lucide-react';
 import { Select } from '@/components/ui/Select';
 
@@ -528,8 +529,9 @@ export default function FarmsPage() {
                     <span>Reiniciar trazo</span>
                   </button>
                 )}
-                <span className="hidden md:inline text-[11px] text-zinc-400">
-                  💡 Hacé clic en el mapa para marcar vértices y arrastralos para ajustar el límite.
+                <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-zinc-400">
+                  <Lightbulb className="w-3.5 h-3.5" /> Hacé clic en el mapa para marcar vértices y arrastralos para
+                  ajustar el límite.
                 </span>
               </div>
 

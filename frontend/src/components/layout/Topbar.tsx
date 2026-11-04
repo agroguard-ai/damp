@@ -86,7 +86,9 @@ export default function Topbar() {
                   </span>
                 </span>
               ) : (
-                <span>👤 Seleccionar Usuario a Emular</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" /> Seleccionar Usuario a Emular
+                </span>
               )}
               <ChevronDown className="w-4 h-4 opacity-60" />
             </button>

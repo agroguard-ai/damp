@@ -134,17 +134,17 @@ export function AdminUserList() {
   const handleStatusToggle = async (u: UserRecord) => {
     if (u.isActive) {
       const ok = await confirm({
-        title: 'Suspender cliente / Inhabilitar acceso',
-        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará su acceso al sistema y suspenderá los campos asociados para todos sus empleados. Los datos históricos se conservan para auditoría.`,
-        confirmLabel: 'Suspender cliente',
+        title: 'Suspender usuario',
+        description: `¿Estás seguro de que deseas suspender a "${u.name || u.email}"? Esta acción bloqueará su acceso al sistema y suspenderá los campos asociados para todos sus empleados.`,
+        confirmLabel: 'Suspender usuario',
         danger: true,
       });
       if (!ok) return;
     } else {
       const ok = await confirm({
-        title: 'Reactivar cliente',
-        description: `¿Deseas reactivar la cuenta de "${u.name || u.email}"? Se restaurará su acceso y el de sus empleados a sus campos de inmediato.`,
-        confirmLabel: 'Reactivar cliente',
+        title: 'Reactivar usuario',
+        description: `¿Deseas reactivar la cuenta de "${u.name || u.email}"? Se restaurará su acceso y el de sus empleados a sus campos.`,
+        confirmLabel: 'Reactivar usuario',
         danger: false,
       });
       if (!ok) return;
