@@ -14,14 +14,14 @@ export function EmulationBanner() {
   return (
     <aside
       aria-label="Aviso de Modo Emulación"
-      className="bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-amber-900 dark:text-amber-200 text-xs flex flex-wrap items-center justify-between gap-3 shrink-0"
+      className="bg-amber-500/15 border-b border-amber-500/30 px-page-sm md:px-frame py-2 text-amber-900 dark:text-amber-200 text-xs flex flex-wrap items-center justify-between gap-4 shrink-0"
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <div className="p-1 bg-amber-500/20 rounded-md text-amber-600 dark:text-amber-400 shrink-0">
           <Eye className="w-4 h-4" />
         </div>
         <div>
-          <span className="font-bold uppercase tracking-wider text-[11px] text-amber-600 dark:text-amber-400 mr-1.5 inline-flex items-center gap-1">
+          <span className="font-bold uppercase tracking-wider text-[11px] text-amber-600 dark:text-amber-400 mr-2 inline-flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" />
             Modo Emulación Activo:
           </span>
@@ -39,16 +39,16 @@ export function EmulationBanner() {
       <div className="flex items-center gap-2">
         <Link
           href="/admin/users"
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium transition-colors"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-medium transition-colors"
         >
-          <Users className="w-3.5 h-3.5" />
+          <Users className="w-4 h-4" />
           Cambiar Usuario
         </Link>
         <button
           onClick={() => void setEmulation(null)}
           className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs transition-colors cursor-pointer"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="w-4 h-4" />
           Finalizar Emulación
         </button>
       </div>

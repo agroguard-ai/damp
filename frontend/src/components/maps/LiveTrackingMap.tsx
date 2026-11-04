@@ -226,7 +226,7 @@ function TrajectoryLayer({
       >
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
-            <span className="inline-block bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+            <span className="inline-block bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded text-[10px]">
               🟢 Punto de Partida
             </span>
             <h4 className="font-bold">{animalName}</h4>
@@ -250,7 +250,7 @@ function TrajectoryLayer({
           }}
         >
           <Popup>
-            <div className="p-1.5 text-xs text-zinc-900">
+            <div className="p-2 text-xs text-zinc-900">
               <p className="font-semibold" style={{ color }}>
                 {animalName} · punto intermedio
               </p>
@@ -270,7 +270,7 @@ function TrajectoryLayer({
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
               <span
-                className={`inline-block font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                className={`inline-block font-bold px-2 py-0.5 rounded text-[10px] ${
                   isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                 }`}
               >
@@ -333,21 +333,21 @@ export default function LiveTrackingMap({
 
       {/* Legend Badge Bar */}
       {(farmPolygon.length > 0 || geofences.length > 0) && (
-        <div className="absolute top-3 left-14 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-2.5 py-1 text-[11px] font-medium hidden sm:flex items-center gap-2.5 pointer-events-none shadow-sm">
+        <div className="absolute top-3 left-14 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-2 py-1 text-[11px] font-medium hidden sm:flex items-center gap-2 pointer-events-none shadow-sm">
           {farmPolygon.length > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-green-500 border border-green-600"></span>
               <span>Campo</span>
             </div>
           )}
           {geofences.some((g) => g.active !== false) && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-cyan-400 border border-cyan-500"></span>
               <span>Cerco Activo</span>
             </div>
           )}
           {geofences.some((g) => g.active === false) && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-slate-400 border border-slate-500"></span>
               <span>Cerco Desactivado</span>
             </div>
@@ -408,13 +408,13 @@ export default function LiveTrackingMap({
               }}
             >
               <Popup>
-                <div className="p-1.5 text-xs space-y-1 text-zinc-900">
-                  <div className={`flex items-center gap-1.5 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
+                <div className="p-2 text-xs space-y-1 text-zinc-900">
+                  <div className={`flex items-center gap-2 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
                     <span>⚡</span>
                     <span>{geofence.name}</span>
                   </div>
                   <span
-                    className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
                       isActive ? 'bg-cyan-100 text-cyan-800' : 'bg-zinc-200 text-zinc-700'
                     }`}
                   >

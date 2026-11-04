@@ -177,7 +177,7 @@ export default function RotationMap({
             }}
           >
             <Popup>
-              <div className="p-1.5 text-xs text-zinc-900">
+              <div className="p-2 text-xs text-zinc-900">
                 <p className="font-bold text-green-700">🌱 Campo: {farm.name ?? 'Sin nombre'}</p>
                 <p className="text-[11px] text-zinc-600">Perímetro general del establecimiento.</p>
               </div>
@@ -205,7 +205,7 @@ export default function RotationMap({
               }}
             >
               <Popup>
-                <div className="p-1.5 text-xs text-zinc-900">
+                <div className="p-2 text-xs text-zinc-900">
                   <p className="font-bold text-zinc-700">Cerco: {gf.name}</p>
                   <p className="text-[11px] text-zinc-500">Inactivo en este paso</p>
                 </div>
@@ -228,7 +228,7 @@ export default function RotationMap({
           >
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
-                <span className="inline-block bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-block bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">
                   🟢 Desde dónde partió (Paso previo)
                 </span>
                 <h4 className="font-bold text-sm">{fromGeofence?.name}</h4>
@@ -252,7 +252,7 @@ export default function RotationMap({
           >
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
-                <span className="inline-block bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-block bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-[10px]">
                   🔵 A dónde va (Próximo destino)
                 </span>
                 <h4 className="font-bold text-sm">{nextGeofence?.name}</h4>
@@ -277,7 +277,7 @@ export default function RotationMap({
           >
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
-                <span className="inline-block bg-orange-100 text-orange-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-block bg-orange-100 text-orange-800 font-bold px-2 py-0.5 rounded text-[10px]">
                   ⚡ ACTIVO AHORA (Hacienda Pastando)
                 </span>
                 <h4 className="font-bold text-sm">{currentGeofence?.name}</h4>
@@ -303,7 +303,7 @@ export default function RotationMap({
           >
             <Popup>
               <div className="p-2 text-xs space-y-1 text-zinc-900">
-                <span className="inline-block bg-cyan-100 text-cyan-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-block bg-cyan-100 text-cyan-800 font-bold px-2 py-0.5 rounded text-[10px]">
                   📡 Perímetro en Transición Gradual
                 </span>
                 <h4 className="font-bold text-sm text-cyan-900">

@@ -217,7 +217,7 @@ export default function TimeSeriesChart({
 
       {hovered && hover !== null && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 shadow-md text-[11px] whitespace-nowrap"
+          className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2 py-2 shadow-md text-[11px] whitespace-nowrap"
           style={{ left: Math.min(Math.max(xOf(hover), 60), width - 60), top: 0 }}
         >
           <div className="text-zinc-500 dark:text-zinc-400">{formatTime(hovered.t)}</div>

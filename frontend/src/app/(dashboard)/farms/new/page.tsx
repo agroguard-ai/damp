@@ -156,7 +156,7 @@ export default function NewFarmPage() {
 
   return (
     <div
-      className={`py-10 px-4 md:px-8 mx-auto space-y-8 transition-all duration-200 ${step === 2 ? 'max-w-6xl' : 'max-w-3xl'}`}
+      className={`py-10 px-page-sm md:px-frame mx-auto space-y-block transition-all duration-200 ${step === 2 ? 'max-w-6xl' : 'max-w-3xl'}`}
     >
       {/* Navigation & Header */}
       <div>
@@ -224,7 +224,7 @@ export default function NewFarmPage() {
 
           <div className="space-y-5">
             {/* Nombre del campo */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                 Nombre del Campo / Establecimiento *
               </label>
@@ -235,12 +235,12 @@ export default function NewFarmPage() {
                 value={formData.name}
                 onChange={handleTextChange}
                 placeholder="Ej: Estancia Don Silvestre, Campo Norte"
-                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
+                className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
               />
             </div>
 
             {/* Buscador de Dirección (Google Maps Argentina) */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                 Buscador de Dirección / Ubicación (Opcional)
               </label>
@@ -259,7 +259,7 @@ export default function NewFarmPage() {
             {/* Provincia y Departamento */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {/* Selector de Provincia */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Provincia *
                 </label>
@@ -276,7 +276,7 @@ export default function NewFarmPage() {
               </div>
 
               {/* Selector de Departamento / Partido */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider">
                   Departamento / Partido
                 </label>
@@ -314,7 +314,7 @@ export default function NewFarmPage() {
                 Trazá el perímetro sobre el mapa satelital. Marcá los vértices de cada esquina de tu establecimiento.
               </p>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+            <span className="text-xs font-semibold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
               {formData.name || 'Establecimiento'}
             </span>
           </div>
@@ -353,7 +353,7 @@ export default function NewFarmPage() {
               <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs space-y-4 sticky top-6">
                 {/* Header with Vertices Count & Quick Actions */}
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-                  <span className="font-bold text-xs uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                  <span className="font-bold text-xs uppercase tracking-wider text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-green-600" />
                     Vértices Colocados ({polygonPoints.length})
                   </span>
@@ -393,7 +393,7 @@ export default function NewFarmPage() {
                 </div>
 
                 {/* Real-time Calculated Surface Area */}
-                <div className="p-3.5 rounded-xl bg-green-50/60 dark:bg-green-950/20 border border-green-200/80 dark:border-green-800/40 flex items-center justify-between">
+                <div className="p-4 rounded-xl bg-green-50/60 dark:bg-green-950/20 border border-green-200/80 dark:border-green-800/40 flex items-center justify-between">
                   <div>
                     <div className="text-[11px] font-bold uppercase tracking-wider text-green-800 dark:text-green-400">
                       Superficie Calculada
@@ -427,14 +427,14 @@ export default function NewFarmPage() {
                       </span>
                     </div>
 
-                    <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
+                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1 font-mono text-[11px] text-zinc-600 dark:text-zinc-400">
                       {polygonPoints.map((pt, idx) => {
                         const isSelected = selectedVertexIndex === idx;
                         return (
                           <div
                             key={idx}
                             onClick={() => setSelectedVertexIndex(isSelected ? null : idx)}
-                            className={`flex justify-between items-center border rounded-xl px-2.5 py-2 cursor-pointer transition-all ${
+                            className={`flex justify-between items-center border rounded-xl px-2 py-2 cursor-pointer transition-all ${
                               isSelected
                                 ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 shadow-xs'
                                 : 'border-zinc-200/70 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-850/60 bg-white dark:bg-zinc-900'
@@ -460,7 +460,7 @@ export default function NewFarmPage() {
                                 Vértice #{idx + 1}
                               </span>
                               {isSelected && (
-                                <span className="text-[9px] uppercase tracking-wider font-extrabold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                                <span className="text-[9px] uppercase tracking-wider font-extrabold px-2 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
                                   Activo
                                 </span>
                               )}
@@ -483,7 +483,7 @@ export default function NewFarmPage() {
                                 }}
                                 className="text-zinc-400 hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>

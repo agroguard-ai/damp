@@ -20,7 +20,7 @@ export default function Home() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-8">
+    <div className="p-page-sm md:p-frame space-y-block">
       {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -32,7 +32,7 @@ export default function Home() {
       <KpiGrid farms={farms} alertsLength={alerts.length} loadingFarms={loadingFarms} loadingAlerts={loadingAlerts} />
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
         {/* Tus Campos */}
         <FarmsPanel farms={farms} loading={loadingFarms} />
 

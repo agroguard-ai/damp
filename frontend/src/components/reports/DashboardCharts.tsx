@@ -39,7 +39,7 @@ function AlertsByTypeChart({ data }: { data: FarmDashboard['alertsByType'] }) {
             return (
               <div key={d.type} className="space-y-1">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: style.color }} />
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: style.color }} />
                   <span className="font-medium text-zinc-700 dark:text-zinc-300">{style.label}</span>
                   <span className="ml-auto font-bold text-zinc-900 dark:text-white">{d.count}</span>
                 </div>

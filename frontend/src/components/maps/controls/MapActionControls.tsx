@@ -96,7 +96,7 @@ export default function MapActionControls({
   ];
 
   return (
-    <div ref={menuRef} className="absolute top-3 right-3 z-1000 flex flex-col gap-2.5 pointer-events-auto">
+    <div ref={menuRef} className="absolute top-3 right-3 z-1000 flex flex-col gap-2 pointer-events-auto">
       {/* 1. Fullscreen Button (Top, Round Icon Only) */}
       <button
         type="button"
@@ -166,7 +166,7 @@ export default function MapActionControls({
 
         {/* Floating Layer Dropdown Menu (Positioned to the left of the button) */}
         {isLayerMenuOpen && (
-          <div className="absolute right-12 top-0 w-64 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2.5 space-y-1.5 z-1050 animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute right-12 top-0 w-64 bg-zinc-900/95 backdrop-blur-xl border border-zinc-700/80 rounded-xl shadow-2xl p-2 space-y-2 z-1050 animate-in fade-in zoom-in-95 duration-100">
             <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2 py-0.5">Capa de Fondo</p>
             <div className="space-y-1">
               {layerOptions.map((opt) => (

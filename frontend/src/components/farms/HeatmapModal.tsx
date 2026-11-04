@@ -55,7 +55,7 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
                 key={d}
                 type="button"
                 onClick={() => setDays(d)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                   days === d
                     ? 'bg-orange-500 text-white shadow-xs'
                     : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -68,14 +68,14 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
           <div className="flex items-center gap-3 text-[11px] text-zinc-500 dark:text-zinc-400">
             {HEATMAP_LEGEND.map((item) => (
               <span key={item.label} className="flex items-center gap-1">
-                <span className={`w-2.5 h-2.5 rounded-full ${item.color}`}></span>
+                <span className={`w-2 h-2 rounded-full ${item.color}`}></span>
                 {item.label}
               </span>
             ))}
           </div>
           <span className="ml-auto text-xs text-zinc-400 flex items-center gap-2">
             {loading ? (
-              <span className="w-3.5 h-3.5 border-2 border-orange-500/20 border-t-orange-600 rounded-full animate-spin"></span>
+              <span className="w-4 h-4 border-2 border-orange-500/20 border-t-orange-600 rounded-full animate-spin"></span>
             ) : (
               `${heatmap?.totalPoints ?? 0} posiciones analizadas`
             )}
@@ -90,7 +90,7 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
               Menor valor exige más lecturas acumuladas para llegar al rojo
             </span>
           </div>
-          <div className="flex items-center gap-2.5 flex-1 sm:max-w-xs min-w-48">
+          <div className="flex items-center gap-2 flex-1 sm:max-w-xs min-w-48">
             <span className="text-[10px] text-zinc-400 shrink-0">Más detalle</span>
             <input
               type="range"
@@ -99,7 +99,7 @@ export default function HeatmapModal({ farm, onClose }: HeatmapModalProps) {
               step="5"
               value={intensityPct}
               onChange={(e) => setIntensityPct(Number(e.target.value))}
-              className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
               title="Graduar cuánto aporta cada lectura a la sumatoria del mapa de calor"
             />
             <span className="text-[10px] text-zinc-400 shrink-0">Más intenso</span>

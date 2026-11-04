@@ -130,10 +130,10 @@ export function GoogleAddressSearch({
             setShowDropdown(true);
           }}
           placeholder={placeholder}
-          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-10 pr-10 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
+          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-10 pr-10 py-2 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:ring-1 focus:ring-green-500 focus:border-green-500 transition-all text-sm"
         />
-        <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 pointer-events-none" />
-        {loading && <Loader2 className="w-4 h-4 text-green-600 animate-spin absolute right-3.5" />}
+        <Search className="w-4 h-4 text-zinc-400 absolute left-4 pointer-events-none" />
+        {loading && <Loader2 className="w-4 h-4 text-green-600 animate-spin absolute right-4" />}
       </div>
 
       {showDropdown && suggestions.length > 0 && (

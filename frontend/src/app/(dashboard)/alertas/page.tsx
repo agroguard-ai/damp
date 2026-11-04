@@ -134,11 +134,11 @@ export default function AlertasPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-8">
+    <div className="p-page-sm md:p-frame space-y-block">
       {/* Header y Selector de Campo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
             <span>Centro de Notificaciones y Salud Predictiva</span>
             {activeAlertsCount > 0 && (
               <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
@@ -184,7 +184,7 @@ export default function AlertasPage() {
               <Bell className="w-4 h-4" />
               <span>Historial de Alertas</span>
               {activeAlertsCount > 0 && (
-                <span className="bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                <span className="bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 text-[10px] px-2 py-0.2 rounded-full font-mono">
                   {activeAlertsCount}
                 </span>
               )}
@@ -200,7 +200,7 @@ export default function AlertasPage() {
             >
               <BrainCircuit className="w-4 h-4 text-purple-600" />
               <span>Salud Predictiva (Machine Learning)</span>
-              <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-mono px-1.5 py-0.2 rounded font-semibold">
+              <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-mono px-2 py-0.2 rounded font-semibold">
                 CU014
               </span>
             </button>
@@ -212,9 +212,9 @@ export default function AlertasPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 {/* Barra de Filtros */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Origen de Alerta */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Origen / Fuente
                     </label>
@@ -232,7 +232,7 @@ export default function AlertasPage() {
                   </div>
 
                   {/* Animal */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Animal</label>
                     <Select
                       value={String(filters.animalId)}
@@ -249,7 +249,7 @@ export default function AlertasPage() {
                   </div>
 
                   {/* Tipo */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Tipo de Evento
                     </label>
@@ -267,7 +267,7 @@ export default function AlertasPage() {
                   </div>
 
                   {/* Estado */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Estado de Resolución
                     </label>
@@ -326,7 +326,7 @@ export default function AlertasPage() {
                             }`}
                           >
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                              <div className="space-y-1.5 flex-1">
+                              <div className="space-y-2 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   {/* Badge de Origen */}
                                   {isMl ? (
@@ -358,7 +358,7 @@ export default function AlertasPage() {
 
                                   {/* Horizonte futuro */}
                                   {isMl && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded text-zinc-500 flex items-center gap-1">
+                                    <span className="text-[10px] px-2 py-0.5 rounded text-zinc-500 flex items-center gap-1">
                                       <Clock className="w-3 h-3" />
                                       <span>Próximas 6hs</span>
                                     </span>
@@ -404,7 +404,7 @@ export default function AlertasPage() {
                                 <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 pt-2 sm:pt-0">
                                   <button
                                     onClick={() => handleResolve(a.id)}
-                                    className="px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors"
+                                    className="px-2 py-2 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors"
                                   >
                                     Marcar resuelta
                                   </button>
@@ -412,7 +412,7 @@ export default function AlertasPage() {
                                   {/* Botón Marcar Falso Positivo (CU014) */}
                                   <button
                                     onClick={() => setSelectedAlertForFalsePositive(a)}
-                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1"
+                                    className="px-2 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1"
                                     title="Marca la alerta como falso positivo para incorporar feedback en el reentrenamiento"
                                   >
                                     <AlertTriangle className="w-3 h-3" />
@@ -443,7 +443,7 @@ export default function AlertasPage() {
                   </div>
                   <form onSubmit={handleSaveSettings} className="space-y-4">
                     <fieldset disabled={!canConfigureAlerts} className="space-y-4 disabled:opacity-70">
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2">
                         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           Umbral de fiebre (°C)
                         </label>
@@ -454,10 +454,10 @@ export default function AlertasPage() {
                           onChange={(e) =>
                             setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })
                           }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
                         />
                       </div>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2">
                         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           Umbral de hipotermia (°C)
                         </label>
@@ -468,10 +468,10 @@ export default function AlertasPage() {
                           onChange={(e) =>
                             setSettingsForm({ ...effectiveSettingsForm, hypothermiaThreshold: e.target.value })
                           }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
                         />
                       </div>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2">
                         <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                           Inactividad (minutos)
                         </label>
@@ -481,7 +481,7 @@ export default function AlertasPage() {
                           onChange={(e) =>
                             setSettingsForm({ ...effectiveSettingsForm, inactivityMinutes: e.target.value })
                           }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3.5 py-2 text-zinc-900 dark:text-white text-sm"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
                         />
                       </div>
                       <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
@@ -511,7 +511,7 @@ export default function AlertasPage() {
                       <button
                         type="submit"
                         disabled={savingSettings}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-all focus:outline-none disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl shadow-xs transition-all focus:outline-none disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm"
                       >
                         {savingSettings ? (
                           <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />

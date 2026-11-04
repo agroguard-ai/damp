@@ -287,13 +287,13 @@ export function AdminUserList() {
       {/* Top Header Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
             <Users className="w-7 h-7 text-purple-600 dark:text-purple-400" />
             Usuarios de la Plataforma
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
+          <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-2 rounded-full border border-zinc-200 dark:border-zinc-700">
             Total: {meta ? meta.totalItems : users.length}
           </span>
           <button
@@ -301,7 +301,7 @@ export function AdminUserList() {
               setCreatedCredentials(null);
               setIsModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             Nuevo Usuario
@@ -328,9 +328,9 @@ export function AdminUserList() {
             </div>
             <button
               onClick={handleCopyCredentials}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer shrink-0"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer shrink-0"
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? '¡Copiado!' : 'Copiar Credenciales'}
             </button>
           </div>
@@ -340,15 +340,15 @@ export function AdminUserList() {
           <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-300">
             <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-400 uppercase font-semibold text-xs border-b border-zinc-200 dark:border-zinc-800">
               <tr>
-                <th className="px-6 py-3.5">Nombre / Usuario</th>
-                <th className="px-6 py-3.5">Email</th>
-                <th className="px-6 py-3.5">Estado</th>
-                <th className="px-6 py-3.5">Collares Contratados</th>
-                <th className="px-6 py-3.5">Campos</th>
-                <th className="px-6 py-3.5">Rol Global</th>
-                <th className="px-6 py-3.5">Estado Clave</th>
-                <th className="px-6 py-3.5">Fecha Alta</th>
-                <th className="px-6 py-3.5 text-right">Acciones</th>
+                <th className="px-6 py-4">Nombre / Usuario</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">Estado</th>
+                <th className="px-6 py-4">Collares Contratados</th>
+                <th className="px-6 py-4">Campos</th>
+                <th className="px-6 py-4">Rol Global</th>
+                <th className="px-6 py-4">Estado Clave</th>
+                <th className="px-6 py-4">Fecha Alta</th>
+                <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -371,13 +371,13 @@ export function AdminUserList() {
                     {/* Estado Badge */}
                     <td className="px-6 py-4">
                       {u.isActive ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                        <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20">
+                          <span className="w-2 h-2 rounded-full bg-green-500" />
                           Activo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20">
-                          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                        <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20">
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                           Suspendido
                         </span>
                       )}
@@ -392,8 +392,8 @@ export function AdminUserList() {
                         <span className="text-xs text-zinc-400 dark:text-zinc-500 italic">—</span>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1.5 font-mono text-xs">
-                            <Radio className="w-3.5 h-3.5 text-zinc-400" />
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <Radio className="w-4 h-4 text-zinc-400" />
                             <span
                               className={`font-bold ${
                                 isLimitReached
@@ -414,7 +414,7 @@ export function AdminUserList() {
                             className="p-1 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors cursor-pointer"
                             title="Editar cupo de collares"
                           >
-                            <Sliders className="w-3.5 h-3.5" />
+                            <Sliders className="w-4 h-4" />
                           </button>
                         </div>
                       )}
@@ -427,7 +427,7 @@ export function AdminUserList() {
                     <td className="px-6 py-4">
                       {u.globalRole === 'USER' ? (
                         <span
-                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
                           title="Operador o lector: lo gestiona su administrador de campos desde Personal"
                         >
                           Personal de campo
@@ -445,13 +445,13 @@ export function AdminUserList() {
 
                     <td className="px-6 py-4">
                       {u.mustChangePassword ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                          <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
                           Provisional
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
-                          <ShieldCheck className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+                          <ShieldCheck className="w-4 h-4 text-green-500 shrink-0" />
                           Clave definitiva
                         </span>
                       )}
@@ -468,7 +468,7 @@ export function AdminUserList() {
                         <button
                           onClick={() => void handleStatusToggle(u)}
                           disabled={updatingId === u.id}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer disabled:opacity-50 ${
+                          className={`inline-flex items-center gap-1 px-2 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer disabled:opacity-50 ${
                             u.isActive
                               ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/60'
                               : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
@@ -477,12 +477,12 @@ export function AdminUserList() {
                         >
                           {u.isActive ? (
                             <>
-                              <Ban className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                              <Ban className="w-4 h-4 text-red-600 dark:text-red-400" />
                               Suspender
                             </>
                           ) : (
                             <>
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                               Reactivar
                             </>
                           )}
@@ -493,14 +493,14 @@ export function AdminUserList() {
                           <button
                             onClick={() => void handleStartEmulation(u.id)}
                             disabled={!u.isActive}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="inline-flex items-center gap-1 px-2 py-2 rounded-xl text-xs font-semibold bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             title={
                               u.isActive
                                 ? `Emular a ${u.name || u.email} e interactuar en su nombre`
                                 : 'No se puede emular una cuenta suspendida'
                             }
                           >
-                            <Eye className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            <Eye className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                             Emular
                           </button>
                         ) : (
@@ -553,7 +553,7 @@ export function AdminUserList() {
             </div>
 
             <form onSubmit={handleSaveCollarLimit} className="space-y-4">
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   Cantidad de collares contratados
                 </label>
@@ -563,7 +563,7 @@ export function AdminUserList() {
                   min={editingCollarUser.assignedCollarsCount ?? 0}
                   value={collarLimitInput}
                   onChange={(e) => setCollarLimitInput(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono"
                 />
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   Collares actualmente asignados a sus campos:{' '}
@@ -574,7 +574,7 @@ export function AdminUserList() {
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setEditingCollarUser(null)}
@@ -600,7 +600,7 @@ export function AdminUserList() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-zinc-200 dark:border-zinc-800 space-y-5">
             <div className="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-3">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <div className="p-2 bg-green-500/10 rounded-xl text-green-600 dark:text-green-400 border border-green-500/20">
                   <UserPlus className="w-5 h-5" />
                 </div>
@@ -627,7 +627,7 @@ export function AdminUserList() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Ej: Agropecuaria El Ombú"
-                  className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800/90 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800/90 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
 
@@ -639,7 +639,7 @@ export function AdminUserList() {
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="contacto@elombu.com"
-                  className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800/90 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800/90 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
               </div>
 
@@ -664,7 +664,7 @@ export function AdminUserList() {
                     value={formMaxCollars}
                     onChange={(e) => setFormMaxCollars(parseInt(e.target.value, 10) || 0)}
                     placeholder="Ej: 25"
-                    className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono"
+                    className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono"
                   />
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                     Cantidad de collares habilitados para asignar a sus establecimientos.
@@ -682,14 +682,14 @@ export function AdminUserList() {
                   onChange={(e) => setFormPassword(e.target.value)}
                   placeholder="Dejar vacío para generar automáticamente"
                   minLength={8}
-                  className="w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 font-mono"
                 />
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   El cliente deberá cambiar esta clave obligatoriamente la primera vez que inicie sesión.
                 </p>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

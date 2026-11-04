@@ -28,7 +28,7 @@ export function SignalStrength({ rssi, snr }: SignalStrengthProps) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5"
+      className="inline-flex items-center gap-2"
       title={`RSSI: ${rssi} dBm${snr !== null && snr !== undefined ? ` · SNR: ${snr} dB` : ''}`}
     >
       <span className="flex items-end gap-0.5 h-3">

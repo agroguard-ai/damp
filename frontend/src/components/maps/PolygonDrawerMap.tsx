@@ -432,7 +432,7 @@ export default function PolygonDrawerMap({
             {points.length} {points.length === 1 ? 'vértice' : 'vértices'} trazados
           </span>
           {selectedIndex !== null && (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-300 dark:border-amber-800/60">
+            <span className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-300 dark:border-amber-800/60">
               Vértice #{selectedIndex + 1} activo para inserción
               <button
                 type="button"
@@ -451,10 +451,10 @@ export default function PolygonDrawerMap({
             type="button"
             onClick={handleUndo}
             disabled={points.length === 0 && historyRef.current.length === 0}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
             title="Deshacer última acción (Ctrl + Z)"
           >
-            <Undo2 className="w-3.5 h-3.5" />
+            <Undo2 className="w-4 h-4" />
             <span>Deshacer</span>
             <kbd className="hidden sm:inline-block ml-1 px-1 py-0.2 bg-zinc-100 dark:bg-zinc-800 text-[10px] rounded text-zinc-400">
               Ctrl+Z
@@ -465,19 +465,19 @@ export default function PolygonDrawerMap({
             type="button"
             onClick={handleRedo}
             disabled={futureRef.current.length === 0}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1 px-2 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
             title="Rehacer acción (Ctrl + Y)"
           >
-            <Redo2 className="w-3.5 h-3.5" />
+            <Redo2 className="w-4 h-4" />
           </button>
 
           <button
             type="button"
             onClick={handleClear}
             disabled={points.length === 0}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-40 transition-colors font-medium cursor-pointer"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
             Limpiar polígono
           </button>
         </div>
