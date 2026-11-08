@@ -32,12 +32,12 @@ export function Hero() {
       <div aria-hidden className="pointer-events-none absolute -top-24 -left-32 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-primary-500/20 blur-3xl" />
       <div aria-hidden className="pointer-events-none absolute -top-10 right-0 w-72 sm:w-md h-80 sm:h-112 rounded-full bg-secondary-400/20 blur-3xl" />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-6 pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-28 lg:pb-32">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div ref={contentRef}>
+      <div className="relative mx-auto max-w-7xl px-page-sm sm:px-page pt-12 pb-16 sm:pt-20 sm:pb-24 lg:pt-28 lg:pb-32">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          <div ref={contentRef} className="lg:col-span-6">
             <h1
               data-reveal-item
-              className="mt-4 font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]"
+              className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]"
             >
               Monitoreá tu ganado{' '}
               <span className="bg-linear-to-r from-primary-700 via-primary-600 to-secondary-600 bg-clip-text text-transparent">
@@ -51,35 +51,36 @@ export function Hero() {
               animal, cómo está su salud y te enterés de un problema antes de que sea grave.
             </p>
 
-            <div data-reveal-item className="mt-9 flex flex-wrap items-center gap-4">
+            <div data-reveal-item className="mt-8 flex flex-wrap items-center gap-4">
               <a
                 href="mailto:ventas@damp.com"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-all shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-all shadow-md hover:shadow-lg"
               >
                 Solicitar Demo
               </a>
               <Link
                 href="/arquitectura"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors text-foreground"
+                className="inline-flex items-center gap-2 px-6 py-4 rounded-xl text-sm font-semibold border border-border bg-surface hover:bg-surface-raised transition-colors text-foreground"
               >
                 <Cpu className="w-4 h-4 text-primary-600" />
                 Ver arquitectura técnica
               </Link>
             </div>
 
-            <div data-reveal-item className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
-              <span className="inline-flex items-center gap-1.5">
+            <div data-reveal-item className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
+              <span className="inline-flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-primary-600" />
                 Sin tarjeta de crédito
               </span>
-              <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-primary-600" />
                 Configuración en minutos
               </span>
             </div>
           </div>
 
-          <div ref={mockupRef}>
+          {/* shortcut: el mockup interno sigue en pasos de 4px; es un facsímil denso, no la grilla de la página */}
+          <div ref={mockupRef} className="lg:col-span-6">
             <HeroMockup />
           </div>
         </div>

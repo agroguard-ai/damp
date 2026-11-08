@@ -375,33 +375,33 @@ export default function FenceMap({
       />
 
       {/* Legend Badge Bar */}
-      <div className="absolute top-4 left-4 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-3 py-1.5 shadow-md flex flex-wrap items-center gap-3 text-[11px] font-medium pointer-events-none">
+      <div className="absolute top-4 left-4 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-3 py-2 shadow-md flex flex-wrap items-center gap-3 text-[11px] font-medium pointer-events-none">
         {farmPolygon.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-green-500 border border-green-600"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-green-500 border border-green-600"></span>
             <span>Campo</span>
           </div>
         )}
         {geofences.some((g) => g.active !== false) && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-cyan-400 border border-cyan-500"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-cyan-400 border border-cyan-500"></span>
             <span>Cerco Activo</span>
           </div>
         )}
         {geofences.some((g) => g.active === false) && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-slate-400 border border-slate-500"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-slate-400 border border-slate-500"></span>
             <span>Cerco Desactivado</span>
           </div>
         )}
         {newPoints.length > 0 && (
-          <div className="flex items-center gap-1.5 text-blue-300">
-            <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 border border-blue-400"></span>
+          <div className="flex items-center gap-2 text-blue-300">
+            <span className="w-2 h-2 rounded-sm bg-blue-500 border border-blue-400"></span>
             <span>Nuevo trazado ({newPoints.length} pts)</span>
           </div>
         )}
         {selectedIndex !== null && (
-          <div className="flex items-center gap-1.5 text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-400/40">
+          <div className="flex items-center gap-2 text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-400/40">
             <span>● Vértice #{selectedIndex + 1} activo para insertar</span>
           </div>
         )}

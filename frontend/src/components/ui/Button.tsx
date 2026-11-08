@@ -32,9 +32,9 @@ const variantStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 text-xs rounded-md gap-1.5 font-medium',
+  sm: 'px-3 py-2 text-xs rounded-md gap-2 font-medium',
   md: 'px-4 py-2 text-sm rounded-lg gap-2 font-medium',
-  lg: 'px-5 py-3 text-base rounded-xl gap-2.5 font-semibold',
+  lg: 'px-5 py-3 text-base rounded-xl gap-2 font-semibold',
 };
 
 export function Button({
@@ -56,9 +56,9 @@ export function Button({
 
   const content = (
     <>
-      {Icon && iconPosition === 'left' && <Icon className={`${size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} shrink-0`} />}
+      {Icon && iconPosition === 'left' && <Icon className="w-4 h-4 shrink-0" />}
       {children || label}
-      {Icon && iconPosition === 'right' && <Icon className={`${size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'} shrink-0`} />}
+      {Icon && iconPosition === 'right' && <Icon className="w-4 h-4 shrink-0" />}
     </>
   );
 

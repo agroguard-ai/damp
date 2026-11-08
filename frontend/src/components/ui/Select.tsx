@@ -6,7 +6,7 @@ import { ChevronDown, Check, Search } from 'lucide-react';
 
 const MENU_MAX_HEIGHT = 280;
 const MENU_MIN_WIDTH = 176;
-const MENU_GAP = 6;
+const MENU_GAP = 8;
 
 interface MenuPosition {
   left: number;
@@ -183,13 +183,13 @@ export function Select({
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs rounded-lg',
-    md: 'px-3.5 py-2.5 text-sm rounded-xl',
+    sm: 'px-3 py-2 text-xs rounded-lg',
+    md: 'px-4 py-2 text-sm rounded-xl',
     lg: 'px-4 py-3 text-base rounded-xl',
   }[size];
 
   return (
-    <div className={`relative flex flex-col gap-1.5 ${className}`} ref={containerRef}>
+    <div className={`relative flex flex-col gap-2 ${className}`} ref={containerRef}>
       {label && (
         <label
           htmlFor={selectId}
@@ -238,7 +238,7 @@ export function Select({
               : 'bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100/80 dark:hover:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-white shadow-xs'
         } ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}`}
       >
-        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
           {selectedOption?.icon && (
             <selectedOption.icon className="w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400" />
           )}
@@ -276,21 +276,21 @@ export function Select({
             {searchable && (
               <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/50">
                 <div className="relative flex items-center">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 text-zinc-400 pointer-events-none" />
+                  <Search className="w-4 h-4 absolute left-2 text-zinc-400 pointer-events-none" />
                   <input
                     ref={searchInputRef}
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={searchPlaceholder}
-                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
+                    className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-8 pr-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
                   />
                 </div>
               </div>
             )}
 
             {/* Options List */}
-            <div className="max-h-[260px] overflow-y-auto p-1.5 space-y-0.5" role="listbox" id={`${selectId}-listbox`}>
+            <div className="max-h-[260px] overflow-y-auto p-2 space-y-0.5" role="listbox" id={`${selectId}-listbox`}>
               {filteredOptions.length === 0 ? (
                 <div className="px-3 py-4 text-center text-xs text-zinc-400 dark:text-zinc-500">
                   No se encontraron opciones
@@ -317,7 +317,7 @@ export function Select({
                           : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                       } ${opt.disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                         {opt.icon && (
                           <opt.icon
                             className={`w-4 h-4 shrink-0 ${
@@ -329,7 +329,7 @@ export function Select({
                           <div className="flex items-center gap-2">
                             <span className="truncate">{opt.label}</span>
                             {opt.badge && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded font-medium shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
+                              <span className="text-[10px] px-2 py-0.2 rounded font-medium shrink-0 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
                                 {opt.badge}
                               </span>
                             )}

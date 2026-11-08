@@ -1,0 +1,14 @@
+/* Ritmo de pantalla. Base 8px; 4px y 2px solo como mitad y cuarto.
+   Las tablas, badges y el mapa usan la mitad (4px) porque son densos. */
+@theme {
+  --spacing-page-sm: 1rem; /* 16 — margen en mobile */
+  --spacing-page: 1.5rem; /* 24 */
+  --spacing-frame: 2rem; /* 32 — margen de una pantalla de la app */
+  --spacing-stack-tight: 0.5rem; /* 8 — ceja ↔ título, label ↔ campo */
+  --spacing-stack: 1rem; /* 16 — título ↔ texto */
+  --spacing-gutter: 1.5rem; /* 24 — entre columnas o bloques de un listado */
+  --spacing-block: 2rem; /* 32 — entre regiones de un panel */
+  --spacing-group: 3rem; /* 48 — entre grupos */
+  --spacing-section-sm: 4rem; /* 64 — sección en mobile */
+  --spacing-section: 6rem; /* 96 — sección en desktop */
+}

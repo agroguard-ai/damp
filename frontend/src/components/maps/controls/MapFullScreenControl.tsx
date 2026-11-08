@@ -38,7 +38,7 @@ export default function MapFullScreenControl({ targetRef }: MapFullScreenControl
       <button
         type="button"
         onClick={toggleFullscreen}
-        className="flex items-center gap-1.5 bg-zinc-900/85 backdrop-blur-md hover:bg-zinc-900 text-white p-2 sm:px-3 sm:py-2 rounded-xl shadow-lg border border-white/15 text-xs font-semibold transition-all cursor-pointer"
+        className="flex items-center gap-2 bg-zinc-900/85 backdrop-blur-md hover:bg-zinc-900 text-white p-2 sm:px-3 sm:py-2 rounded-xl shadow-lg border border-white/15 text-xs font-semibold transition-all cursor-pointer"
         title={isFullscreen ? 'Salir de Pantalla Completa' : 'Pantalla Completa'}
       >
         {isFullscreen ? (

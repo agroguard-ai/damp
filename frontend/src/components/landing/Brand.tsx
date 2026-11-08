@@ -64,9 +64,9 @@ export function DampLogo({ className = 'w-6 h-6' }: { className?: string }) {
   );
 }
 
-export function Brand({ className = '', logoClassName = 'w-7 h-7' }: { className?: string; logoClassName?: string }) {
+export function Brand({ className = '', logoClassName = 'w-8 h-8' }: { className?: string; logoClassName?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 font-bold tracking-tight ${className}`}>
+    <span className={`inline-flex items-center gap-2 font-bold tracking-tight ${className}`}>
       <DampLogo className={logoClassName} />
       <span>
         DAMP <span className="text-primary-700">Agro</span>

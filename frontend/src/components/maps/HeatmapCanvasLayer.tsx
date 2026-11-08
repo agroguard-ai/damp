@@ -251,7 +251,7 @@ export default function HeatmapCanvasLayer({ points, intensity = 0.55 }: Heatmap
             }}
           >
             <Popup>
-              <div className="p-1.5 text-xs text-zinc-900">
+              <div className="p-2 text-xs text-zinc-900">
                 <p className="font-bold">{intensityLabel}</p>
                 <p className="text-[11px] text-zinc-600 mt-0.5">
                   Frecuencia: <b>{cell.count}</b> lecturas en este sector ({Math.round(ratio * 100)}% de intensidad)

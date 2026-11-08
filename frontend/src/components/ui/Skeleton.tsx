@@ -12,12 +12,12 @@ export function SkeletonCard() {
     <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm space-y-4">
       <div className="flex justify-between items-start">
         <div className="space-y-2">
-          <Skeleton className="h-2.5 w-24" />
+          <Skeleton className="h-2 w-24" />
           <Skeleton className="h-4 w-36" />
         </div>
         <Skeleton className="h-5 w-16 rounded-full" />
       </div>
-      <div className="space-y-2.5 border-t border-zinc-100 dark:border-zinc-800 pt-4">
+      <div className="space-y-2 border-t border-zinc-100 dark:border-zinc-800 pt-4">
         <div className="flex justify-between">
           <Skeleton className="h-3 w-16" />
           <Skeleton className="h-3 w-12" />

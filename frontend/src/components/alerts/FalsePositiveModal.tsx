@@ -67,7 +67,7 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
         </div>
 
         {/* Info de la alerta */}
-        <div className="bg-zinc-50 dark:bg-zinc-950 p-3.5 rounded-xl border border-zinc-200/70 dark:border-zinc-800 space-y-1 text-xs">
+        <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200/70 dark:border-zinc-800 space-y-1 text-xs">
           <p className="font-semibold text-zinc-900 dark:text-white">
             Animal: {alert.animal?.tag || `ID: ${alert.animalId.slice(0, 8)}`}
           </p>
@@ -76,7 +76,7 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
         </div>
 
         {/* Explicación de reentrenamiento CU014 */}
-        <div className="flex items-start gap-2.5 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 p-3 rounded-xl text-xs text-blue-800 dark:text-blue-300">
+        <div className="flex items-start gap-2 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 p-3 rounded-xl text-xs text-blue-800 dark:text-blue-300">
           <BrainCircuit className="w-4 h-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
           <p>
             Al marcar esta alerta como falso positivo, el sistema guarda este feedback junto con la ventana de
@@ -85,7 +85,7 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label className="font-semibold text-zinc-700 dark:text-zinc-300">
               Motivo principal del falso positivo:
             </label>
@@ -97,7 +97,7 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label className="font-semibold text-zinc-700 dark:text-zinc-300">
               Observaciones adicionales del operario o veterinario (opcional):
             </label>
@@ -106,29 +106,29 @@ export default function FalsePositiveModal({ alert, isOpen, onClose, onSuccess }
               value={customNotes}
               onChange={(e) => setCustomNotes(e.target.value)}
               placeholder="Ej: Se midió temperatura rectal de 38.6°C, el animal come con normalidad..."
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2.5 text-zinc-900 dark:text-white text-xs focus:ring-1 focus:ring-amber-500"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2 text-zinc-900 dark:text-white text-xs focus:ring-1 focus:ring-amber-500"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-3.5 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium cursor-pointer"
+              className="px-4 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-medium cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-4 h-4" />
                   <span>Guardar Feedback</span>
                 </>
               )}

@@ -72,7 +72,7 @@ export default function PredictionInputsModal({ predictionId, onClose }: Predict
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5" />
@@ -112,7 +112,7 @@ export default function PredictionInputsModal({ predictionId, onClose }: Predict
               </div>
 
               <section className="space-y-2">
-                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
                   <Thermometer className="w-4 h-4 text-zinc-400" />
                   Temperatura corporal (promedio por bloque de 30 min)
                 </h3>
@@ -126,7 +126,7 @@ export default function PredictionInputsModal({ predictionId, onClose }: Predict
               </section>
 
               <section className="space-y-2">
-                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
                   <Footprints className="w-4 h-4 text-zinc-400" />
                   Distancia recorrida (metros por bloque de 30 min)
                 </h3>
@@ -154,10 +154,10 @@ export default function PredictionInputsModal({ predictionId, onClose }: Predict
                   <table className="w-full text-left">
                     <thead className="sticky top-0 bg-zinc-50 dark:bg-zinc-950 text-zinc-500">
                       <tr>
-                        <th className="px-3 py-1.5 font-semibold">Bloque</th>
-                        <th className="px-3 py-1.5 font-semibold text-right">Temperatura</th>
-                        <th className="px-3 py-1.5 font-semibold text-right">Distancia</th>
-                        <th className="px-3 py-1.5 font-semibold">Datos</th>
+                        <th className="px-3 py-2 font-semibold">Bloque</th>
+                        <th className="px-3 py-2 font-semibold text-right">Temperatura</th>
+                        <th className="px-3 py-2 font-semibold text-right">Distancia</th>
+                        <th className="px-3 py-2 font-semibold">Datos</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 text-zinc-700 dark:text-zinc-300">

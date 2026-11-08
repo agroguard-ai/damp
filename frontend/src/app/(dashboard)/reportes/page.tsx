@@ -47,7 +47,7 @@ export default function ReportesPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 space-y-8">
+    <div className="p-page-sm md:p-frame space-y-block">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">Reportes y Exportaciones</h1>
         <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
@@ -66,7 +66,7 @@ export default function ReportesPage() {
           {dashboard && <DashboardCharts data={dashboard} />}
 
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Establecimiento</label>
               <Select
                 value={String(activeFarmId)}
@@ -74,7 +74,7 @@ export default function ReportesPage() {
                 options={[...farms.map((farm) => ({ value: String(farm.id), label: String(farm.name) }))]}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Desde (opcional)</label>
               <input
                 type="date"
@@ -83,7 +83,7 @@ export default function ReportesPage() {
                 className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-zinc-550 uppercase tracking-wider">Hasta (opcional)</label>
               <input
                 type="date"

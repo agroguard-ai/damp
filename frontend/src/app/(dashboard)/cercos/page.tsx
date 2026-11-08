@@ -212,12 +212,12 @@ function CercosContent() {
       <div>
         <Link
           href="/farms"
-          className="inline-flex items-center gap-1.5 mb-1 text-xs font-semibold text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+          className="inline-flex items-center gap-2 mb-1 text-xs font-semibold text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4 h-4" />
           <span>Volver a Campos</span>
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
           <Zap className="w-6 h-6 text-green-600 dark:text-green-500" />
           Cercos
         </h1>
@@ -252,7 +252,7 @@ function CercosContent() {
 
   if (farms.length === 0) {
     return (
-      <div className="p-6 md:p-8 space-y-6">
+      <div className="p-page-sm md:p-frame space-y-gutter">
         {header}
         <EmptyFarmState />
       </div>
@@ -260,7 +260,7 @@ function CercosContent() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-page-sm md:p-frame space-y-gutter">
       {header}
 
       {/* Cercos vs Pastoreo rotativo (CU012) — oculto hasta habilitar FEATURES.grazingRotation */}
@@ -269,25 +269,25 @@ function CercosContent() {
           <button
             type="button"
             onClick={() => setActiveTab('fences')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'fences'
                 ? 'bg-white dark:bg-zinc-900 text-cyan-700 dark:text-cyan-400 shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
+            <Zap className="w-4 h-4" />
             <span>Cercos ({geofences.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('rotation')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'rotation'
                 ? 'bg-white dark:bg-zinc-900 text-orange-600 dark:text-orange-400 shadow-xs'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <RotateCw className="w-3.5 h-3.5" />
+            <RotateCw className="w-4 h-4" />
             <span>Pastoreo rotativo</span>
           </button>
         </div>
@@ -336,7 +336,7 @@ function CercosContent() {
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
+                  className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition-colors cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   Nuevo cerco
@@ -380,7 +380,7 @@ function CercosContent() {
                           <td className="py-4 pr-4">
                             <span className="flex items-center gap-2 font-semibold">
                               <Zap
-                                className={`w-3.5 h-3.5 shrink-0 ${fence.active ? 'text-cyan-500' : 'text-zinc-400'}`}
+                                className={`w-4 h-4 shrink-0 ${fence.active ? 'text-cyan-500' : 'text-zinc-400'}`}
                               />
                               <span
                                 className={fence.active ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}
@@ -396,14 +396,14 @@ function CercosContent() {
 
                           <td className="py-4 px-4">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold ${
+                              className={`inline-flex items-center gap-2 px-2 py-0.5 rounded-full text-xs font-semibold ${
                                 fence.active
                                   ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700/60'
                                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
                               }`}
                             >
                               <span
-                                className={`w-1.5 h-1.5 rounded-full ${fence.active ? 'bg-cyan-500' : 'bg-zinc-400'}`}
+                                className={`w-2 h-2 rounded-full ${fence.active ? 'bg-cyan-500' : 'bg-zinc-400'}`}
                               ></span>
                               {fence.active ? 'Activo' : 'Desactivado'}
                             </span>
@@ -428,13 +428,13 @@ function CercosContent() {
                             </Link>
                           </td>
 
-                          <td className="py-4 pl-4 text-right whitespace-nowrap space-x-1.5">
+                          <td className="py-4 pl-4 text-right whitespace-nowrap space-x-2">
                             {canEdit && (
                               <>
                                 <button
                                   type="button"
                                   onClick={() => openEditModal(fence)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-cyan-700 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-cyan-700 dark:hover:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
                                   title="Editar nombre, pastura o perímetro del cerco"
                                 >
                                   <Edit3 className="w-3 h-3" />
@@ -444,7 +444,7 @@ function CercosContent() {
                                   <button
                                     type="button"
                                     onClick={() => handleDeactivate(fence.id, fence.name)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 border border-red-200 dark:border-red-900/40 transition-colors cursor-pointer"
                                     title="Desactivar cerco eléctrico"
                                   >
                                     <Power className="w-3 h-3" />
@@ -454,7 +454,7 @@ function CercosContent() {
                                   <button
                                     type="button"
                                     onClick={() => handleActivate(fence.id, fence.name)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 transition-colors cursor-pointer"
                                     title="Activar cerco eléctrico"
                                   >
                                     <Power className="w-3 h-3" />
@@ -518,7 +518,7 @@ function CercosContent() {
           onClose={() => setFenceModal(null)}
           onSubmit={handleSaveFence}
         >
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <label
               htmlFor="fence-pasture"
               className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider"
@@ -531,12 +531,12 @@ function CercosContent() {
               value={pastureType}
               onChange={(e) => setPastureType(e.target.value)}
               placeholder="Ej: Alfalfa, Trébol, Pasto natural"
-              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-600 text-sm"
+              className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-zinc-900 dark:white focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-600 text-sm"
             />
           </div>
 
           {fenceModal.mode === 'edit' && !fenceModal.fence.active && (
-            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 cursor-pointer">
+            <label className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 cursor-pointer">
               <input
                 type="checkbox"
                 checked={activateOnSave}
@@ -557,8 +557,8 @@ function CercosContent() {
           {fenceModal.mode === 'create' && (
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
-                  <Radio className="w-3.5 h-3.5 text-cyan-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-cyan-500" />
                   Hacienda{' '}
                   <span className="normal-case font-normal text-zinc-400">
                     ({selectedAnimalIds.length} de {animalsWithCollar.length})
@@ -581,13 +581,13 @@ function CercosContent() {
                   Hacienda.
                 </p>
               ) : (
-                <div className="max-h-40 overflow-y-auto space-y-1 p-1.5 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+                <div className="max-h-40 overflow-y-auto space-y-1 p-2 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
                   {animalsWithCollar.map((a) => {
                     const isSelected = selectedAnimalIds.includes(a.id);
                     return (
                       <label
                         key={a.id}
-                        className={`flex items-center gap-2.5 p-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                        className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors cursor-pointer ${
                           isSelected
                             ? 'bg-cyan-500/15 text-cyan-900 dark:text-cyan-200 font-semibold'
                             : 'hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300'
@@ -597,7 +597,7 @@ function CercosContent() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleAnimal(a.id)}
-                          className="accent-cyan-600 w-3.5 h-3.5 cursor-pointer"
+                          className="accent-cyan-600 w-4 h-4 cursor-pointer"
                         />
                         <span className="truncate flex-1">
                           {a.tag ? `Caravana ${a.tag}` : `Animal #${a.id.slice(0, 8)}`}

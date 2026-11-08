@@ -29,11 +29,11 @@ export function Founders() {
   const gridRef = useScrollReveal<HTMLDivElement>({ stagger: 0.1 });
 
   return (
-    <section id="equipo" className="mx-auto max-w-7xl px-6 py-24 scroll-mt-20">
+    <section id="equipo" className="mx-auto max-w-7xl px-page-sm sm:px-page py-section-sm sm:py-section scroll-mt-20">
       <div>
-        <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">Quiénes somos?</h2>
+        <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">Quiénes somos?</h2>
 
-        <div className="mt-6 space-y-4 text-muted text-lg leading-relaxed">
+        <div className="mt-stack space-y-stack text-muted text-lg leading-relaxed">
           <p>Somos Matías Luhmann, Santino Cataldi y Tomás Wardoloff. Tres estudiantes de Ingeniería en Sistemas</p>
           <p>
             Entendemos que para un productor o administrador, nada importa más que la tranquilidad de saber que su
@@ -47,7 +47,7 @@ export function Founders() {
         </div>
       </div>
 
-      <div className="mt-12 relative w-full h-64 sm:h-96 lg:h-120 rounded-2xl overflow-hidden border border-border shadow-lg bg-surface-raised">
+      <div className="mt-group relative w-full h-64 sm:h-96 lg:h-120 rounded-2xl overflow-hidden border border-border shadow-lg bg-surface-raised">
         <Image
           src="/pictures/grupo.jpeg"
           alt="Fotografía del equipo fundador de DAMP Agro: Matías, Santino y Tomás"
@@ -61,7 +61,7 @@ export function Founders() {
 
       <div
         ref={gridRef}
-        className="mt-12 grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border rounded-2xl border border-border overflow-hidden shadow-xs bg-surface"
+        className="mt-group grid sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border rounded-2xl border border-border overflow-hidden shadow-xs bg-surface"
       >
         {founders.map((founder, index) => (
           <div
@@ -83,21 +83,21 @@ export function Founders() {
                 className="object-cover"
               />
             </div>
-            <h3 className="mt-3 font-semibold text-lg text-foreground">{founder.name}</h3>
-            <div className="mt-3 flex items-center justify-center gap-3">
+            <h3 className="mt-stack-tight font-semibold text-lg text-foreground">{founder.name}</h3>
+            <div className="mt-stack flex items-center justify-center gap-4">
               <a
                 href={founder.linkedin}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Perfil de LinkedIn de ${founder.name}`}
-                className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted hover:text-primary-700 hover:border-primary-600 transition-colors"
+                className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted hover:text-primary-700 hover:border-primary-600 transition-colors"
               >
                 <Link className="w-4 h-4" />
               </a>
               <a
                 href={founder.email}
                 aria-label={`Enviar correo a ${founder.name}`}
-                className="w-9 h-9 rounded-lg border border-border flex items-center justify-center text-muted hover:text-primary-700 hover:border-primary-600 transition-colors"
+                className="w-10 h-10 rounded-lg border border-border flex items-center justify-center text-muted hover:text-primary-700 hover:border-primary-600 transition-colors"
               >
                 <Mail className="w-4 h-4" />
               </a>

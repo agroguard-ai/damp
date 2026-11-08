@@ -17,7 +17,7 @@ export function KpiCard({ title, value, icon, footer }: KpiCardProps) {
         </div>
         <div className="text-3xl font-bold text-zinc-900 dark:text-white mt-2">{value}</div>
       </div>
-      {footer && <div className="mt-4 text-xs flex items-center gap-1.5">{footer}</div>}
+      {footer && <div className="mt-4 text-xs flex items-center gap-2">{footer}</div>}
     </div>
   );
 }

@@ -83,13 +83,13 @@ export const ConfirmDialogProvider = ({ children }: { children: React.ReactNode 
             <div className="flex justify-end gap-2 pt-1">
               <button
                 onClick={() => handleClose(false)}
-                className="px-3.5 py-2 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 {pending.cancelLabel ?? 'Cancelar'}
               </button>
               <button
                 onClick={() => handleClose(true)}
-                className={`px-3.5 py-2 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer ${
+                className={`px-4 py-2 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer ${
                   pending.danger ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
                 }`}
               >

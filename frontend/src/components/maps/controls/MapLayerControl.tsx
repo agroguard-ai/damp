@@ -84,7 +84,7 @@ export default function MapLayerControl({ currentLayer, onChangeLayer }: MapLaye
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white">{opt.label}</span>
                 {opt.badge && (
-                  <span className="text-[9px] bg-zinc-800 border border-zinc-700 px-1.5 py-0.5 rounded text-zinc-400">
+                  <span className="text-[9px] bg-zinc-800 border border-zinc-700 px-2 py-0.5 rounded text-zinc-400">
                     {opt.badge}
                   </span>
                 )}

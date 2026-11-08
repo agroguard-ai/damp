@@ -211,12 +211,12 @@ export default function AnimalMarkersLayer({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t flex flex-col gap-1.5">
+                  <div className="pt-2 border-t flex flex-col gap-2">
                     {onSelectAnimalForTrajectory && (
                       <button
                         type="button"
                         onClick={() => onSelectAnimalForTrajectory(animal.id)}
-                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2.5 rounded-lg text-[11px] transition-colors shadow-xs"
+                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-lg text-[11px] transition-colors shadow-xs"
                       >
                         <span className="inline-flex items-center justify-center gap-1">
                           <MapPin className="w-3 h-3" /> Ver recorrido histórico

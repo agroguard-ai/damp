@@ -3,9 +3,9 @@ import { Users } from 'lucide-react';
 
 export default function PersonalPage() {
   return (
-    <div className="p-6 md:p-8 w-full space-y-6">
+    <div className="p-page-sm md:p-frame w-full space-y-gutter">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
           <Users className="w-6 h-6 text-green-600 dark:text-green-500" />
           Gestión de Personal
         </h1>
