@@ -125,7 +125,7 @@ function MapClickHandler({
   onAddPoint,
   onPointRejected,
   boundaryPolygon = [],
-  boundaryLabel = 'del establecimiento',
+  boundaryLabel = 'del campo',
   isDraggingRef,
 }: {
   onAddPoint: (point: [number, number], message?: string) => void;

@@ -8,6 +8,7 @@ import type {
   UpdateAnimalPayload,
   BulkAssignGeofencePayload,
   BulkTransferFarmPayload,
+  BulkAssignFarmPayload,
   LinkAnimalCollarPayload,
   AssignAnimalGeofencePayload,
   AnimalTrajectoryResponse,
@@ -73,6 +74,13 @@ export const animalsApi = {
   /** POST /api/animals/bulk/transfer-farm — bulk transfer animals to another farm */
   bulkTransferFarm: (data: BulkTransferFarmPayload): Promise<{ count: number; message: string }> =>
     apiFetch<{ count: number; message: string }>('/api/animals/bulk/transfer-farm', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** POST /api/animals/bulk/assign-farm — assigns animals without a farm to an active farm */
+  bulkAssignFarm: (data: BulkAssignFarmPayload): Promise<{ count: number; message: string }> =>
+    apiFetch<{ count: number; message: string }>('/api/animals/bulk/assign-farm', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

@@ -14,9 +14,9 @@ enum GlobalRole {
 }
 
 model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
 
   farmUsers FarmUser[]
 
@@ -24,55 +24,57 @@ model Role {
 }
 
 model User {
-  id           String     @id @default(uuid())
-  email        String     @unique
-  passwordHash String     @map("password_hash")
-  name         String?
+  id                 String     @id @default(uuid())
+  email              String     @unique
+  passwordHash       String     @map("password_hash")
+  name               String?
   globalRole         GlobalRole @default(USER) @map("global_role")
   mustChangePassword Boolean    @default(true) @map("must_change_password")
   isActive           Boolean    @default(true) @map("is_active")
   maxCollars         Int        @default(0) @map("max_collars")
   createdAt          DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
 
-  farmUsers FarmUser[]
-  farms     Farm[]
+  farmUsers    FarmUser[]
+  farms        Farm[]
+  ownedAnimals Animal[]   @relation("AnimalOwner")
 
   @@map("users")
 }
 
 model Farm {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   name               String?
   address            String?
   province           String?
   location           String?
-  totalAreaHa        Float?   @map("total_area_ha")
-  polygonCoordinates Json?    @map("polygon_coordinates")
-  userId             String?  @map("user_id")
-  isActive           Boolean  @default(true) @map("is_active")
+  totalAreaHa        Float?    @map("total_area_ha")
+  polygonCoordinates Json?     @map("polygon_coordinates")
+  userId             String?   @map("user_id")
+  isActive           Boolean   @default(true) @map("is_active")
   archivedAt         DateTime? @map("archived_at")
-  createdAt          DateTime @default(now()) @map("created_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
-  user          User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  farmUsers     FarmUser[]
-  animals       Animal[]
-  geofences     Geofence[]
-  rotationPlans RotationPlan[]
-  gateways      Gateway[]
-  collars       Collar[]
-  alertSettings AlertSettings?
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  farmUsers         FarmUser[]
+  animals           Animal[]
+  geofences         Geofence[]
+  rotationPlans     RotationPlan[]
+  gateways          Gateway[]
+  collars           Collar[]
+  telemetryReadings TelemetryReading[]
+  alertSettings     AlertSettings?
 
   @@map("farms")
 }
 
 model FarmUser {
-  id         String    @id @default(uuid())
-  farmId     String    @map("farm_id")
-  userId     String    @map("user_id")
-  roleId     String    @map("role_id")
-  isActive   Boolean   @default(true) @map("is_active")
-  removedAt  DateTime? @map("removed_at")
+  id        String    @id @default(uuid())
+  farmId    String    @map("farm_id")
+  userId    String    @map("user_id")
+  roleId    String    @map("role_id")
+  isActive  Boolean   @default(true) @map("is_active")
+  removedAt DateTime? @map("removed_at")
 
   farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -102,25 +104,27 @@ model Geofence {
 }
 
 model Animal {
-  id           String      @id @default(uuid())
-  farmId       String      @map("farm_id")
+  id           String    @id @default(uuid())
+  farmId       String?   @map("farm_id")
+  ownerId      String?   @map("owner_id")
   tag          String?
   sex          Sex?
-  birthDate    DateTime?   @map("birth_date")
+  birthDate    DateTime? @map("birth_date")
   breed        String?
-  weightKg     Float?      @map("weight_kg")
-  animalTypeId String?     @map("animal_type_id")
+  weightKg     Float?    @map("weight_kg")
+  animalTypeId String?   @map("animal_type_id")
 
-  isArchived   Boolean     @default(false) @map("is_archived")
-  status       String      @default("ACTIVE")
-  createdAt    DateTime    @default(now()) @map("created_at")
+  isArchived Boolean  @default(false) @map("is_archived")
+  status     String   @default("ACTIVE")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  farm            Farm              @relation(fields: [farmId], references: [id])
-  animalType      AnimalType?       @relation(fields: [animalTypeId], references: [id])
-  medicalEvents   MedicalEvent[]
-  animalGeofences AnimalGeofence[]
-  animalCollars   AnimalCollar[]
-  alerts          Alert[]
+  farm              Farm?              @relation(fields: [farmId], references: [id])
+  owner             User?              @relation("AnimalOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  animalType        AnimalType?        @relation(fields: [animalTypeId], references: [id])
+  medicalEvents     MedicalEvent[]
+  animalGeofences   AnimalGeofence[]
+  animalCollars     AnimalCollar[]
+  alerts            Alert[]
   healthPredictions HealthPrediction[]
 
   @@map("animals")
@@ -132,17 +136,17 @@ enum CollarStatus {
 }
 
 model Collar {
-  id                Int          @id @default(autoincrement())
-  identifier        String       @unique
-  status            CollarStatus @default(AVAILABLE)
+  id                       Int          @id @default(autoincrement())
+  identifier               String       @unique
+  status                   CollarStatus @default(AVAILABLE)
   isArchived               Boolean      @default(false) @map("is_archived")
   fenceNotificationPending Boolean      @default(true) @map("fence_notification_pending")
   lastFenceSyncedAt        DateTime?    @map("last_fence_synced_at")
   lastTelemetryDate        DateTime?    @map("last_telemetry_date")
   farmId                   String?      @map("farm_id")
-  createdAt         DateTime     @default(now()) @map("created_at")
+  createdAt                DateTime     @default(now()) @map("created_at")
 
-  farm              Farm?        @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  farm              Farm?              @relation(fields: [farmId], references: [id], onDelete: SetNull)
   animalCollars     AnimalCollar[]
   telemetryReadings TelemetryReading[]
 
@@ -150,10 +154,10 @@ model Collar {
 }
 
 model AnimalCollar {
-  id       String   @id @default(uuid())
-  collarId Int      @map("collar_id")
-  animalId String   @map("animal_id")
-  startAt  DateTime @map("start_at")
+  id       String    @id @default(uuid())
+  collarId Int       @map("collar_id")
+  animalId String    @map("animal_id")
+  startAt  DateTime  @map("start_at")
   endAt    DateTime? @map("end_at")
 
   collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
@@ -177,7 +181,7 @@ model MedicalEvent {
 }
 
 model AnimalGeofence {
-  id         String    @id @default(uuid()) 
+  id         String    @id @default(uuid())
   animalId   String    @map("animal_id")
   geofenceId String    @map("geofence_id")
   startAt    DateTime  @map("start_at")
@@ -237,10 +241,14 @@ model TelemetryReading {
   latitude    Float
   longitude   Float
   temperature Float
+  /// Snapshot del campo al que pertenecía la lectura. Null = pendiente de atribución.
+  farmId      String?  @map("farm_id")
   timestamp   DateTime @default(now())
 
   collar Collar @relation(fields: [collarId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  farm   Farm?  @relation(fields: [farmId], references: [id], onDelete: SetNull)
 
+  @@index([farmId, timestamp])
   @@map("telemetry_readings")
 }
 
@@ -251,18 +259,18 @@ enum AlertType {
 }
 
 model Alert {
-  id              String            @id @default(uuid())
+  id              String    @id @default(uuid())
   type            AlertType
   message         String
-  animalId        String            @map("animal_id")
-  isResolved      Boolean           @default(false) @map("is_resolved")
-  isFalsePositive Boolean           @default(false) @map("is_false_positive")
-  feedbackNote    String?           @map("feedback_note")
-  feedbackAt      DateTime?         @map("feedback_at")
-  feedbackUserId  String?           @map("feedback_user_id")
-  createdAt       DateTime          @default(now()) @map("created_at")
+  animalId        String    @map("animal_id")
+  isResolved      Boolean   @default(false) @map("is_resolved")
+  isFalsePositive Boolean   @default(false) @map("is_false_positive")
+  feedbackNote    String?   @map("feedback_note")
+  feedbackAt      DateTime? @map("feedback_at")
+  feedbackUserId  String?   @map("feedback_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
-  animal          Animal            @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  animal            Animal             @relation(fields: [animalId], references: [id], onDelete: Cascade)
   healthPredictions HealthPrediction[]
 
   @@map("alerts")
@@ -283,12 +291,12 @@ model HealthPrediction {
   createdAt           DateTime  @default(now()) @map("created_at")
 
   animal Animal @relation(fields: [animalId], references: [id], onDelete: Cascade)
-  alert  Alert?  @relation(fields: [alertId], references: [id], onDelete: SetNull)
+  alert  Alert? @relation(fields: [alertId], references: [id], onDelete: SetNull)
 
-  @@map("health_predictions")
   @@unique([animalId, predictedEvent, windowEndAt])
   @@index([animalId, createdAt])
   @@index([predictedEvent, detected])
+  @@map("health_predictions")
 }
 
 model AlertSettings {
@@ -320,20 +328,20 @@ enum RotationStepStatus {
 }
 
 model RotationPlan {
-  id               String             @id @default(uuid())
-  farmId           String             @map("farm_id")
-  name             String             @default("Rotación de Pastoreo")
-  status           RotationStatus     @default(ACTIVE)
-  frequencyHours   Int                @default(24) @map("frequency_hours")
-  currentStepIndex Int                @default(0) @map("current_step_index")
-  totalSteps       Int                @default(0) @map("total_steps")
-  autoRotate       Boolean            @default(true) @map("auto_rotate")
-  startedAt        DateTime           @default(now()) @map("started_at")
-  lastRotatedAt    DateTime           @default(now()) @map("last_rotated_at")
-  nextRotationAt   DateTime           @map("next_rotation_at")
-  completedAt      DateTime?          @map("completed_at")
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
+  id               String         @id @default(uuid())
+  farmId           String         @map("farm_id")
+  name             String         @default("Rotación de Pastoreo")
+  status           RotationStatus @default(ACTIVE)
+  frequencyHours   Int            @default(24) @map("frequency_hours")
+  currentStepIndex Int            @default(0) @map("current_step_index")
+  totalSteps       Int            @default(0) @map("total_steps")
+  autoRotate       Boolean        @default(true) @map("auto_rotate")
+  startedAt        DateTime       @default(now()) @map("started_at")
+  lastRotatedAt    DateTime       @default(now()) @map("last_rotated_at")
+  nextRotationAt   DateTime       @map("next_rotation_at")
+  completedAt      DateTime?      @map("completed_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   farm  Farm           @relation(fields: [farmId], references: [id], onDelete: Cascade)
   steps RotationStep[]
@@ -351,48 +359,48 @@ model RotationStep {
   completedAt    DateTime?          @map("completed_at")
   createdAt      DateTime           @default(now()) @map("created_at")
 
-  rotationPlan RotationPlan     @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
-  geofence     Geofence         @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
+  rotationPlan RotationPlan @relation(fields: [rotationPlanId], references: [id], onDelete: Cascade)
+  geofence     Geofence     @relation(fields: [geofenceId], references: [id], onDelete: Cascade)
 
   @@unique([rotationPlanId, orderIndex])
   @@map("rotation_steps")
 }
 
 model IotRequestLog {
-  id           String    @id @default(uuid())
-  createdAt    DateTime  @default(now()) @map("created_at")
-  endpoint     String    @default("/api/iot/telemetry")
-  method       String    @default("POST")
-  ipAddress    String?   @map("ip_address")
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  endpoint  String   @default("/api/iot/telemetry")
+  method    String   @default("POST")
+  ipAddress String?  @map("ip_address")
 
   // Gateway info
-  gatewayId    String?   @map("gateway_id")
-  gatewayName  String?   @map("gateway_name")
-  farmId       String?   @map("farm_id")
-  farmName     String?   @map("farm_name")
-  apiKeyUsed   String?   @map("api_key_used")
+  gatewayId   String? @map("gateway_id")
+  gatewayName String? @map("gateway_name")
+  farmId      String? @map("farm_id")
+  farmName    String? @map("farm_name")
+  apiKeyUsed  String? @map("api_key_used")
 
   // Collar info
-  collarId     Int?      @map("collar_id")
+  collarId Int? @map("collar_id")
 
   // Request data
-  headers      Json?
-  payload      Json?
+  headers Json?
+  payload Json?
 
   // Telemetry parsed metrics
-  lat          Float?
-  lng          Float?
-  temp         Float?
-  rssi         Float?
-  snr          Float?
+  lat  Float?
+  lng  Float?
+  temp Float?
+  rssi Float?
+  snr  Float?
 
   // Response details
-  statusCode   Int       @map("status_code")
-  status       String    @default("SUCCESS")
-  responseBody Json?     @map("response_body")
-  errorMessage String?   @map("error_message")
-  downlinkSent String?   @map("downlink_sent")
-  durationMs   Int?      @map("duration_ms")
+  statusCode   Int     @map("status_code")
+  status       String  @default("SUCCESS")
+  responseBody Json?   @map("response_body")
+  errorMessage String? @map("error_message")
+  downlinkSent String? @map("downlink_sent")
+  durationMs   Int?    @map("duration_ms")
 
   @@index([createdAt(sort: Desc)])
   @@index([collarId])

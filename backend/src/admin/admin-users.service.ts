@@ -31,10 +31,11 @@ export class AdminUsersService {
           updatedAt: true,
           _count: {
             select: {
-              farmUsers: true,
+              farmUsers: { where: { isActive: true, farm: { isActive: true } } },
             },
           },
           farms: {
+            where: { isActive: true },
             select: {
               id: true,
               _count: {
@@ -150,6 +151,7 @@ export class AdminUsersService {
       where: { id: userId },
       include: {
         farms: {
+          where: { isActive: true },
           select: {
             _count: { select: { collars: true } },
           },
@@ -183,16 +185,18 @@ export class AdminUsersService {
     });
   }
 
-  async findAllFarms(query?: PaginationQueryDto) {
+  async findAllFarms(query?: PaginationQueryDto, includeInactive = false) {
     const page = Math.max(1, Number(query?.page) || 1);
     const limit = Math.max(1, Math.min(1000, Number(query?.limit) || 10));
     const skip = (page - 1) * limit;
+    const where = includeInactive ? {} : { isActive: true };
 
-    const [farms, totalItems] = await Promise.all([
+    const [farms, totalItems, activeItems] = await Promise.all([
       this.prisma.farm.findMany({
+        where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ isActive: 'desc' }, { createdAt: 'desc' }],
         include: {
           user: {
             select: { id: true, name: true, email: true },
@@ -206,7 +210,7 @@ export class AdminUsersService {
           },
           _count: {
             select: {
-              animals: true,
+              animals: { where: { isArchived: false } },
               geofences: true,
               gateways: true,
               farmUsers: { where: { isActive: true } },
@@ -214,7 +218,8 @@ export class AdminUsersService {
           },
         },
       }),
-      this.prisma.farm.count(),
+      this.prisma.farm.count({ where }),
+      this.prisma.farm.count({ where: { isActive: true } }),
     ]);
 
     const totalPages = Math.ceil(totalItems / limit);
@@ -223,6 +228,7 @@ export class AdminUsersService {
       data: farms,
       meta: {
         totalItems,
+        activeItems,
         page,
         limit,
         totalPages,

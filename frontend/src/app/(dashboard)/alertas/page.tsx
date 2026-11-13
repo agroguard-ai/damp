@@ -1,33 +1,20 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useApi';
 import { useMutation } from '@/hooks/useMutation';
 import { farmsApi } from '@/lib/api/farms';
 import { animalsApi } from '@/lib/api/animals';
 import { alertsApi } from '@/lib/api/alerts';
-import { alertSettingsApi } from '@/lib/api/alert-settings';
 import { useToast } from '@/context/ToastContext';
 import { EmptyFarmState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import FalsePositiveModal from '@/components/alerts/FalsePositiveModal';
 import PredictiveHealthMonitoring from '@/components/alerts/PredictiveHealthMonitoring';
-import {
-  Bell,
-  BrainCircuit,
-  AlertTriangle,
-  CheckCircle2,
-  SlidersHorizontal,
-  Clock,
-  Zap,
-  Bot,
-  PersonStanding,
-  Siren,
-  Check,
-} from 'lucide-react';
+import { Bell, BrainCircuit, CheckCircle2, Clock, Zap, Bot, PersonStanding, Siren, Check } from 'lucide-react';
 import type { Alert, AlertType } from '@/types';
 import { Select } from '@/components/ui/Select';
 
@@ -44,17 +31,21 @@ const TYPE_CLASSES: Record<AlertType, string> = {
   SYSTEM: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border-zinc-200 dark:border-zinc-700/30',
 };
 
-export default function AlertasPage() {
+function AlertasContent() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'predictive' ? 'predictive' : 'alerts';
+  const initialAnimalId = searchParams.get('animalId') || '';
+  const initialFarmId = searchParams.get('farmId') || '';
+
   const { user, emulatedUser } = useAuth();
   const { toast } = useToast();
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
-  const [selectedFarm, setSelectedFarm] = useState<string>('');
+  const [selectedFarm, setSelectedFarm] = useState<string>(initialFarmId);
   const activeFarmId = selectedFarm || farms[0]?.id || '';
-  // Resolver / falso positivo: ADMIN y OPERATOR. Umbrales (CU016): solo ADMIN. VIEWER: solo lectura.
-  const { canEdit, canManageUsers: canConfigureAlerts } = useFarmPermissions(activeFarmId || null);
+  // Resolver alertas: ADMIN y OPERATOR. VIEWER: solo lectura.
+  const { canEdit } = useFarmPermissions(activeFarmId || null);
 
-  const [activeTab, setActiveTab] = useState<'alerts' | 'predictive'>('alerts');
-  const [selectedAlertForFalsePositive, setSelectedAlertForFalsePositive] = useState<Alert | null>(null);
+  const [activeTab, setActiveTab] = useState<'alerts' | 'predictive'>(initialTab);
 
   const fetchAnimals = useCallback(
     () => (activeFarmId ? animalsApi.getAll({ farmId: activeFarmId, status: 'ACTIVE' }) : Promise.resolve([])),
@@ -63,7 +54,7 @@ export default function AlertasPage() {
   const { data: farmAnimals = [] } = useApi(fetchAnimals, [activeFarmId]);
 
   const [filters, setFilters] = useState({
-    animalId: '',
+    animalId: initialAnimalId,
     type: '',
     resolved: '',
     source: '',
@@ -76,11 +67,7 @@ export default function AlertasPage() {
             farmId: activeFarmId,
             ...(filters.animalId && { animalId: filters.animalId }),
             ...(filters.type && { type: filters.type as AlertType }),
-            ...(filters.resolved === 'fp'
-              ? { isFalsePositive: true }
-              : filters.resolved !== ''
-                ? { resolved: filters.resolved === 'true', isFalsePositive: false }
-                : {}),
+            ...(filters.resolved !== '' ? { resolved: filters.resolved === 'true' } : {}),
             ...(filters.source ? { source: filters.source as any } : {}),
           })
         : Promise.resolve([]),
@@ -89,51 +76,11 @@ export default function AlertasPage() {
   const { data: alerts = [], loading, refetch } = useApi(fetchAlerts, [activeFarmId, filters]);
   const { mutate: resolveAlert } = useMutation(alertsApi.resolve);
 
-  const { data: settings, refetch: refetchSettings } = useApi(
-    () => (activeFarmId ? alertSettingsApi.getByFarm(activeFarmId) : Promise.resolve(undefined)),
-    [activeFarmId]
-  );
-  const { mutate: updateSettings, loading: savingSettings } = useMutation(alertSettingsApi.update);
-  const [settingsForm, setSettingsForm] = useState<{
-    feverThreshold: string;
-    hypothermiaThreshold: string;
-    inactivityMinutes: string;
-    emailOnEscape: boolean;
-    emailOnHealth: boolean;
-  } | null>(null);
-
-  const effectiveSettingsForm = settingsForm ?? {
-    feverThreshold: settings ? String(settings.feverThreshold) : '',
-    hypothermiaThreshold: settings ? String(settings.hypothermiaThreshold) : '',
-    inactivityMinutes: settings ? String(settings.inactivityMinutes) : '',
-    emailOnEscape: settings?.emailOnEscape ?? false,
-    emailOnHealth: settings?.emailOnHealth ?? false,
-  };
-
   const handleResolve = async (id: string) => {
     try {
       await resolveAlert(id);
       toast.success('Alerta marcada como resuelta');
       refetch();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error desconocido');
-    }
-  };
-
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeFarmId) return;
-    try {
-      await updateSettings(activeFarmId, {
-        feverThreshold: Number(effectiveSettingsForm.feverThreshold),
-        hypothermiaThreshold: Number(effectiveSettingsForm.hypothermiaThreshold),
-        inactivityMinutes: Number(effectiveSettingsForm.inactivityMinutes),
-        emailOnEscape: effectiveSettingsForm.emailOnEscape,
-        emailOnHealth: effectiveSettingsForm.emailOnHealth,
-      });
-      setSettingsForm(null);
-      toast.success('Configuración de alertas guardada');
-      refetchSettings();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -159,7 +106,7 @@ export default function AlertasPage() {
             )}
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
-            Detección preventiva por Inteligencia Artificial (CU014), alertas de cerco y umbrales biométricos.
+            Detección preventiva por Inteligencia Artificial, alertas de cerco y umbrales biométricos.
           </p>
         </div>
 
@@ -212,19 +159,20 @@ export default function AlertasPage() {
             >
               <BrainCircuit className="w-4 h-4 text-purple-600" />
               <span>Salud Predictiva (Machine Learning)</span>
-              <span className="bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-[10px] font-mono px-2 py-0.2 rounded font-semibold">
-                CU014
-              </span>
             </button>
           </div>
 
           {activeTab === 'predictive' ? (
-            <PredictiveHealthMonitoring farmId={activeFarmId} animals={farmAnimals} />
+            <PredictiveHealthMonitoring
+              farmId={activeFarmId}
+              animals={farmAnimals}
+              initialAnimalId={initialAnimalId}
+              canPredict={canEdit}
+            />
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                {/* Barra de Filtros */}
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-6">
+              {/* Barra de Filtros */}
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Origen de Alerta */}
                   <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
@@ -290,7 +238,6 @@ export default function AlertasPage() {
                         { value: '', label: 'Todas las alertas' },
                         { value: 'false', label: 'Solo activas (Sin resolver)', icon: Siren },
                         { value: 'true', label: 'Resueltas / Validadas', icon: Check },
-                        { value: 'fp', label: 'Falsos Positivos', icon: AlertTriangle },
                       ]}
                       size="sm"
                     />
@@ -326,15 +273,13 @@ export default function AlertasPage() {
                           <div
                             key={a.id}
                             className={`border rounded-xl p-4 transition-all ${
-                              a.isFalsePositive
-                                ? 'border-amber-200 dark:border-amber-900/30 bg-amber-50/20 dark:bg-amber-950/10'
-                                : a.isResolved
-                                  ? 'border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20'
-                                  : isMl
-                                    ? 'border-purple-200 dark:border-purple-900/50 bg-purple-50/20 dark:bg-purple-950/10'
-                                    : isEscape
-                                      ? 'border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10'
-                                      : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
+                              a.isResolved
+                                ? 'border-zinc-100 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/20'
+                                : isMl
+                                  ? 'border-purple-200 dark:border-purple-900/50 bg-purple-50/20 dark:bg-purple-950/10'
+                                  : isEscape
+                                    ? 'border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10'
+                                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900'
                             }`}
                           >
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -377,12 +322,7 @@ export default function AlertasPage() {
                                   )}
 
                                   {/* Estado de Resolución */}
-                                  {a.isFalsePositive ? (
-                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
-                                      <AlertTriangle className="w-3 h-3" />
-                                      <span>Falso Positivo</span>
-                                    </span>
-                                  ) : a.isResolved ? (
+                                  {a.isResolved ? (
                                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                                       <CheckCircle2 className="w-3 h-3" />
                                       <span>Resuelta</span>
@@ -398,12 +338,6 @@ export default function AlertasPage() {
                                   {a.message}
                                 </p>
 
-                                {a.isFalsePositive && a.feedbackNote && (
-                                  <p className="text-xs bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 p-2 rounded-lg border border-amber-200/60 dark:border-amber-900/40">
-                                    <b>Feedback operario:</b> {a.feedbackNote}
-                                  </p>
-                                )}
-
                                 <p className="text-[11px] text-zinc-400 pt-0.5">
                                   Animal: <b>{a.animal?.tag || `ID: ${a.animalId.slice(0, 8)}`}</b>
                                   {a.animal?.animalType && ` (${a.animal.animalType.name})`} · Emitida el{' '}
@@ -413,22 +347,12 @@ export default function AlertasPage() {
 
                               {/* Acciones */}
                               {canEdit && !a.isResolved && (
-                                <div className="flex sm:flex-col items-center sm:items-end gap-2 shrink-0 pt-2 sm:pt-0">
+                                <div className="flex items-center shrink-0 pt-2 sm:pt-0">
                                   <button
                                     onClick={() => handleResolve(a.id)}
                                     className="px-2 py-2 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors"
                                   >
                                     Marcar resuelta
-                                  </button>
-
-                                  {/* Botón Marcar Falso Positivo (CU014) */}
-                                  <button
-                                    onClick={() => setSelectedAlertForFalsePositive(a)}
-                                    className="px-2 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1"
-                                    title="Marca la alerta como falso positivo para incorporar feedback en el reentrenamiento"
-                                  >
-                                    <AlertTriangle className="w-3 h-3" />
-                                    <span>Falso positivo</span>
                                   </button>
                                 </div>
                               )}
@@ -439,120 +363,24 @@ export default function AlertasPage() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Columna Derecha: Configuración de Umbrales */}
-              <div className="lg:col-span-1">
-                <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs space-y-6 sticky top-6">
-                  <div>
-                    <h3 className="font-bold text-lg text-zinc-900 dark:text-white flex items-center gap-2">
-                      <SlidersHorizontal className="w-4 h-4 text-green-600" />
-                      <span>Configuración de Umbrales</span>
-                    </h3>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                      Umbrales heurísticos instantáneos que complementan las predicciones del modelo IA.
-                    </p>
-                  </div>
-                  <form onSubmit={handleSaveSettings} className="space-y-4">
-                    <fieldset disabled={!canConfigureAlerts} className="space-y-4 disabled:opacity-70">
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          Umbral de fiebre (°C)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={effectiveSettingsForm.feverThreshold}
-                          onChange={(e) =>
-                            setSettingsForm({ ...effectiveSettingsForm, feverThreshold: e.target.value })
-                          }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          Umbral de hipotermia (°C)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={effectiveSettingsForm.hypothermiaThreshold}
-                          onChange={(e) =>
-                            setSettingsForm({ ...effectiveSettingsForm, hypothermiaThreshold: e.target.value })
-                          }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                          Inactividad (minutos)
-                        </label>
-                        <input
-                          type="number"
-                          value={effectiveSettingsForm.inactivityMinutes}
-                          onChange={(e) =>
-                            setSettingsForm({ ...effectiveSettingsForm, inactivityMinutes: e.target.value })
-                          }
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 text-zinc-900 dark:text-white text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-                        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={effectiveSettingsForm.emailOnEscape}
-                            onChange={(e) =>
-                              setSettingsForm({ ...effectiveSettingsForm, emailOnEscape: e.target.checked })
-                            }
-                          />
-                          Enviar correo en escapes de cerco
-                        </label>
-                        <label className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={effectiveSettingsForm.emailOnHealth}
-                            onChange={(e) =>
-                              setSettingsForm({ ...effectiveSettingsForm, emailOnHealth: e.target.checked })
-                            }
-                          />
-                          Enviar correo en alertas de salud
-                        </label>
-                      </div>
-                    </fieldset>
-                    {canConfigureAlerts ? (
-                      <button
-                        type="submit"
-                        disabled={savingSettings}
-                        className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-xl shadow-xs transition-all focus:outline-none disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm"
-                      >
-                        {savingSettings ? (
-                          <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          'Guardar Configuración'
-                        )}
-                      </button>
-                    ) : (
-                      <p className="text-[11px] text-zinc-500 italic">
-                        Solo el administrador del campo puede modificar los umbrales de alerta.
-                      </p>
-                    )}
-                  </form>
-                </div>
-              </div>
             </div>
           )}
         </>
       )}
-
-      {/* Modal para Marcar Falso Positivo y Guardar Feedback (CU014) */}
-      <FalsePositiveModal
-        alert={selectedAlertForFalsePositive}
-        isOpen={Boolean(selectedAlertForFalsePositive)}
-        onClose={() => setSelectedAlertForFalsePositive(null)}
-        onSuccess={() => {
-          refetch();
-        }}
-      />
     </div>
+  );
+}
+
+export default function AlertasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-6 max-w-6xl mx-auto">
+          <SkeletonRowList count={5} />
+        </div>
+      }
+    >
+      <AlertasContent />
+    </Suspense>
   );
 }

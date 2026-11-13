@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState, useCallback, useMemo, Suspense } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import BreedSelect from '@/components/animals/BreedSelect';
 import { EmptyFarmState, EmptyState } from '@/components/ui/EmptyState';
@@ -26,7 +26,6 @@ import {
   CirclePlus,
   ClipboardList,
   Search,
-  Filter,
   Radio,
   Zap,
   Lock,
@@ -41,7 +40,11 @@ import {
 } from 'lucide-react';
 import { Select } from '@/components/ui/Select';
 
+const UNASSIGNED_FARM_ID = '__unassigned__';
+
 function AnimalsContent() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const urlSearch = searchParams.get('search') || '';
   const urlGeofenceId = searchParams.get('geofenceId') || '';
@@ -52,39 +55,37 @@ function AnimalsContent() {
   const { toast } = useToast();
   const confirm = useConfirm();
 
+  // Solo campos activos: un campo archivado no aparece en ningún selector.
   const { data: farms = [], loading: fetchingFarms } = useApi(farmsApi.getAll);
+  const activeFarms = farms;
   const { data: animalTypes = [] } = useApi(animalTypesApi.getAll);
 
   const [selectedFarm, setSelectedFarm] = useState<string>(urlFarmId || '');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Keep selectedFarm aligned if urlFarmId changes or default to first farm
-  useEffect(() => {
-    if (urlFarmId) {
-      setSelectedFarm(urlFarmId);
-    } else if (!selectedFarm && farms.length > 0) {
-      setSelectedFarm(farms[0].id);
-    }
-  }, [farms, urlFarmId, selectedFarm]);
-
-  const activeFarmId = selectedFarm || farms[0]?.id || '';
+  const activeFarmId = selectedFarm || farms[0]?.id || UNASSIGNED_FARM_ID;
+  const isUnassignedView = activeFarmId === UNASSIGNED_FARM_ID;
   // VIEWER: solo lectura (el backend igual rechaza cualquier escritura con 403).
-  const { canEdit } = useFarmPermissions(activeFarmId || null);
+  const { canEdit } = useFarmPermissions(isUnassignedView ? null : activeFarmId || null);
+  // En "Sin campo" el dueño administra animales libres y puede asignarlos a un campo.
+  const canOperate = canEdit || isUnassignedView;
   const canCreateFarm = farmPerms.role === null || farmPerms.role === 'ADMIN';
-  const activeFarm = farms.find((f) => f.id === activeFarmId);
 
   const fetchGeofences = useCallback(
-    () => (activeFarmId ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
-    [activeFarmId]
+    () => (activeFarmId && !isUnassignedView ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
+    [activeFarmId, isUnassignedView]
   );
   const { data: farmGeofences = [], refetch: refetchGeofences } = useApi(fetchGeofences, [activeFarmId]);
-  const activeFarmGeofences = useMemo(() => farmGeofences.filter((g) => g.active), [farmGeofences]);
 
   const { data: collars = [], refetch: refetchCollars } = useApi(collarsApi.getAll);
 
   // Riesgo actual según la IA (eventos detectados en las últimas horas), por animal
   const fetchMlRisk = useCallback(
-    () => (activeFarmId ? alertsApi.getCurrentMlRisk(activeFarmId).catch(() => []) : Promise.resolve([])),
-    [activeFarmId]
+    () =>
+      activeFarmId && !isUnassignedView
+        ? alertsApi.getCurrentMlRisk(activeFarmId).catch(() => [])
+        : Promise.resolve([]),
+    [activeFarmId, isUnassignedView]
   );
   const { data: mlRisk = [] } = useApi(fetchMlRisk, [activeFarmId]);
   const mlRiskByAnimal = useMemo(() => new Map(mlRisk.map((r) => [r.animalId, r.events])), [mlRisk]);
@@ -101,31 +102,70 @@ function AnimalsContent() {
     hasCollar: '',
   });
 
-  // Align filters if url params arrive
-  useEffect(() => {
-    if (urlSearch) setSearchTerm(urlSearch);
-  }, [urlSearch]);
+  // El campo, la búsqueda y el cerco de la URL son la fuente de verdad al navegar entre vistas.
+  const [syncedUrl, setSyncedUrl] = useState({ farmId: urlFarmId, search: urlSearch, geofenceId: urlGeofenceId });
+  const farmFromUrlChanged = syncedUrl.farmId !== urlFarmId;
+  const searchFromUrlChanged = syncedUrl.search !== urlSearch;
+  const geofenceFromUrlChanged = syncedUrl.geofenceId !== urlGeofenceId;
+  if (farmFromUrlChanged || searchFromUrlChanged || geofenceFromUrlChanged) {
+    setSyncedUrl({ farmId: urlFarmId, search: urlSearch, geofenceId: urlGeofenceId });
+    if (farmFromUrlChanged && urlFarmId) {
+      setSelectedFarm(urlFarmId);
+      setSelectedIds([]);
+    }
+    if (searchFromUrlChanged) setSearchTerm(urlSearch);
+    if (geofenceFromUrlChanged) {
+      setFilters((prev) => (prev.geofenceId === urlGeofenceId ? prev : { ...prev, geofenceId: urlGeofenceId }));
+    }
+  }
 
-  useEffect(() => {
-    if (urlGeofenceId) setFilters((prev) => ({ ...prev, geofenceId: urlGeofenceId }));
-  }, [urlGeofenceId]);
+  const selectedGeofence = useMemo(
+    () => farmGeofences.find((g) => g.id === filters.geofenceId),
+    [farmGeofences, filters.geofenceId]
+  );
+
+  const updateUrlParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+        else params.delete(key);
+      });
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [searchParams, pathname, router]
+  );
+
+  const handleFarmChange = (farmId: string) => {
+    setSelectedFarm(farmId);
+    setSelectedIds([]);
+    setFilters((prev) => (prev.geofenceId ? { ...prev, geofenceId: '' } : prev));
+    updateUrlParams({ farmId, geofenceId: null });
+  };
+
+  const handleGeofenceFilterChange = (geofenceId: string) => {
+    setFilters((prev) => ({ ...prev, geofenceId }));
+    updateUrlParams({ geofenceId: geofenceId || null });
+  };
 
   const fetchAnimals = useCallback(
     () =>
       activeFarmId
         ? animalsApi.getAll({
-            farmId: activeFarmId,
+            ...(isUnassignedView ? { unassigned: 'true' } : { farmId: activeFarmId }),
             ...(filters.animalType && { animalType: filters.animalType }),
             ...(filters.healthStatus && { healthStatus: filters.healthStatus }),
-            ...(filters.geofenceId && { geofenceId: filters.geofenceId }),
+            ...(!isUnassignedView && filters.geofenceId && { geofenceId: filters.geofenceId }),
             ...(filters.hasActiveAlert && { hasActiveAlert: 'true' }),
             ...(filters.hasCollar && { hasCollar: filters.hasCollar }),
             status: filters.status,
           })
         : Promise.resolve([]),
-    [activeFarmId, filters]
+    [activeFarmId, isUnassignedView, filters]
   );
   const { data: animals = [], loading, refetch: refetchAnimals } = useApi(fetchAnimals, [activeFarmId, filters]);
+  const geofenceAnimalCount = selectedGeofence?.animalGeofences?.length ?? animals.length;
 
   // Client-side dual search (caravana / tag OR collar identifier / ID)
   const filteredAnimals = useMemo(() => {
@@ -140,14 +180,6 @@ function AnimalsContent() {
       return tagMatch || collarIdMatch || collarIdentMatch || breedMatch;
     });
   }, [animals, searchTerm]);
-
-  // Selection state for bulk actions
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  // Clear selections when farm changes
-  useEffect(() => {
-    setSelectedIds([]);
-  }, [activeFarmId]);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredAnimals.length && filteredAnimals.length > 0) {
@@ -192,6 +224,7 @@ function AnimalsContent() {
   } = useMutation(animalsApi.create);
   const { mutate: bulkAssignGeofence, loading: bulkAssigning } = useMutation(animalsApi.bulkAssignGeofence);
   const { mutate: bulkTransferFarm, loading: bulkTransferring } = useMutation(animalsApi.bulkTransferFarm);
+  const { mutate: bulkAssignFarm, loading: bulkAssigningFarm } = useMutation(animalsApi.bulkAssignFarm);
   const { mutate: updateAnimalCollar, loading: updatingCollar } = useMutation(animalsApi.updateCollar);
   const { mutate: updateAnimalGeofence, loading: updatingGeofence } = useMutation(animalsApi.updateGeofence);
   const {
@@ -361,30 +394,36 @@ function AnimalsContent() {
 
   const handleBulkTransferFarm = async () => {
     if (selectedIds.length === 0 || !activeFarmId || !targetFarmId) return;
-    const targetFarm = farms.find((f) => f.id === targetFarmId);
+    const targetFarm = activeFarms.find((f) => f.id === targetFarmId);
     const ok = await confirm({
-      title: `Transferir ${selectedIds.length} animales a "${targetFarm?.name || 'otro campo'}"`,
-      description:
-        'Los animales pasarán al nuevo establecimiento sin cerco asignado (se cierran sus cercos virtuales actuales). Los collares asignados continuarán con ellos.',
-      confirmLabel: 'Confirmar Traslado',
+      title: `${isUnassignedView ? 'Asignar' : 'Transferir'} ${selectedIds.length} animales a "${
+        targetFarm?.name || 'otro campo'
+      }"`,
+      description: isUnassignedView
+        ? 'Los animales quedarán asignados al campo seleccionado y sin cerco asignado. Los collares asignados continuarán con ellos.'
+        : 'Los animales pasarán al nuevo campo y quedarán sin cerco asignado en el destino. No se modifican los cercos del campo de origen. Los collares asignados continuarán con ellos.',
+      confirmLabel: isUnassignedView ? 'Confirmar Asignación' : 'Confirmar Traslado',
       danger: false,
     });
     if (!ok) return;
 
     try {
-      const res = await bulkTransferFarm({
-        sourceFarmId: activeFarmId,
-        targetFarmId,
-        animalIds: selectedIds,
-      });
-      toast.success(res?.message || 'Animales trasladados correctamente');
+      const res = isUnassignedView
+        ? await bulkAssignFarm({ targetFarmId, animalIds: selectedIds })
+        : await bulkTransferFarm({
+            farmId: activeFarmId,
+            sourceFarmId: activeFarmId,
+            targetFarmId,
+            animalIds: selectedIds,
+          });
+      toast.success(res?.message || 'Animales actualizados correctamente');
       setIsBulkTransferModalOpen(false);
       setSelectedIds([]);
       refetchAnimals();
       refetchCollars();
       refetchGeofences();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Error al transferir animales');
+      toast.error(err instanceof Error ? err.message : 'Error al mover animales');
     }
   };
 
@@ -535,7 +574,7 @@ function AnimalsContent() {
             Control de inventario ganadero, vinculación de collares y asignación a cercos virtuales.
           </p>
         </div>
-        {farms.length > 0 && (
+        {(canCreateFarm || canEdit) && (
           <div className="flex gap-3">
             {canCreateFarm && (
               <Button href="/farms/new" variant="outline" size="md" icon={CirclePlus}>
@@ -555,8 +594,6 @@ function AnimalsContent() {
         <div className="flex justify-center items-center py-20">
           <div className="w-8 h-8 border-4 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
         </div>
-      ) : farms.length === 0 ? (
-        <EmptyFarmState />
       ) : (
         <>
           {/* Controls Bar: Search & Filters */}
@@ -582,13 +619,16 @@ function AnimalsContent() {
                 )}
               </div>
 
-              {/* Establecimiento Selector */}
+              {/* Selector de Campo */}
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider shrink-0">Campo:</span>
                 <Select
                   value={String(activeFarmId)}
-                  onChange={(v) => setSelectedFarm(v)}
-                  options={[...farms.map((f) => ({ value: String(f.id), label: String(f.name) }))]}
+                  onChange={handleFarmChange}
+                  options={[
+                    ...farms.map((f) => ({ value: String(f.id), label: String(f.name) })),
+                    { value: UNASSIGNED_FARM_ID, label: 'Sin campo (animales libres)' },
+                  ]}
                   className="min-w-44"
                 />
               </div>
@@ -600,10 +640,13 @@ function AnimalsContent() {
                 <label className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">Cerco</label>
                 <Select
                   value={String(filters.geofenceId)}
-                  onChange={(v) => setFilters({ ...filters, geofenceId: v })}
+                  onChange={handleGeofenceFilterChange}
                   options={[
                     { value: '', label: 'Todos los cercos' },
-                    ...activeFarmGeofences.map((g) => ({ value: String(g.id), label: String(g.name) })),
+                    ...farmGeofences.map((g) => ({
+                      value: String(g.id),
+                      label: g.active ? String(g.name) : `${g.name} (inactivo)`,
+                    })),
                   ]}
                   size="sm"
                 />
@@ -682,8 +725,38 @@ function AnimalsContent() {
             </div>
           </div>
 
+          {/* Contexto del cerco seleccionado (CUU-029) */}
+          {!isUnassignedView && filters.geofenceId && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl border border-cyan-200 dark:border-cyan-800/60 bg-cyan-50 dark:bg-cyan-950/25">
+              <div className="flex items-center gap-3">
+                <span className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-cyan-900 dark:text-cyan-100">
+                    Mostrando la hacienda del cerco {selectedGeofence ? `"${selectedGeofence.name}"` : 'seleccionado'}
+                  </p>
+                  <p className="text-xs text-cyan-700/80 dark:text-cyan-300/80">
+                    {loading && !selectedGeofence
+                      ? 'Cargando animales...'
+                      : `${geofenceAnimalCount} ${geofenceAnimalCount === 1 ? 'cabeza asignada' : 'cabezas asignadas'}`}
+                    {selectedGeofence && !selectedGeofence.active && ' · cerco desactivado'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleGeofenceFilterChange('')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-700 dark:text-cyan-300 bg-white dark:bg-zinc-900 border border-cyan-200 dark:border-cyan-800/60 hover:bg-cyan-100 dark:hover:bg-cyan-950/50 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                Ver todos los animales
+              </button>
+            </div>
+          )}
+
           {/* Bulk Action Sticky Bar */}
-          {canEdit && selectedIds.length > 0 && (
+          {canOperate && selectedIds.length > 0 && (
             <div className="sticky top-4 z-40 bg-zinc-900/95 dark:bg-zinc-800/95 text-white p-4 rounded-2xl shadow-xl border border-zinc-700/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -700,30 +773,32 @@ function AnimalsContent() {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTargetGeofenceId('');
-                    setIsBulkGeofenceModalOpen(true);
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-2 shadow-sm cursor-pointer"
-                >
-                  <Zap className="w-4 h-4" />
-                  <span>Asignar a cerco...</span>
-                </button>
-
-                {farms.length > 1 && (
+                {!isUnassignedView && (
                   <button
                     type="button"
                     onClick={() => {
-                      const otherFarms = farms.filter((f) => f.id !== activeFarmId);
+                      setTargetGeofenceId('');
+                      setIsBulkGeofenceModalOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Asignar a cerco...</span>
+                  </button>
+                )}
+
+                {(isUnassignedView ? activeFarms.length > 0 : activeFarms.some((f) => f.id !== activeFarmId)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const otherFarms = activeFarms.filter((f) => f.id !== activeFarmId);
                       setTargetFarmId(otherFarms[0]?.id || '');
                       setIsBulkTransferModalOpen(true);
                     }}
                     className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                   >
                     <ArrowRightLeft className="w-4 h-4" />
-                    <span>Transferir a otro Campo...</span>
+                    <span>{isUnassignedView ? 'Asignar a un Campo...' : 'Transferir a otro Campo...'}</span>
                   </button>
                 )}
               </div>
@@ -737,7 +812,26 @@ function AnimalsContent() {
                 <SkeletonRowList count={6} />
               </div>
             ) : filteredAnimals.length === 0 ? (
-              listFiltered ? (
+              !isUnassignedView && filters.geofenceId && animals.length === 0 ? (
+                <div className="py-16 text-center space-y-2">
+                  <p className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm">
+                    {selectedGeofence
+                      ? `El cerco "${selectedGeofence.name}" no tiene animales asignados actualmente.`
+                      : 'El cerco seleccionado no tiene animales asignados actualmente.'}
+                  </p>
+                  <p className="text-zinc-400 text-xs">
+                    Podés asignar animales a este cerco desde la lista general del campo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleGeofenceFilterChange('')}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Ver todos los animales del campo
+                  </button>
+                </div>
+              ) : listFiltered ? (
                 <div className="py-16 text-center text-zinc-500 dark:text-zinc-400 text-sm">
                   No se encontraron animales que coincidan con la búsqueda.
                 </div>
@@ -747,8 +841,8 @@ function AnimalsContent() {
                     icon={ClipboardList}
                     title="No se encontraron animales registrados."
                     description="Añadí el primer animal a este campo."
-                    actionLabel={canEdit ? 'Añadir animal' : undefined}
-                    onAction={canEdit ? () => setIsAddModalOpen(true) : undefined}
+                    actionLabel={canOperate ? 'Añadir animal' : undefined}
+                    onAction={canOperate ? () => setIsAddModalOpen(true) : undefined}
                   />
                 </div>
               )
@@ -999,14 +1093,18 @@ function AnimalsContent() {
                   onChange={(v) => setTargetGeofenceId(v)}
                   options={[
                     { value: '', label: 'Sin cerco (liberar)' },
-                    ...activeFarmGeofences.map((g) => ({
+                    ...farmGeofences.map((g) => ({
                       value: String(g.id),
-                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                      label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
+                        g.active ? '' : ' · inactivo (sin descargas)'
+                      }`,
                     })),
                   ]}
                 />
                 <p className="text-[11px] text-zinc-400 mt-1">
-                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba.
+                  Solo se pueden encerrar animales con collar activo. Cada animal sale del cerco en el que estaba. En un
+                  cerco activo deben estar dentro (última hora y 25 m del borde); si el cerco está inactivo se prepara
+                  la asignación y se valida al activarlo.
                 </p>
               </div>
 
@@ -1035,9 +1133,11 @@ function AnimalsContent() {
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
               <div>
-                <h3 className="font-bold text-base text-zinc-900 dark:text-white">Transferir Hacienda a otro Campo</h3>
+                <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                  {isUnassignedView ? 'Asignar Animales Libres a un Campo' : 'Transferir Hacienda a otro Campo'}
+                </h3>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Mover {selectedIds.length} animales a otro establecimiento
+                  {isUnassignedView ? 'Asignar' : 'Mover'} {selectedIds.length} animales a otro campo
                 </p>
               </div>
               <button
@@ -1049,14 +1149,12 @@ function AnimalsContent() {
             </div>
             <div className="p-6 space-y-4">
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                  Establecimiento Destino
-                </label>
+                <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Campo Destino</label>
                 <Select
                   value={String(targetFarmId)}
                   onChange={(v) => setTargetFarmId(v)}
                   options={[
-                    ...farms
+                    ...activeFarms
                       .filter((f) => f.id !== activeFarmId)
                       .map((f) => ({ value: String(f.id), label: String(f.name) })),
                   ]}
@@ -1066,8 +1164,18 @@ function AnimalsContent() {
               <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Al transferir al nuevo campo, los animales quedarán <strong>sin cerco asignado</strong> (se cierran
-                  sus cercos virtuales anteriores). Los collares asignados continuarán con cada cabeza.
+                  {isUnassignedView ? (
+                    <>
+                      Al asignar los animales al campo, quedarán <strong>sin cerco asignado</strong>. Los collares
+                      asignados continuarán con cada cabeza.
+                    </>
+                  ) : (
+                    <>
+                      Al transferir al nuevo campo, los animales quedarán{' '}
+                      <strong>sin cerco asignado en el destino</strong>. Los cercos del campo de origen no se modifican.
+                      Los collares asignados continuarán con cada cabeza.
+                    </>
+                  )}
                 </span>
               </div>
 
@@ -1078,11 +1186,17 @@ function AnimalsContent() {
                 <Button
                   type="button"
                   onClick={handleBulkTransferFarm}
-                  disabled={bulkTransferring}
+                  disabled={bulkTransferring || bulkAssigningFarm}
                   variant="primary"
                   size="md"
                 >
-                  {bulkTransferring ? 'Transfiriendo...' : 'Confirmar Traslado'}
+                  {bulkTransferring || bulkAssigningFarm
+                    ? isUnassignedView
+                      ? 'Asignando...'
+                      : 'Transfiriendo...'
+                    : isUnassignedView
+                      ? 'Confirmar Asignación'
+                      : 'Confirmar Traslado'}
                 </Button>
               </div>
             </div>
@@ -1197,16 +1311,18 @@ function AnimalsContent() {
                     onChange={(v) => setTargetGeofenceId(v)}
                     options={[
                       { value: '', label: 'Sin cerco virtual (liberar)' },
-                      ...activeFarmGeofences.map((g) => ({
+                      ...farmGeofences.map((g) => ({
                         value: String(g.id),
-                        label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}`,
+                        label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
+                          g.active ? '' : ' · inactivo (sin descargas)'
+                        }`,
                         icon: Zap,
                       })),
                     ]}
                   />
-                  {activeFarmGeofences.length === 0 && (
+                  {farmGeofences.length === 0 && (
                     <span className="text-[11px] text-zinc-400 mt-1">
-                      No hay cercos virtuales activos en este establecimiento. Podés crearlos desde el menú Cercos.
+                      No hay cercos virtuales en este campo. Podés crearlos desde el menú Cercos.
                     </span>
                   )}
                 </div>

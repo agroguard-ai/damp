@@ -134,7 +134,7 @@ function computeAnimalTelemetryAt(
 async function main() {
   console.log('--- Iniciando Seed DAMP ---');
 
-  // 1. Crear roles estándar de granja
+  // 1. Crear roles estándar de campo
   const roleNames = ['ADMIN', 'OPERATOR', 'VIEWER'];
   const rolesMap: Record<string, string> = {};
   for (const name of roleNames) {
@@ -338,13 +338,25 @@ async function main() {
   const existingFarmIds = existingFarms.map((f) => f.id);
 
   if (existingFarmIds.length > 0) {
-    console.log('Limpiando datos previos del establecimiento de Juan Pérez para regenerar seed limpio...');
+    console.log('Limpiando datos previos del campo de Juan Pérez para regenerar seed limpio...');
     await prisma.iotRequestLog.deleteMany({ where: { farmId: { in: existingFarmIds } } });
     await prisma.healthPrediction.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
     await prisma.alert.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
     await prisma.medicalEvent.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
-    await prisma.animalGeofence.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
-    await prisma.animalCollar.deleteMany({ where: { animal: { farmId: { in: existingFarmIds } } } });
+    await prisma.animalGeofence.deleteMany({
+      where: {
+        OR: [{ animal: { farmId: { in: existingFarmIds } } }, { geofence: { farmId: { in: existingFarmIds } } }],
+      },
+    });
+    await prisma.animalCollar.deleteMany({
+      where: {
+        OR: [
+          { animal: { farmId: { in: existingFarmIds } } },
+          { collar: { farmId: { in: existingFarmIds } } },
+          { collar: { identifier: { in: collarIdentifiers } } },
+        ],
+      },
+    });
     await prisma.telemetryReading.deleteMany({
       where: { collar: { OR: [{ farmId: { in: existingFarmIds } }, { identifier: { in: collarIdentifiers } }] } },
     });
@@ -416,7 +428,7 @@ async function main() {
     },
   });
 
-  // Configurar umbrales de alertas del establecimiento
+  // Configurar umbrales de alertas del campo
   await prisma.alertSettings.create({
     data: {
       farmId: farm.id,
@@ -579,6 +591,7 @@ async function main() {
     const animal = await prisma.animal.create({
       data: {
         farmId: farm.id,
+        ownerId: farm.userId,
         tag: spec.tag,
         sex: spec.sex,
         birthDate,
@@ -1030,17 +1043,436 @@ async function main() {
 
   await prisma.iotRequestLog.createMany({ data: iotLogsData });
 
+  // =========================================================================
+  // 13. PRODUCTOR: SANTIAGO MORÍN Y CAMPO EN MARCOS JUÁREZ, CÓRDOBA
+  // =========================================================================
+  console.log('\n--- Configurando productor Santiago Morín y su campo en Marcos Juárez ---');
+
+  const santiagoEmail = 'santiago.morin@damp.com';
+  const santiagoPasswordHash = await bcrypt.hash('Santiago1234!', 10);
+
+  const santiagoUser = await prisma.user.upsert({
+    where: { email: santiagoEmail },
+    update: {
+      name: 'Santiago Morín',
+      passwordHash: santiagoPasswordHash,
+      globalRole: GlobalRole.FARM_ADMIN,
+      mustChangePassword: false,
+      isActive: true,
+      maxCollars: 15,
+    },
+    create: {
+      email: santiagoEmail,
+      name: 'Santiago Morín',
+      passwordHash: santiagoPasswordHash,
+      globalRole: GlobalRole.FARM_ADMIN,
+      mustChangePassword: false,
+      isActive: true,
+      maxCollars: 15,
+    },
+  });
+  console.log(`Productor verificado: ${santiagoUser.name} (${santiagoUser.email} / pass: Santiago1234!)`);
+
+  const mjCollarIdentifiers = ['COLLAR-MJ-01', 'COLLAR-MJ-02', 'COLLAR-MJ-03', 'COLLAR-MJ-LIBRE-01'];
+  const mjGatewayApiKey = 'damp_gw_marcos_juarez_santiago_2026_key_01';
+
+  const existingMjFarms = await prisma.farm.findMany({
+    where: {
+      OR: [{ userId: santiagoUser.id }, { name: 'Estancia San Marcos - Santiago Morín' }],
+    },
+    select: { id: true },
+  });
+  const existingMjFarmIds = existingMjFarms.map((f) => f.id);
+
+  if (existingMjFarmIds.length > 0) {
+    console.log('Limpiando datos previos del campo de Santiago Morín para regenerar seed limpio...');
+    await prisma.iotRequestLog.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.healthPrediction.deleteMany({ where: { animal: { farmId: { in: existingMjFarmIds } } } });
+    await prisma.alert.deleteMany({ where: { animal: { farmId: { in: existingMjFarmIds } } } });
+    await prisma.medicalEvent.deleteMany({ where: { animal: { farmId: { in: existingMjFarmIds } } } });
+    await prisma.animalGeofence.deleteMany({
+      where: {
+        OR: [{ animal: { farmId: { in: existingMjFarmIds } } }, { geofence: { farmId: { in: existingMjFarmIds } } }],
+      },
+    });
+    await prisma.animalCollar.deleteMany({
+      where: {
+        OR: [
+          { animal: { farmId: { in: existingMjFarmIds } } },
+          { collar: { farmId: { in: existingMjFarmIds } } },
+          { collar: { identifier: { in: mjCollarIdentifiers } } },
+        ],
+      },
+    });
+    await prisma.telemetryReading.deleteMany({
+      where: { collar: { OR: [{ farmId: { in: existingMjFarmIds } }, { identifier: { in: mjCollarIdentifiers } }] } },
+    });
+    await prisma.collar.deleteMany({
+      where: { OR: [{ farmId: { in: existingMjFarmIds } }, { identifier: { in: mjCollarIdentifiers } }] },
+    });
+    await prisma.animal.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.rotationPlan.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.geofence.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.gateway.deleteMany({
+      where: { OR: [{ farmId: { in: existingMjFarmIds } }, { apiKey: mjGatewayApiKey }] },
+    });
+    await prisma.alertSettings.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.farmUser.deleteMany({ where: { farmId: { in: existingMjFarmIds } } });
+    await prisma.farm.deleteMany({ where: { id: { in: existingMjFarmIds } } });
+  } else {
+    await prisma.telemetryReading.deleteMany({ where: { collar: { identifier: { in: mjCollarIdentifiers } } } });
+    await prisma.animalCollar.deleteMany({ where: { collar: { identifier: { in: mjCollarIdentifiers } } } });
+    await prisma.collar.deleteMany({ where: { identifier: { in: mjCollarIdentifiers } } });
+    await prisma.gateway.deleteMany({ where: { apiKey: mjGatewayApiKey } });
+  }
+
+  // Perímetro del campo en zona rural de Marcos Juárez, Córdoba (~124.5 Ha)
+  const mjFarmPolygon: [number, number][] = [
+    [-32.715, -62.13],
+    [-32.715, -62.118],
+    [-32.725, -62.118],
+    [-32.725, -62.13],
+  ];
+
+  const mjActiveGeofencePolygon: [number, number][] = [
+    [-32.7165, -62.128],
+    [-32.7165, -62.12],
+    [-32.7235, -62.12],
+    [-32.7235, -62.128],
+  ];
+
+  const mjInactiveGeofencePolygon: [number, number][] = [
+    [-32.7237, -62.1285],
+    [-32.7237, -62.1195],
+    [-32.7247, -62.1195],
+    [-32.7247, -62.1285],
+  ];
+
+  const thirtyDaysAgo = new Date(nowMs - 30 * DAY_MS);
+
+  const mjFarm = await prisma.farm.create({
+    data: {
+      name: 'Estancia San Marcos - Santiago Morín',
+      province: 'Córdoba',
+      location: 'Marcos Juárez',
+      address: 'Ruta Nacional 9 Km 442, Marcos Juárez, Córdoba',
+      totalAreaHa: 124.5,
+      polygonCoordinates: mjFarmPolygon,
+      userId: santiagoUser.id,
+      isActive: true,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
+  await prisma.farmUser.create({
+    data: {
+      farmId: mjFarm.id,
+      userId: santiagoUser.id,
+      roleId: rolesMap['ADMIN'],
+      isActive: true,
+    },
+  });
+
+  await prisma.alertSettings.create({
+    data: {
+      farmId: mjFarm.id,
+      feverThreshold: 39.5,
+      hypothermiaThreshold: 37.0,
+      inactivityMinutes: 120,
+      emailOnEscape: true,
+      emailOnHealth: true,
+    },
+  });
+
+  const mjGateway = await prisma.gateway.create({
+    data: {
+      name: 'Gateway LoRaWAN - Estancia San Marcos (MJ)',
+      farmId: mjFarm.id,
+      apiKey: mjGatewayApiKey,
+      lastSeenAt: now,
+      lastRssi: -69.2,
+      lastSnr: 9.1,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
+  const mjActiveGeofence = await prisma.geofence.create({
+    data: {
+      farmId: mjFarm.id,
+      name: 'Potrero Este - Pastura Alfalfa',
+      pastureType: 'Alfalfa Pura',
+      polygonCoordinates: mjActiveGeofencePolygon,
+      active: true,
+      activatedAt: thirtyDaysAgo,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
+  const mjInactiveGeofence = await prisma.geofence.create({
+    data: {
+      farmId: mjFarm.id,
+      name: 'Potrero Sur - Reserva (Para Asignación)',
+      pastureType: 'Pastizal Natural',
+      polygonCoordinates: mjInactiveGeofencePolygon,
+      active: false,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
+  // 3 animales monitoreados con evoluciones diferenciadas + 1 animal libre sin collar
+  const mjMonitoredSpecs = [
+    {
+      tag: 'MJ-201',
+      breed: 'Aberdeen Angus',
+      sex: Sex.FEMALE,
+      weightKg: 430,
+      ageMonths: 27,
+      collarIdentifier: 'COLLAR-MJ-01',
+      targetEvent: 'inactividad' as const,
+      threshold: 0.65,
+      probabilities: [0.14, 0.21, 0.29, 0.38, 0.46, 0.54, 0.61, 0.88],
+      alertMessage: '[IA:INACTIVIDAD] Modelo predictivo: posible inactividad prolongada en las próximas 6hs (confianza 88%).',
+    },
+    {
+      tag: 'MJ-202',
+      breed: 'Aberdeen Angus',
+      sex: Sex.FEMALE,
+      weightKg: 415,
+      ageMonths: 25,
+      collarIdentifier: 'COLLAR-MJ-02',
+      targetEvent: 'celo' as const,
+      threshold: 0.6,
+      probabilities: [0.12, 0.19, 0.27, 0.35, 0.43, 0.5, 0.56, 0.86],
+      alertMessage: '[IA:CELO] Modelo predictivo: posible celo en las próximas 6hs (confianza 86%).',
+    },
+    {
+      tag: 'MJ-203',
+      breed: 'Brangus',
+      sex: Sex.MALE,
+      weightKg: 490,
+      ageMonths: 31,
+      collarIdentifier: 'COLLAR-MJ-03',
+      targetEvent: 'fiebre' as const,
+      threshold: 0.65,
+      probabilities: [0.1, 0.17, 0.25, 0.34, 0.44, 0.52, 0.6, 0.91],
+      alertMessage: '[IA:FIEBRE] Modelo predictivo: posible fiebre en las próximas 6hs (confianza 91%).',
+    },
+  ];
+
+  // Bloques de 30 min para las últimas 72 horas (para respaldar ventanas de 24h y evolución)
+  const mjStart72hMs = blockStartFor(new Date(nowMs - 72 * HOUR_MS)).getTime();
+  const mjTimestamps: number[] = [];
+  for (let t = mjStart72hMs; t <= nowMs; t += step30MinMs) {
+    mjTimestamps.push(t);
+  }
+  if (mjTimestamps[mjTimestamps.length - 1] < nowMs) {
+    mjTimestamps.push(nowMs);
+  }
+
+  const mjTelemetryData: {
+    collarId: number;
+    latitude: number;
+    longitude: number;
+    temperature: number;
+    timestamp: Date;
+  }[] = [];
+
+  const mjPredictionsData: {
+    animalId: string;
+    predictedEvent: string;
+    probability: number;
+    threshold: number;
+    detected: boolean;
+    horizonHours: number;
+    windowReadingsCount: number;
+    windowEndAt: Date;
+    alertId: string | null;
+    createdAt: Date;
+  }[] = [];
+
+  // 8 ventanas cada 3 horas en las últimas 21 horas hasta `latestWindowEnd`
+  const mjWindowEnds: Date[] = [];
+  for (let k = 7; k >= 0; k--) {
+    mjWindowEnds.push(new Date(latestWindowEnd.getTime() - k * 3 * HOUR_MS));
+  }
+
+  for (let idx = 0; idx < mjMonitoredSpecs.length; idx++) {
+    const spec = mjMonitoredSpecs[idx];
+    const collar = await prisma.collar.create({
+      data: {
+        identifier: spec.collarIdentifier,
+        status: CollarStatus.AVAILABLE,
+        isArchived: false,
+        fenceNotificationPending: false,
+        lastFenceSyncedAt: new Date(nowMs - HOUR_MS),
+        lastTelemetryDate: now,
+        farmId: mjFarm.id,
+        createdAt: thirtyDaysAgo,
+      },
+    });
+
+    const animal = await prisma.animal.create({
+      data: {
+        farmId: mjFarm.id,
+        ownerId: santiagoUser.id,
+        tag: spec.tag,
+        sex: spec.sex,
+        birthDate: new Date(nowMs - spec.ageMonths * 30 * DAY_MS),
+        breed: spec.breed,
+        weightKg: spec.weightKg,
+        animalTypeId: animalTypesByName[spec.breed] ?? null,
+        status: 'ACTIVE',
+        isArchived: false,
+        createdAt: thirtyDaysAgo,
+      },
+    });
+
+    await prisma.animalCollar.create({
+      data: {
+        collarId: collar.id,
+        animalId: animal.id,
+        startAt: thirtyDaysAgo,
+        endAt: null,
+      },
+    });
+
+    await prisma.animalGeofence.create({
+      data: {
+        animalId: animal.id,
+        geofenceId: mjActiveGeofence.id,
+        startAt: thirtyDaysAgo,
+        endAt: null,
+      },
+    });
+
+    // Generar telemetría de 72h dentro de mjActiveGeofence acorde al patrón del animal
+    const rng = createSeededRng(20261112 + idx * 773);
+    let lat = -32.72 + (idx - 1) * 0.0012;
+    let lng = -62.124 + (idx - 1) * 0.0014;
+
+    for (const tMs of mjTimestamps) {
+      const hoursBeforeNow = (nowMs - tMs) / HOUR_MS;
+      const isStagnantWindow = spec.targetEvent === 'inactividad' && hoursBeforeNow <= 18;
+      const stepScale = isStagnantWindow ? 0.00003 : spec.targetEvent === 'celo' && hoursBeforeNow <= 18 ? 0.00055 : 0.00035;
+
+      lat = Math.max(-32.723, Math.min(-32.717, lat + (rng() - 0.5) * stepScale));
+      lng = Math.max(-62.1275, Math.min(-62.1205, lng + (rng() - 0.5) * stepScale));
+
+      let temp = 38.4 + circadianTempOffset(new Date(tMs)) + (rng() - 0.5) * 0.12;
+      if (spec.targetEvent === 'celo' && hoursBeforeNow <= 18) {
+        temp += 0.35;
+      } else if (spec.targetEvent === 'fiebre' && hoursBeforeNow <= 18) {
+        const feverIntensity = Math.min(1, (18 - hoursBeforeNow) / 10);
+        temp = 38.65 + feverIntensity * 1.45 + (rng() - 0.5) * 0.1;
+      }
+
+      mjTelemetryData.push({
+        collarId: collar.id,
+        latitude: Number(lat.toFixed(6)),
+        longitude: Number(lng.toFixed(6)),
+        temperature: Number(temp.toFixed(2)),
+        timestamp: new Date(tMs),
+      });
+    }
+
+    // Alerta activa vinculada a la última predicción detectada
+    const activeAlert = await prisma.alert.create({
+      data: {
+        animalId: animal.id,
+        type: AlertType.HEALTH,
+        message: spec.alertMessage,
+        isResolved: false,
+        createdAt: new Date(nowMs - 45 * 60 * 1000),
+      },
+    });
+
+    // Evolución de predicciones (8 ventanas * 4 eventos)
+    const allEvents = [
+      { key: 'fiebre', threshold: 0.65, base: 0.09 },
+      { key: 'celo', threshold: 0.6, base: spec.sex === Sex.FEMALE ? 0.13 : 0.02 },
+      { key: 'inactividad', threshold: 0.65, base: 0.11 },
+      { key: 'anomalia', threshold: 0.7, base: 0.08 },
+    ];
+
+    for (let wIdx = 0; wIdx < mjWindowEnds.length; wIdx++) {
+      const wEnd = mjWindowEnds[wIdx];
+      const isLastWindow = wIdx === mjWindowEnds.length - 1;
+
+      for (const ev of allEvents) {
+        const isTarget = ev.key === spec.targetEvent;
+        const probability = isTarget
+          ? spec.probabilities[wIdx]
+          : Number((ev.base + ((wIdx + idx) % 3) * 0.02).toFixed(2));
+        const detected = isTarget && probability >= ev.threshold;
+
+        mjPredictionsData.push({
+          animalId: animal.id,
+          predictedEvent: ev.key,
+          probability,
+          threshold: ev.threshold,
+          detected,
+          horizonHours: 6,
+          windowReadingsCount: 48,
+          windowEndAt: wEnd,
+          alertId: isTarget && isLastWindow ? activeAlert.id : null,
+          createdAt: new Date(wEnd.getTime() + 5 * 60 * 1000),
+        });
+      }
+    }
+  }
+
+  await prisma.telemetryReading.createMany({ data: mjTelemetryData });
+  await prisma.healthPrediction.createMany({ data: mjPredictionsData });
+
+  // Animal libre y collar libre sin datos listos para vincular y asignar a un cerco
+  const mjFreeCollar = await prisma.collar.create({
+    data: {
+      identifier: 'COLLAR-MJ-LIBRE-01',
+      status: CollarStatus.AVAILABLE,
+      isArchived: false,
+      fenceNotificationPending: true,
+      lastFenceSyncedAt: null,
+      lastTelemetryDate: null,
+      farmId: mjFarm.id,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
+  const mjFreeAnimal = await prisma.animal.create({
+    data: {
+      farmId: mjFarm.id,
+      ownerId: santiagoUser.id,
+      tag: 'MJ-204',
+      sex: Sex.FEMALE,
+      birthDate: new Date(nowMs - 22 * 30 * DAY_MS),
+      breed: 'Aberdeen Angus',
+      weightKg: 405,
+      animalTypeId: animalTypesByName['Aberdeen Angus'] ?? null,
+      status: 'ACTIVE',
+      isArchived: false,
+      createdAt: thirtyDaysAgo,
+    },
+  });
+
   console.log('\n============================================================');
   console.log('✅ SEED COMPLETADO EXITOSAMENTE');
   console.log('============================================================');
-  console.log(`👤 Productor:       Juan Pérez (${juanUser.email} / clave: Juan1234!)`);
   console.log(`🔑 SuperAdmin:      ${superAdmin.email} (clave: Admin1234!)`);
-  console.log(`🌾 Establecimiento: ${farm.name} (${farm.province} - ${farm.location}, ${farm.totalAreaHa} Ha)`);
+  console.log('------------------------------------------------------------');
+  console.log(`👤 Productor 1:     Juan Pérez (${juanUser.email} / clave: Juan1234!)`);
+  console.log(`🌾 Campo 1:         ${farm.name} (${farm.province} - ${farm.location}, ${farm.totalAreaHa} Ha)`);
   console.log(`⚡ Cerco Virtual:   ${activeGeofence.name} (Activo desde hace 92 días)`);
   console.log(`📡 Gateway LoRa:    ${gateway.name} (ONLINE)`);
   console.log(`🐄 Ganados:         ${createdAnimals.length} cabezas (ER-1001 a ER-1010) con 10 collares asignados`);
   console.log(`📍 Registros GPS:   ${allTelemetryReadings.length} lecturas (${timestamps.length} por animal en 90 días)`);
   console.log(`🩺 Eventos Médicos: ${medicalEventsData.length} registros clínicos y de evolución de peso`);
+  console.log('------------------------------------------------------------');
+  console.log(`👤 Productor 2:     Santiago Morín (${santiagoUser.email} / clave: Santiago1234!)`);
+  console.log(`🌾 Campo 2:         ${mjFarm.name} (${mjFarm.province} - ${mjFarm.location}, ${mjFarm.totalAreaHa} Ha)`);
+  console.log(`⚡ Cercos:          ${mjActiveGeofence.name} (Activo) | ${mjInactiveGeofence.name} (Inactivo)`);
+  console.log(`📡 Gateway LoRa:    ${mjGateway.name} (ONLINE)`);
+  console.log(`🐄 Ganados IA:      MJ-201 (Inactividad), MJ-202 (Celo), MJ-203 (Fiebre) con ${mjPredictionsData.length} predicciones`);
+  console.log(`🆓 Disponible:      Animal ${mjFreeAnimal.tag} + Collar ${mjFreeCollar.identifier} (sin datos, listo para vincular/asignar)`);
   console.log('============================================================\n');
 }
 

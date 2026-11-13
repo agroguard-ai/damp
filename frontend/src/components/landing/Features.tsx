@@ -32,7 +32,7 @@ const features = [
     icon: Users,
     title: 'Multi-campo y roles por operación',
     description:
-      'Administrá varios campos desde una sola cuenta con roles de administrador, operador y visor por establecimiento.',
+      'Administrá varios campos desde una sola cuenta con roles de administrador, operador y lector por campo.',
   },
   {
     icon: BarChart3,

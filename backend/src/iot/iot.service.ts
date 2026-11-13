@@ -13,31 +13,14 @@ import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { hasGpsFix } from '@/common/gps';
 import { haversineMeters } from './utils/haversine.utils';
-import { MlHealthService } from './ml-health.service';
+import { EVENT_LABELS_ES, ML_HEALTH_THRESHOLDS, MlHealthService } from './ml-health.service';
 import { buildMlWindow, blockStartFor, ML_BLOCK_MINUTES, ML_MIN_BLOCKS_WITH_DATA, ML_WINDOW_BLOCKS } from './ml-window';
 import { RotationsService } from '@/rotations/rotations.service';
 
+export { ML_HEALTH_THRESHOLDS };
+
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
 const INACTIVITY_RADIUS_M = 15;
-
-const EVENT_LABELS_ES: Record<string, string> = {
-  fiebre: 'fiebre',
-  celo: 'celo',
-  inactividad: 'inactividad prolongada',
-  anomalia: 'un evento anómalo',
-};
-
-/**
- * Umbrales de decisión clínica gestionados en el backend (regla de negocio / alertas).
- * ml-service provee la probabilidad pura calculada por la red; el backend decide
- * con qué umbral se activa una alerta y se registra como detectado.
- */
-export const ML_HEALTH_THRESHOLDS: Record<string, number> = {
-  fiebre: 0.75,
-  celo: 0.30,
-  inactividad: 0.70,
-  anomalia: 0.70,
-};
 
 @Injectable()
 export class IotService {
@@ -72,17 +55,26 @@ export class IotService {
       throw new NotFoundException(`Collar with id ${payload.collar_id} not found`);
     }
 
-    // Validación de pertenencia estricta: el collar debe pertenecer al mismo establecimiento que el gateway autenticado
+    // Validación de pertenencia estricta: el collar debe pertenecer al mismo campo que el gateway autenticado
     if (authenticatedGateway?.farmId && collar.farmId && collar.farmId !== authenticatedGateway.farmId) {
       this.logger.warn(
         `[IoT Telemetry] Rechazado 403: El collar ${collar.id} pertenece al campo ${collar.farmId}, pero fue retransmitido por un gateway del campo ${authenticatedGateway.farmId}.`
       );
       throw new ForbiddenException(
-        `El collar con ID ${payload.collar_id} no pertenece al establecimiento de este gateway.`
+        `El collar con ID ${payload.collar_id} no pertenece al campo de este gateway.`
       );
     }
 
     const readingTime = this.resolveReadingTime(payload);
+
+    const animalCollar = await this.prisma.animalCollar.findFirst({
+      where: { collarId: payload.collar_id, endAt: null },
+      select: { animalId: true, animal: { select: { farmId: true } } },
+    });
+
+    // Se guarda el campo como snapshot de la lectura: si el animal o el campo cambian
+    // después, el histórico sigue perteneciendo al campo donde ocurrió la lectura.
+    const readingFarmId = animalCollar?.animal.farmId ?? collar.farmId ?? null;
 
     const reading = await this.prisma.telemetryReading.create({
       data: {
@@ -90,6 +82,7 @@ export class IotService {
         latitude: payload.lat,
         longitude: payload.lng,
         temperature: payload.temp,
+        farmId: readingFarmId,
         ...(readingTime ? { timestamp: readingTime } : {}),
       },
     });
@@ -102,16 +95,15 @@ export class IotService {
     // gateway_id ya se validó en IotDeviceAuthGuard (existe y el X-API-Key matchea) antes de llegar acá.
     await this.gatewaysService.recordHeartbeat(payload.gateway_id, payload.rssi, payload.snr);
 
-    const animalCollar = await this.prisma.animalCollar.findFirst({
-      where: { collarId: payload.collar_id, endAt: null },
-      select: { animalId: true, animal: { select: { farmId: true } } },
-    });
-
     if (!animalCollar) {
       return { downlink: 'NONE' };
     }
 
-    await this.checkHealthThresholds(animalCollar.animalId, animalCollar.animal.farmId, payload);
+    const animalFarmId = animalCollar.animal.farmId;
+
+    if (animalFarmId) {
+      await this.checkHealthThresholds(animalCollar.animalId, animalFarmId, payload);
+    }
 
     // La predicción del modelo (consultas + llamada HTTP a ml-service) corre en segundo plano:
     // la respuesta al gateway trae el downlink del cerco y no puede esperarla, porque el collar
@@ -128,10 +120,10 @@ export class IotService {
     // Si el campo tiene un plan de rotación activo (CU012), sincroniza el avance y calcula
     // las coordenadas rotadas / incrementales hora a hora para enviar en el downlink al gateway.
     let activeFence: { polygon: [number, number][]; geofenceName: string } | null = null;
-    if (this.rotationsService) {
+    if (this.rotationsService && animalFarmId) {
       activeFence = await this.rotationsService.resolveActiveCoordinatesForAnimal(
         animalCollar.animalId,
-        animalCollar.animal.farmId
+        animalFarmId
       );
     } else {
       const animalGeofence = await this.prisma.animalGeofence.findFirst({

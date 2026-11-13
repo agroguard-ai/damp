@@ -45,7 +45,7 @@ export class RotationsService implements OnModuleInit, OnModuleDestroy {
     });
 
     if (!farm || farm.isActive === false) {
-      throw new NotFoundException('Establecimiento no encontrado o inactivo');
+      throw new NotFoundException('Campo no encontrado o inactivo');
     }
 
     const isOwner = farm.userId === userId;
@@ -57,7 +57,7 @@ export class RotationsService implements OnModuleInit, OnModuleDestroy {
     }
 
     if (!isOwner && (!farm.farmUsers || farm.farmUsers.length === 0)) {
-      throw new ForbiddenException('No tenés acceso a este establecimiento');
+      throw new ForbiddenException('No tenés acceso a este campo');
     }
 
     return { farm, isAdmin, isOwner };

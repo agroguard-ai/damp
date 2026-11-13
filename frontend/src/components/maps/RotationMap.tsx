@@ -182,7 +182,7 @@ export default function RotationMap({
                 <p className="font-bold text-green-700 inline-flex items-center gap-2">
                   <Sprout className="w-4 h-4" /> Campo: {farm.name ?? 'Sin nombre'}
                 </p>
-                <p className="text-[11px] text-zinc-600">Perímetro general del establecimiento.</p>
+                <p className="text-[11px] text-zinc-600">Perímetro general del campo.</p>
               </div>
             </Popup>
           </Polygon>

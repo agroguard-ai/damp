@@ -7,7 +7,7 @@ const steps = [
   {
     number: '01',
     title: 'Equipá tus animales',
-    description: 'Colocá el collar LoRa en el animal y vinculalo a tu establecimiento desde la app en segundos.',
+    description: 'Colocá el collar LoRa en el animal y vinculalo a tu campo desde la app en segundos.',
   },
   {
     number: '02',

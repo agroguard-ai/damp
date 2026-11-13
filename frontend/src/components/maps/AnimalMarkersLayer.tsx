@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { MapPin, Thermometer, TriangleAlert } from 'lucide-react';
+import { BrainCircuit, FileText, Route, Thermometer, TriangleAlert } from 'lucide-react';
 
 const PAW_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>';
@@ -92,10 +92,12 @@ interface ClusterGroup {
 export default function AnimalMarkersLayer({
   animals,
   referenceTime,
+  farmId,
   onSelectAnimalForTrajectory,
 }: {
   animals: MapAnimal[];
   referenceTime: number;
+  farmId?: string;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
 }) {
   const map = useMap();
@@ -211,23 +213,32 @@ export default function AnimalMarkersLayer({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t flex flex-col gap-2">
+                  <div className="pt-2 border-t border-zinc-100 flex flex-col gap-2">
                     {onSelectAnimalForTrajectory && (
                       <button
                         type="button"
                         onClick={() => onSelectAnimalForTrajectory(animal.id)}
-                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-lg text-[11px] transition-colors shadow-xs"
+                        className="w-full flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors shadow-xs cursor-pointer"
                       >
-                        <span className="inline-flex items-center justify-center gap-1">
-                          <MapPin className="w-3 h-3" /> Ver recorrido histórico
-                        </span>
+                        <Route className="w-3.5 h-3.5 shrink-0" />
+                        Ver recorrido histórico
                       </button>
                     )}
                     <a
-                      href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
-                      className="block text-center text-green-700 dark:text-green-600 hover:underline text-[11px] font-medium"
+                      href={`/alertas?tab=predictive&animalId=${encodeURIComponent(animal.id)}${
+                        farmId ? `&farmId=${encodeURIComponent(farmId)}` : ''
+                      }`}
+                      className="w-full flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700! border border-purple-200 font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors no-underline!"
                     >
-                      Ver ficha completa &rarr;
+                      <BrainCircuit className="w-3.5 h-3.5 shrink-0" />
+                      Ir a predicciones de IA
+                    </a>
+                    <a
+                      href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
+                      className="w-full flex items-center justify-center gap-1.5 bg-zinc-50 hover:bg-zinc-100 text-zinc-700! border border-zinc-200 font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors no-underline!"
+                    >
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                      Ver ficha completa
                     </a>
                   </div>
                 </div>

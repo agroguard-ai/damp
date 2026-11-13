@@ -81,12 +81,16 @@ function hasFix(r: RawReading) {
  * más reciente). `readings` tiene que venir ordenado por timestamp ascendente e incluir, si
  * existe, alguna lectura previa a la ventana (para medir el primer tramo recorrido).
  */
-export function buildMlWindow(readings: RawReading[], anchor: Date): MlWindow {
+export function buildMlWindow(
+  readings: RawReading[],
+  anchor: Date,
+  windowBlocks: number = ML_WINDOW_BLOCKS
+): MlWindow {
   const windowEnd = new Date(blockStartFor(anchor).getTime() + BLOCK_MS);
-  const windowStart = new Date(windowEnd.getTime() - ML_WINDOW_BLOCKS * BLOCK_MS);
+  const windowStart = new Date(windowEnd.getTime() - windowBlocks * BLOCK_MS);
 
   type Acc = { tempSum: number; count: number; distance: number; lat: number; lng: number };
-  const acc: (Acc | null)[] = Array.from({ length: ML_WINDOW_BLOCKS }, () => null);
+  const acc: (Acc | null)[] = Array.from({ length: windowBlocks }, () => null);
 
   let lastFix: RawReading | null = null;
   for (const r of readings) {
@@ -115,7 +119,7 @@ export function buildMlWindow(readings: RawReading[], anchor: Date): MlWindow {
 
   const blocks: MlBlock[] = [];
   let previous: Omit<MlBlock, 'timestamp'> | null = null;
-  for (let i = 0; i < ML_WINDOW_BLOCKS; i++) {
+  for (let i = 0; i < windowBlocks; i++) {
     const a = acc[i] ?? (previous ? null : (firstWithData ?? null));
     const values: Omit<MlBlock, 'timestamp'> =
       a !== null

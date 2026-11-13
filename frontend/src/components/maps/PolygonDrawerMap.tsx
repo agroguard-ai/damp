@@ -3,7 +3,8 @@
 import { MapContainer, TileLayer, Polygon, Marker, Tooltip, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Redo2, Trash2, Undo2, X } from 'lucide-react';
+import { Undo2, Redo2, Trash2, Eye, EyeOff, Zap, MapPin, X } from 'lucide-react';
+import { isPointInPolygon } from '@/lib/geo/spatial';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import MapActionControls from './controls/MapActionControls';
 import AnimalMarkersLayer from './AnimalMarkersLayer';
@@ -26,6 +27,12 @@ export interface ExistingPolygon {
   name?: string;
   points: [number, number][];
   color?: string;
+  fillColor?: string;
+  fillOpacity?: number;
+  weight?: number;
+  dashArray?: string;
+  isConflicting?: boolean;
+  active?: boolean;
 }
 
 export interface PolygonDrawerMapProps {
@@ -34,12 +41,18 @@ export interface PolygonDrawerMapProps {
   center?: [number, number];
   zoom?: number;
   existingPolygons?: ExistingPolygon[];
+  showExistingPolygons?: boolean;
+  onToggleExistingPolygons?: () => void;
   strokeColor?: string;
   fillColor?: string;
   selectedVertexIndex?: number | null;
   onSelectVertex?: (idx: number | null) => void;
   /** Campo del mapa: habilita el botón "Animales" (apagado por defecto). */
   farmId?: string;
+  /** Solo visualización: no permite agregar, mover ni borrar vértices. */
+  readOnly?: boolean;
+  /** Ocupa todo el alto disponible sin bordes redondeados ni separación interna (ideal para modales con panel lateral). */
+  fullBleed?: boolean;
 }
 
 /**
@@ -217,6 +230,31 @@ function MapRecenter({ center, zoom }: { center: [number, number]; zoom: number 
   return null;
 }
 
+function MapResizeSync() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let rafId: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+      });
+    });
+
+    observer.observe(container);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
 export interface MapProviderConfig {
   url: string;
   attribution: string;
@@ -235,21 +273,10 @@ export const MAP_PROVIDERS: Record<MapLayerType, MapProviderConfig> = {
     attribution: '&copy; Esri &mdash; Fuentes: Esri, Maxar, Earthstar Geographics',
     maxZoom: 19,
   },
-  streets: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
-  },
   topo: {
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
     maxZoom: 17,
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-    maxZoom: 19,
   },
 };
 
@@ -259,13 +286,26 @@ export default function PolygonDrawerMap({
   center = [-34.6037, -58.3816],
   zoom = 14,
   existingPolygons = [],
+  showExistingPolygons,
+  onToggleExistingPolygons,
   strokeColor = '#16a34a',
   fillColor = '#22c55e',
   selectedVertexIndex: controlledSelectedIndex,
   onSelectVertex: controlledOnSelectVertex,
   farmId,
+  readOnly = false,
+  fullBleed = false,
 }: PolygonDrawerMapProps) {
   const herd = useAnimalsToggle(farmId);
+  const [internalShowExisting, setInternalShowExisting] = useState<boolean>(true);
+  const showExisting = showExistingPolygons !== undefined ? showExistingPolygons : internalShowExisting;
+  const toggleExisting = useCallback(() => {
+    if (onToggleExistingPolygons) {
+      onToggleExistingPolygons();
+    } else {
+      setInternalShowExisting((prev) => !prev);
+    }
+  }, [onToggleExistingPolygons]);
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
   const [showLabels, setShowLabels] = useState<boolean>(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -330,6 +370,7 @@ export default function PolygonDrawerMap({
 
   // Global Ctrl+Z / Cmd+Z (Undo) and Ctrl+Y / Cmd+Shift+Z (Redo) listener
   useEffect(() => {
+    if (readOnly) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
@@ -359,7 +400,7 @@ export default function PolygonDrawerMap({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
+  }, [handleUndo, handleRedo, readOnly]);
 
   const handleAddPoint = (point: [number, number]) => {
     pushHistory(points);
@@ -423,68 +464,90 @@ export default function PolygonDrawerMap({
 
   const activeProvider = MAP_PROVIDERS[currentLayer];
 
+  const toolbarClass = fullBleed
+    ? 'flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 text-xs shrink-0'
+    : 'flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs';
+
   return (
-    <div className="w-full space-y-3">
+    <div className={fullBleed ? 'w-full h-full flex flex-col' : 'w-full space-y-3'}>
       {/* Control Bar for Drawing Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
-        <div className="flex items-center gap-2 text-zinc-500 font-medium">
-          <span>
-            {points.length} {points.length === 1 ? 'vértice' : 'vértices'} trazados
+      {readOnly ? (
+        <div className={toolbarClass}>
+          <span className="text-zinc-500 font-medium">
+            {points.length} {points.length === 1 ? 'vértice' : 'vértices'} del perímetro archivado
           </span>
-          {selectedIndex !== null && (
-            <span className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-300 dark:border-amber-800/60">
-              Vértice #{selectedIndex + 1} activo para inserción
-              <button
-                type="button"
-                onClick={() => setSelectedIndex(null)}
-                className="text-amber-800 dark:text-amber-200 hover:text-red-500 ml-0.5 cursor-pointer"
-                title="Deseleccionar"
-              >
-                <X className="w-3 h-3" />
-              </button>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-200/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">
+            Solo lectura
+          </span>
+        </div>
+      ) : (
+        <div className={toolbarClass}>
+          <div className="flex items-center gap-2 text-zinc-500 font-medium">
+            <span>
+              {points.length} {points.length === 1 ? 'vértice' : 'vértices'} trazados
             </span>
-          )}
+            {selectedIndex !== null && (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-semibold text-[11px] border border-amber-300 dark:border-amber-800/60">
+                Vértice #{selectedIndex + 1} activo para inserción
+                <button
+                  type="button"
+                  onClick={() => setSelectedIndex(null)}
+                  className="text-amber-800 dark:text-amber-200 hover:text-red-500 ml-0.5 cursor-pointer"
+                  title="Deseleccionar"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={points.length === 0 && historyRef.current.length === 0}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+              title="Deshacer última acción (Ctrl + Z)"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              <span>Deshacer</span>
+              <kbd className="hidden sm:inline-block ml-1 px-1 py-0.2 bg-zinc-100 dark:bg-zinc-800 text-[10px] rounded text-zinc-400">
+                Ctrl+Z
+              </kbd>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={futureRef.current.length === 0}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+              title="Rehacer acción (Ctrl + Y)"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={points.length === 0}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-40 transition-colors font-medium cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpiar polígono
+            </button>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleUndo}
-            disabled={points.length === 0 && historyRef.current.length === 0}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
-            title="Deshacer última acción (Ctrl + Z)"
-          >
-            <Undo2 className="w-4 h-4" />
-            <span>Deshacer</span>
-            <kbd className="hidden sm:inline-block ml-1 px-1 py-0.2 bg-zinc-100 dark:bg-zinc-800 text-[10px] rounded text-zinc-400">
-              Ctrl+Z
-            </kbd>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleRedo}
-            disabled={futureRef.current.length === 0}
-            className="flex items-center gap-1 px-2 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-40 transition-colors font-medium cursor-pointer"
-            title="Rehacer acción (Ctrl + Y)"
-          >
-            <Redo2 className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={points.length === 0}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 disabled:opacity-40 transition-colors font-medium cursor-pointer"
-          >
-            <Trash2 className="w-4 h-4" />
-            Limpiar polígono
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Map Container Canvas */}
-      <div ref={containerRef} className="w-full h-105 rounded-xl overflow-hidden relative z-10 group">
+      <div
+        ref={containerRef}
+        className={
+          fullBleed
+            ? 'w-full flex-1 min-h-0 overflow-hidden relative z-10 group'
+            : 'w-full h-105 rounded-xl overflow-hidden relative z-10 group'
+        }
+      >
         {/* Floating Round Action Controls inside the map */}
         <MapActionControls
           targetRef={containerRef}
@@ -521,20 +584,56 @@ export default function PolygonDrawerMap({
             />
           )}
           <MapRecenter center={center} zoom={zoom} />
+          <MapResizeSync />
 
           {/* Render existing polygons (e.g. established farm boundary or existing fences) */}
-          {existingPolygons.map((poly) => (
-            <Polygon
-              key={poly.id}
-              positions={poly.points}
-              pathOptions={{
-                color: poly.color || '#3b82f6',
-                fillColor: poly.color || '#60a5fa',
-                fillOpacity: 0.2,
-                interactive: false,
-              }}
-            />
-          ))}
+          {showExisting &&
+            existingPolygons.map((poly) => {
+              const isConflict =
+                poly.isConflicting !== undefined
+                  ? poly.isConflicting
+                  : points.length >= 3 && poly.points.some((pt) => !isPointInPolygon([pt[0], pt[1]], points));
+
+              const color = isConflict ? '#ef4444' : poly.color || (poly.active !== false ? '#06b6d4' : '#94a3b8');
+
+              const fillColor = isConflict
+                ? '#f87171'
+                : poly.fillColor || (poly.active !== false ? '#22d3ee' : '#cbd5e1');
+
+              return (
+                <Polygon
+                  key={poly.id}
+                  positions={poly.points}
+                  pathOptions={{
+                    color,
+                    fillColor,
+                    fillOpacity: isConflict ? 0.35 : (poly.fillOpacity ?? 0.22),
+                    weight: isConflict ? 3 : (poly.weight ?? 2),
+                    dashArray: isConflict ? '4, 4' : (poly.dashArray ?? '5, 5'),
+                    interactive: true,
+                  }}
+                >
+                  <Tooltip sticky>
+                    <div className="text-xs p-0.5">
+                      <div
+                        className={`font-bold flex items-center gap-1 ${
+                          isConflict ? 'text-red-600' : 'text-cyan-700 dark:text-cyan-400'
+                        }`}
+                      >
+                        {isConflict ? '⚠️' : '⚡'} {poly.name || 'Cerco virtual'}
+                      </div>
+                      <div className={`text-[10px] ${isConflict ? 'text-red-500 font-semibold' : 'text-zinc-500'}`}>
+                        {isConflict
+                          ? '¡Queda fuera del nuevo límite!'
+                          : poly.active === false
+                            ? 'Cerco Inactivo'
+                            : 'Cerco Activo (Contenido)'}
+                      </div>
+                    </div>
+                  </Tooltip>
+                </Polygon>
+              );
+            })}
 
           {/* Render active polygon being drawn */}
           {points.length > 0 && (
@@ -549,56 +648,58 @@ export default function PolygonDrawerMap({
                   weight: 3,
                 }}
               />
-              {points.map((pt, idx) => (
-                <DraggableVertex
-                  key={idx}
-                  idx={idx}
-                  point={pt}
-                  color={strokeColor}
-                  isSelected={selectedIndex === idx}
-                  onSelect={handleToggleSelectVertex}
-                  onDragStart={handleDragStart}
-                  onDragMove={handleDragMove}
-                  onDragEnd={handleDragEnd}
-                  onDelete={handleDeleteVertex}
-                  isDraggingRef={isDraggingRef}
-                />
-              ))}
+              {!readOnly &&
+                points.map((pt, idx) => (
+                  <DraggableVertex
+                    key={idx}
+                    idx={idx}
+                    point={pt}
+                    color={strokeColor}
+                    isSelected={selectedIndex === idx}
+                    onSelect={handleToggleSelectVertex}
+                    onDragStart={handleDragStart}
+                    onDragMove={handleDragMove}
+                    onDragEnd={handleDragEnd}
+                    onDelete={handleDeleteVertex}
+                    isDraggingRef={isDraggingRef}
+                  />
+                ))}
             </>
           )}
 
-          {herd.enabled && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}
+          {herd.enabled && !readOnly && <AnimalMarkersLayer animals={herd.animals} referenceTime={herd.fetchedAt} />}
 
-          <MapClickHandler onAddPoint={handleAddPoint} isDraggingRef={isDraggingRef} />
+          {!readOnly && <MapClickHandler onAddPoint={handleAddPoint} isDraggingRef={isDraggingRef} />}
         </MapContainer>
 
-        {points.length === 0 ? (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/80 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none">
-            Hacé clic en el mapa para marcar los vértices del perímetro
-          </div>
-        ) : selectedIndex !== null ? (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-amber-500/95 backdrop-blur-md text-zinc-950 text-xs px-4 py-2 rounded-full shadow-xl font-medium border border-amber-300 flex items-center gap-2 animate-in fade-in zoom-in-95">
-            <span>
-              <MapPin className="w-3.5 h-3.5 shrink-0" />
-              <strong>Vértice #{selectedIndex + 1} seleccionado:</strong> El próximo clic insertará un punto a su lado.
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedIndex(null)}
-              className="ml-1 px-2 py-0.5 rounded bg-zinc-900 text-white text-[10px] font-bold hover:bg-zinc-800 transition-colors cursor-pointer"
-            >
-              Deseleccionar
-            </button>
-          </div>
-        ) : (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/85 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none flex items-center gap-2">
-            <span>Hacé clic para añadir al final</span>
-            <span className="text-zinc-500">•</span>
-            <span className="text-amber-300 font-medium">Clic en un punto para insertar al lado</span>
-            <span className="text-zinc-500">•</span>
-            <span className="text-emerald-300 font-medium">Arrastrá para corregir</span>
-          </div>
-        )}
+        {!readOnly &&
+          (points.length === 0 ? (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/80 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none">
+              Hacé clic en el mapa para marcar los vértices del perímetro
+            </div>
+          ) : selectedIndex !== null ? (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-amber-500/95 backdrop-blur-md text-zinc-950 text-xs px-4 py-2 rounded-full shadow-xl font-medium border border-amber-300 flex items-center gap-2 animate-in fade-in zoom-in-95">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <strong>Vértice #{selectedIndex + 1} seleccionado:</strong> El próximo clic insertará un punto a su lado.
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedIndex(null)}
+                className="ml-1 px-2 py-0.5 rounded bg-zinc-900 text-white text-[10px] font-bold hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                Deseleccionar
+              </button>
+            </div>
+          ) : (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-400 bg-zinc-900/85 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full shadow-lg border border-white/10 pointer-events-none flex items-center gap-2">
+              <span>Hacé clic para añadir al final</span>
+              <span className="text-zinc-500">•</span>
+              <span className="text-amber-300 font-medium">Clic en un punto para insertar al lado</span>
+              <span className="text-zinc-500">•</span>
+              <span className="text-emerald-300 font-medium">Arrastrá para corregir</span>
+            </div>
+          ))}
       </div>
     </div>
   );

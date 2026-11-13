@@ -31,7 +31,7 @@ describe('MedicalEventsService', () => {
     it('permite registrar un evento si el usuario es el dueño del campo', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
-        farm: { userId: 'owner-1', farmUsers: [] },
+        farm: { userId: 'owner-1', isActive: true, farmUsers: [] },
       });
       prisma.user.findUnique.mockResolvedValue({ id: 'owner-1', globalRole: 'USER' });
       prisma.medicalEvent.create.mockResolvedValue({
@@ -61,6 +61,7 @@ describe('MedicalEventsService', () => {
         id: 'animal-1',
         farm: {
           userId: 'owner-1',
+          isActive: true,
           farmUsers: [{ userId: 'operator-1', isActive: true }],
         },
       });
@@ -89,7 +90,7 @@ describe('MedicalEventsService', () => {
     it('al registrar un pesaje (WEIGHING), actualiza el peso vigente del animal', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
-        farm: { userId: 'owner-1', farmUsers: [] },
+        farm: { userId: 'owner-1', isActive: true, farmUsers: [] },
       });
       prisma.user.findUnique.mockResolvedValue({ id: 'owner-1', globalRole: 'USER' });
       prisma.medicalEvent.create.mockResolvedValue({
@@ -132,7 +133,7 @@ describe('MedicalEventsService', () => {
     it('rechaza con ForbiddenException si el usuario no pertenece al campo del animal', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
-        farm: { userId: 'other-owner', farmUsers: [] },
+        farm: { userId: 'other-owner', isActive: true, farmUsers: [] },
       });
       prisma.user.findUnique.mockResolvedValue({ id: 'stranger-1', globalRole: 'USER' });
 
@@ -152,7 +153,7 @@ describe('MedicalEventsService', () => {
     it('retorna los registros ordenados descendentemente por fecha', async () => {
       prisma.animal.findUnique.mockResolvedValue({
         id: 'animal-1',
-        farm: { userId: 'owner-1', farmUsers: [] },
+        farm: { userId: 'owner-1', isActive: true, farmUsers: [] },
       });
       prisma.user.findUnique.mockResolvedValue({ id: 'owner-1', globalRole: 'USER' });
       prisma.medicalEvent.findMany.mockResolvedValue([

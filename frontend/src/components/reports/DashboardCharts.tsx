@@ -107,7 +107,7 @@ export default function DashboardCharts({ data }: { data: FarmDashboard }) {
     <div className="space-y-6">
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm">
         <h3 className="font-bold text-sm text-zinc-900 dark:text-white uppercase tracking-wider pb-3 mb-1 border-b border-zinc-100 dark:border-zinc-800">
-          Resumen del establecimiento
+          Resumen del campo
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-3">
           <KpiTile label="Animales activos" value={data.totalAnimals} />

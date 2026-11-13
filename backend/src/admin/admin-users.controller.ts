@@ -42,7 +42,7 @@ export class AdminUsersController {
   }
 
   @Get('farms')
-  findAllFarms(@Query() query: PaginationQueryDto) {
-    return this.adminUsersService.findAllFarms(query);
+  findAllFarms(@Query() query: PaginationQueryDto, @Query('includeInactive') includeInactive?: string) {
+    return this.adminUsersService.findAllFarms(query, includeInactive === 'true' || includeInactive === '1');
   }
 }

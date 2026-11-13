@@ -19,12 +19,12 @@ function makePrismaMock() {
     animalCollar: { create: jest.fn(), updateMany: jest.fn(), findMany: jest.fn() },
     animalGeofence: { create: jest.fn(), createMany: jest.fn(), updateMany: jest.fn() },
     medicalEvent: { create: jest.fn() },
-    telemetryReading: { findMany: jest.fn() },
+    telemetryReading: { findMany: jest.fn(), updateMany: jest.fn() },
     $transaction: jest.fn((cb) => cb(prisma)),
   };
 }
 
-let prisma: ReturnType<typeof makePrismaMock>;
+let prisma: any;
 
 describe('AnimalsService', () => {
   let collarsServiceMock: any;
@@ -35,7 +35,7 @@ describe('AnimalsService', () => {
     collarsServiceMock = {
       assertAvailableForAssignment: jest.fn(),
     };
-    service = new AnimalsService(prisma as any, collarsServiceMock);
+    service = new AnimalsService(prisma, collarsServiceMock);
   });
 
   describe('findAll — filtro hasActiveAlert', () => {
@@ -87,6 +87,21 @@ describe('AnimalsService', () => {
         })
       );
     });
+
+    it('filtra por cerco virtual solo con asignaciones vigentes (CUU-029)', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([]);
+
+      await service.findAll({ farmId: 'farm-1', geofenceId: 'geo-1' }, 'user-1');
+
+      expect(prisma.animal.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            animalGeofences: { some: { geofenceId: 'geo-1', endAt: null } },
+          }),
+        })
+      );
+    });
   });
 
   describe('CU005 - Asignación y Reglas de Negocio', () => {
@@ -123,6 +138,153 @@ describe('AnimalsService', () => {
           data: expect.objectContaining({ animalId: 'animal-1', geofenceId: 'geo-1' }),
         })
       );
+    });
+
+    it('rechaza asignar a un cerco activo si el animal no tiene lectura GPS reciente', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: '001',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, endAt: null }],
+        animalGeofences: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        active: true,
+        farmId: 'farm-1',
+        polygonCoordinates: [
+          [-34.51, -58.51],
+          [-34.51, -58.49],
+          [-34.49, -58.49],
+          [-34.49, -58.51],
+        ],
+      });
+      prisma.telemetryReading.findMany.mockResolvedValue([]);
+
+      await expect(service.assignGeofence('animal-1', 'geo-1', 'user-1')).rejects.toThrow(
+        /1 animal no tiene lectura GPS en la última hora[\s\S]*desactivar el cerco/
+      );
+      expect(prisma.animalGeofence.create).not.toHaveBeenCalled();
+    });
+
+    it('rechaza asignar a un cerco activo si el animal está fuera del polígono', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: '001',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, endAt: null }],
+        animalGeofences: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        active: true,
+        farmId: 'farm-1',
+        polygonCoordinates: [
+          [-34.51, -58.51],
+          [-34.51, -58.49],
+          [-34.49, -58.49],
+          [-34.49, -58.51],
+        ],
+      });
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.52, longitude: -58.5 }]);
+
+      await expect(service.assignGeofence('animal-1', 'geo-1', 'user-1')).rejects.toThrow(/fuera del cerco/);
+      expect(prisma.animalGeofence.create).not.toHaveBeenCalled();
+    });
+
+    it('rechaza asignar a un cerco activo si el animal está a menos de 25 m del borde', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: '001',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, endAt: null }],
+        animalGeofences: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        active: true,
+        farmId: 'farm-1',
+        polygonCoordinates: [
+          [-34.51, -58.51],
+          [-34.51, -58.49],
+          [-34.49, -58.49],
+          [-34.49, -58.51],
+        ],
+      });
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.5099, longitude: -58.5 }]);
+
+      await expect(service.assignGeofence('animal-1', 'geo-1', 'user-1')).rejects.toThrow(/25 m del borde/);
+    });
+
+    it('permite asignar a un cerco activo si el animal está dentro con margen', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: '001',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, endAt: null }],
+        animalGeofences: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        active: true,
+        farmId: 'farm-1',
+        polygonCoordinates: [
+          [-34.51, -58.51],
+          [-34.51, -58.49],
+          [-34.49, -58.49],
+          [-34.49, -58.51],
+        ],
+      });
+      prisma.telemetryReading.findMany.mockResolvedValue([{ collarId: 10, latitude: -34.5, longitude: -58.5 }]);
+
+      const res = await service.assignGeofence('animal-1', 'geo-1', 'user-1');
+
+      expect(res.message).toContain('exitosamente');
+      expect(prisma.animalGeofence.create).toHaveBeenCalled();
+    });
+
+    it('permite asignar a un cerco inactivo sin validar posición ni notificar al collar', async () => {
+      prisma.animal.findUnique.mockResolvedValue({
+        id: 'animal-1',
+        tag: '001',
+        farmId: 'farm-1',
+        animalCollars: [{ collarId: 10, endAt: null }],
+        animalGeofences: [],
+      });
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findUnique.mockResolvedValue({
+        id: 'geo-1',
+        active: false,
+        farmId: 'farm-1',
+        polygonCoordinates: [
+          [-34.51, -58.51],
+          [-34.51, -58.49],
+          [-34.49, -58.49],
+          [-34.49, -58.51],
+        ],
+      });
+
+      const res = await service.assignGeofence('animal-1', 'geo-1', 'user-1');
+
+      expect(res.message).toContain('exitosamente');
+      expect(prisma.telemetryReading.findMany).not.toHaveBeenCalled();
+      expect(prisma.collar.updateMany).not.toHaveBeenCalled();
+      expect(prisma.animalGeofence.create).toHaveBeenCalled();
+    });
+
+    it('bulkAssignGeofence no notifica collares si el cerco destino está inactivo', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.geofence.findFirst.mockResolvedValue({ id: 'geo-1', farmId: 'farm-1', active: false });
+      prisma.animal.findMany.mockResolvedValue([{ id: 'a1', tag: '001', animalCollars: [{ collarId: 10 }] }]);
+
+      await service.bulkAssignGeofence({ farmId: 'farm-1', animalIds: ['a1'], geofenceId: 'geo-1' }, 'user-1');
+
+      expect(prisma.animalGeofence.createMany).toHaveBeenCalled();
+      expect(prisma.collar.updateMany).not.toHaveBeenCalled();
     });
 
     it('al desvincular un collar, cierra automáticamente cualquier cerco virtual activo', async () => {
@@ -294,8 +456,11 @@ describe('AnimalsService', () => {
 
     it('obtiene puntos para el mapa de calor del campo', async () => {
       prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
-      prisma.animalCollar.findMany.mockResolvedValue([{ collarId: 10 }, { collarId: 20 }]);
-      prisma.telemetryReading.findMany.mockResolvedValue([
+      prisma.animalCollar.findMany.mockResolvedValue([
+        { collarId: 10, startAt: new Date('2026-01-01'), endAt: null },
+        { collarId: 20, startAt: new Date('2026-01-01'), endAt: null },
+      ]);
+      prisma.telemetryReading.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
         { latitude: -34.5, longitude: -58.5 },
         { latitude: -34.501, longitude: -58.502 },
       ]);
@@ -303,11 +468,52 @@ describe('AnimalsService', () => {
       const res = await service.getFarmHeatmap('farm-1', 'user-1', 7);
 
       expect(res.totalPoints).toBe(2);
-      expect(prisma.telemetryReading.findMany).toHaveBeenCalledWith(
+      expect(prisma.telemetryReading.findMany).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ collarId: { in: [10, 20] } }),
+          where: expect.objectContaining({ farmId: 'farm-1' }),
         })
       );
+    });
+
+    it('atribuye on-demand lecturas viejas sin farmId usando el vínculo animal-collar', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animalCollar.findMany.mockResolvedValue([
+        { collarId: 10, startAt: new Date('2026-01-01'), endAt: new Date('2026-06-01') },
+      ]);
+      prisma.telemetryReading.findMany
+        .mockResolvedValueOnce([
+          { id: 'r-1', collarId: 10, timestamp: new Date('2026-03-01') },
+          { id: 'r-2', collarId: 10, timestamp: new Date('2026-07-01') },
+        ])
+        .mockResolvedValueOnce([]);
+
+      await service.getFarmHeatmap('farm-1', 'user-1', 7);
+
+      expect(prisma.telemetryReading.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['r-1'] }, farmId: null },
+        data: { farmId: 'farm-1' },
+      });
+    });
+  });
+
+  describe('bulkTransferFarm — sin cambios sobre cercos virtuales', () => {
+    it('mueve los animales al campo destino sin tocar sus asignaciones a cercos', async () => {
+      prisma.farm.findUnique.mockResolvedValue({ id: 'farm-1', userId: 'user-1', isActive: true, farmUsers: [] });
+      prisma.animal.findMany.mockResolvedValue([
+        { id: 'animal-1', farmId: 'farm-1', animalCollars: [{ collarId: 10 }] },
+      ]);
+
+      const res = await service.bulkTransferFarm(
+        { sourceFarmId: 'farm-1', targetFarmId: 'farm-2', animalIds: ['animal-1'] },
+        'user-1'
+      );
+
+      expect(res.count).toBe(1);
+      expect(prisma.animalGeofence.updateMany).not.toHaveBeenCalled();
+      expect(prisma.animal.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['animal-1'] } },
+        data: { farmId: 'farm-2', ownerId: 'user-1' },
+      });
     });
   });
 });

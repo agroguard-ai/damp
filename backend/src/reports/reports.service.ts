@@ -22,8 +22,8 @@ export class ReportsService {
         },
       },
     });
-    if (!farm) {
-      throw new NotFoundException(`El campo con ID ${farmId} no existe.`);
+    if (!farm || !farm.isActive) {
+      throw new NotFoundException(`El campo con ID ${farmId} no existe o se encuentra inactivo.`);
     }
 
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -34,7 +34,7 @@ export class ReportsService {
     const isOwner = farm.userId === userId;
     const isMember = farm.farmUsers && farm.farmUsers.length > 0;
     if (!isOwner && !isMember) {
-      throw new ForbiddenException('No tienes acceso a este establecimiento.');
+      throw new ForbiddenException('No tienes acceso a este campo.');
     }
     return farm;
   }
@@ -58,6 +58,13 @@ export class ReportsService {
 
     const dbUser = await this.prisma.user.findUnique({ where: { id: userId } });
     if (dbUser?.globalRole === 'SUPER_ADMIN') {
+      return animal;
+    }
+
+    if (!animal.farm) {
+      if (animal.ownerId !== userId) {
+        throw new ForbiddenException('No tienes acceso a este animal.');
+      }
       return animal;
     }
 
@@ -264,10 +271,6 @@ export class ReportsService {
 
     const totalAlerts = alerts.length;
     const mlAlerts = alerts.filter((a) => isMlAlert(a.message));
-    const falsePositives = alerts.filter((a) => a.isFalsePositive);
-    const mlFalsePositives = mlAlerts.filter((a) => a.isFalsePositive);
-    const mlTruePositives = Math.max(0, mlAlerts.length - mlFalsePositives.length);
-    const fieldPrecisionPct = mlAlerts.length > 0 ? ((mlTruePositives / mlAlerts.length) * 100).toFixed(1) : '100.0';
 
     if (format === 'xlsx') {
       const workbook = new ExcelJS.Workbook();
@@ -280,8 +283,7 @@ export class ReportsService {
         { header: 'Certeza / Probabilidad', key: 'confidence', width: 22 },
         { header: 'Mensaje Detallado', key: 'message', width: 55 },
         { header: 'Estado', key: 'status', width: 16 },
-        { header: '¿Falso Positivo?', key: 'isFalsePositive', width: 16 },
-        { header: 'Feedback del Operario (Reentrenamiento)', key: 'feedbackNote', width: 40 },
+        { header: 'Observaciones', key: 'feedbackNote', width: 40 },
       ];
 
       alerts.forEach((a) => {
@@ -300,12 +302,7 @@ export class ReportsService {
           origin = 'Sensor Físico / Umbral';
         }
 
-        let statusStr = 'Sin resolver (Activa)';
-        if (a.isFalsePositive) {
-          statusStr = 'Falso Positivo';
-        } else if (a.isResolved) {
-          statusStr = 'Resuelta (Confirmada)';
-        }
+        const statusStr = a.isResolved ? 'Resuelta (Confirmada)' : 'Sin resolver (Activa)';
 
         sheet.addRow({
           date: a.createdAt.toLocaleString(),
@@ -315,8 +312,7 @@ export class ReportsService {
           confidence: confidenceStr,
           message: a.message,
           status: statusStr,
-          isFalsePositive: a.isFalsePositive ? 'SÍ' : 'NO',
-          feedbackNote: a.feedbackNote || (a.isFalsePositive ? 'Marcado como falso positivo' : ''),
+          feedbackNote: a.feedbackNote || '',
         });
       });
 
@@ -329,20 +325,11 @@ export class ReportsService {
     doc.fontSize(10).fillColor('#666').text(`Generado: ${new Date().toLocaleString()}`);
     doc.moveDown(0.8);
 
-    // Resumen Ejecutivo de Desempeño Predictivo
-    doc.rect(50, doc.y, 500, 52).fillAndStroke('#f8fafc', '#cbd5e1');
+    // Resumen Ejecutivo
+    doc.rect(50, doc.y, 500, 34).fillAndStroke('#f8fafc', '#cbd5e1');
     doc.fillColor('#0f172a').fontSize(10);
-    doc.text(
-      `Total Alertas: ${totalAlerts}   |   Generadas por Modelo IA: ${mlAlerts.length}   |   Falsos Positivos Reportados: ${falsePositives.length}`,
-      60,
-      doc.y - 42
-    );
-    doc.text(
-      `Precisión del Modelo en Campo: ${fieldPrecisionPct}% de aciertos confirmados por el productor / operario.`,
-      60,
-      doc.y + 4
-    );
-    doc.moveDown(2);
+    doc.text(`Total Alertas: ${totalAlerts}   |   Generadas por Modelo IA: ${mlAlerts.length}`, 60, doc.y - 24);
+    doc.moveDown(1.5);
     doc.fillColor('#000');
 
     if (alerts.length === 0) {
@@ -360,17 +347,10 @@ export class ReportsService {
 
         doc.fontSize(10).fillColor('#334155').text(a.message);
 
-        if (a.isFalsePositive) {
-          doc
-            .fontSize(9)
-            .fillColor('#ea580c')
-            .text(`⚠️ FALSO POSITIVO — Feedback: ${a.feedbackNote || 'Sin notas'}`);
-        } else {
-          doc
-            .fontSize(9)
-            .fillColor(a.isResolved ? '#16a34a' : '#dc2626')
-            .text(a.isResolved ? '✓ Resuelta (Confirmada)' : '● Sin resolver (Activa)');
-        }
+        doc
+          .fontSize(9)
+          .fillColor(a.isResolved ? '#16a34a' : '#dc2626')
+          .text(a.isResolved ? '✓ Resuelta (Confirmada)' : '● Sin resolver (Activa)');
         doc.fillColor('#000').moveDown(0.6);
       });
     }
@@ -392,7 +372,7 @@ export class ReportsService {
     ]);
 
     const doc = new PDFDocument({ margin: 50 });
-    doc.fontSize(18).text(`Resumen del Rodeo — ${farm.name ?? 'Establecimiento'}`);
+    doc.fontSize(18).text(`Resumen del Rodeo — ${farm.name ?? 'Campo'}`);
     doc.fontSize(10).fillColor('#666').text(`Generado: ${new Date().toLocaleString()}`);
     doc.moveDown(1.5);
     doc.fillColor('#000').fontSize(13);
