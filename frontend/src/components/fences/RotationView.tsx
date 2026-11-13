@@ -17,6 +17,7 @@ import {
   Trash2,
   Plus,
   ArrowRight,
+  Radio,
 } from 'lucide-react';
 import { rotationsApi } from '@/lib/api/rotations';
 import { useToast } from '@/context/ToastContext';
@@ -314,13 +315,13 @@ export default function RotationView({
                   <button
                     type="button"
                     onClick={() => setShowHeatmap((prev) => !prev)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all border ${
                       showHeatmap
                         ? 'bg-red-500 text-white border-red-600 shadow-xs'
                         : 'bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100'
                     }`}
                   >
-                    <Flame className="w-3.5 h-3.5" />
+                    <Flame className="w-4 h-4" />
                     <span>{showHeatmap ? 'Ocultar Puntos Calientes' : 'Ver Puntos Calientes (Pastoreo)'}</span>
                   </button>
                 </div>
@@ -343,21 +344,21 @@ export default function RotationView({
               {/* Map Legend */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px] text-zinc-600 dark:text-zinc-400 border-t border-zinc-100 dark:border-zinc-800">
                 <div className="flex flex-wrap items-center gap-4">
-                  <span className="flex items-center gap-1.5 font-medium">
+                  <span className="flex items-center gap-2 font-medium">
                     <span className="w-3 h-3 rounded-full border-2 border-emerald-500 bg-emerald-500/20"></span>
                     <span>1. Partida / Paso previo</span>
                   </span>
-                  <span className="flex items-center gap-1.5 font-bold text-orange-600 dark:text-orange-400">
+                  <span className="flex items-center gap-2 font-bold text-orange-600 dark:text-orange-400">
                     <span className="w-3 h-3 rounded-full border-2 border-orange-500 bg-orange-500/40 animate-pulse"></span>
                     <span>2. Activo ahora</span>
                   </span>
                   {rotationData?.transition?.isTransitioning && (
-                    <span className="flex items-center gap-1.5 font-bold text-cyan-600 dark:text-cyan-400">
+                    <span className="flex items-center gap-2 font-bold text-cyan-600 dark:text-cyan-400">
                       <span className="w-3 h-3 rounded-full border-2 border-dashed border-cyan-500 bg-cyan-500/30"></span>
                       <span>Transición gradual collares (~5 min)</span>
                     </span>
                   )}
-                  <span className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400">
+                  <span className="flex items-center gap-2 font-medium text-blue-600 dark:text-blue-400">
                     <span className="w-3 h-3 rounded-full border-2 border-dashed border-blue-500 bg-blue-500/20"></span>
                     <span>3. Próximo destino</span>
                   </span>
@@ -387,7 +388,7 @@ export default function RotationView({
                 <div className="p-3 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20 space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     <span className="flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <CheckCircle2 className="w-4 h-4" />
                       <span>Desde dónde partió</span>
                     </span>
                     <span>Paso inicial</span>
@@ -404,18 +405,18 @@ export default function RotationView({
                 {/* 2. Dónde está ahora */}
                 <div className="p-3 rounded-xl border-2 border-orange-500 bg-orange-50/50 dark:bg-orange-950/20 space-y-2">
                   <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-orange-700 dark:text-orange-400">
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping"></span>
                       <span>Dónde está ahora</span>
                     </span>
-                    <span className="bg-orange-200 dark:bg-orange-900 px-1.5 py-0.2 rounded font-mono">VIGENTE</span>
+                    <span className="bg-orange-200 dark:bg-orange-900 px-2 py-0.2 rounded font-mono">VIGENTE</span>
                   </div>
                   <h5 className="font-bold text-base text-zinc-900 dark:text-white">
                     {rotationData?.currentGeofence?.name || 'Cerco Activo'}
                   </h5>
                   <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 pt-1 border-t border-orange-200/60 dark:border-orange-800/40">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-orange-600" />
+                      <Clock className="w-4 h-4 text-orange-600" />
                       <span>Próxima rotación en:</span>
                     </span>
                     <span className="font-bold font-mono text-zinc-900 dark:text-white">
@@ -441,11 +442,11 @@ export default function RotationView({
                 {rotationData?.transition?.isTransitioning && (
                   <div className="p-3 rounded-xl border border-cyan-500/50 bg-cyan-50/50 dark:bg-cyan-950/20 space-y-2">
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-400">
-                      <span className="flex items-center gap-1.5">
-                        <RotateCw className="w-3.5 h-3.5 animate-spin text-cyan-600" />
+                      <span className="flex items-center gap-2">
+                        <RotateCw className="w-4 h-4 animate-spin text-cyan-600" />
                         <span>Transición gradual de perímetro</span>
                       </span>
-                      <span className="bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 px-1.5 py-0.2 rounded font-mono">
+                      <span className="bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-200 px-2 py-0.2 rounded font-mono">
                         Paso {rotationData.transition.current5MinStep}/{rotationData.transition.total5MinSteps}
                       </span>
                     </div>
@@ -461,9 +462,9 @@ export default function RotationView({
                         />
                       </div>
                     </div>
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                      📡 Transición gradual activa: los collares reciben las coordenadas intermedias actualizadas en
-                      cada reporte telemétrico (~cada 5 min).
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 inline-flex items-start gap-1">
+                      <Radio className="w-3 h-3 mt-0.5 shrink-0" /> Transición gradual activa: los collares reciben las
+                      coordenadas intermedias actualizadas en cada reporte telemétrico (~cada 5 min).
                     </p>
                   </div>
                 )}
@@ -501,7 +502,7 @@ export default function RotationView({
                     disabled={!rotationData?.nextGeofence}
                     className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-xs"
                   >
-                    <FastForward className="w-3.5 h-3.5" />
+                    <FastForward className="w-4 h-4" />
                     <span>Adelantar rotación ahora</span>
                   </button>
 
@@ -511,7 +512,7 @@ export default function RotationView({
                     onClick={() => setShowPostponeModal(true)}
                     className="w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
                   >
-                    <Clock className="w-3.5 h-3.5" />
+                    <Clock className="w-4 h-4" />
                     <span>Posponer próximo cambio (+X horas)</span>
                   </button>
 
@@ -523,12 +524,12 @@ export default function RotationView({
                   >
                     {plan.status === 'PAUSED' ? (
                       <>
-                        <Play className="w-3.5 h-3.5 text-green-600" />
+                        <Play className="w-4 h-4 text-green-600" />
                         <span>Reanudar rotación automática</span>
                       </>
                     ) : (
                       <>
-                        <Pause className="w-3.5 h-3.5 text-amber-600" />
+                        <Pause className="w-4 h-4 text-amber-600" />
                         <span>Pausar rotación temporalmente</span>
                       </>
                     )}
@@ -540,7 +541,7 @@ export default function RotationView({
                     onClick={handleCancelRotation}
                     className="w-full border border-red-200 dark:border-red-800/40 text-red-650 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 font-semibold py-2 px-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                     <span>Finalizar / Cancelar rotación</span>
                   </button>
                 </div>
@@ -561,7 +562,7 @@ export default function RotationView({
                       key={h}
                       type="button"
                       onClick={() => setPostponeHours(h)}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${
                         postponeHours === h
                           ? 'bg-orange-500 text-white border-orange-600'
                           : 'bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100'
@@ -575,14 +576,14 @@ export default function RotationView({
                   <button
                     type="button"
                     onClick={handlePostponeRotation}
-                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-colors"
+                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors"
                   >
                     Confirmar +{postponeHours}h
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowPostponeModal(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800"
+                    className="px-3 py-2 rounded-lg text-xs text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-800"
                   >
                     Cancelar
                   </button>
@@ -624,7 +625,7 @@ export default function RotationView({
               {/* Nombre y Frecuencia */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
                     Nombre del Plan de Rotación
                   </label>
                   <input
@@ -637,7 +638,7 @@ export default function RotationView({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2">
                     Frecuencia de Rotación (Horas por Cerco)
                   </label>
                   <Select
@@ -710,7 +711,7 @@ export default function RotationView({
                                 type="button"
                                 onClick={() => moveGeofenceOrder(orderIndex, 'up')}
                                 disabled={orderIndex === 0}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
+                                className="px-2 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
                                 title="Mover antes en la rotación"
                               >
                                 ▲
@@ -719,7 +720,7 @@ export default function RotationView({
                                 type="button"
                                 onClick={() => moveGeofenceOrder(orderIndex, 'down')}
                                 disabled={orderIndex === selectedGeofenceIds.length - 1}
-                                className="px-1.5 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
+                                className="px-2 py-0.5 rounded text-[10px] bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 disabled:opacity-30"
                                 title="Mover después en la rotación"
                               >
                                 ▼
@@ -735,7 +736,7 @@ export default function RotationView({
                 {/* Validación instantánea si selecciona 1 solo cerco (Camino Alternativo 1) */}
                 {selectedGeofenceIds.length === 1 && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <AlertTriangle className="w-4 h-4" />
                     <span>Se necesitan al menos dos perímetros para poder rotar. Seleccioná otro cerco.</span>
                   </p>
                 )}
@@ -764,7 +765,7 @@ export default function RotationView({
                 <button
                   type="submit"
                   disabled={submitting || selectedGeofenceIds.length < 2 || !hasAnimals}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2.5 px-5 rounded-xl text-xs transition-colors flex items-center gap-2 shadow-xs"
+                  className="bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-2 px-5 rounded-xl text-xs transition-colors flex items-center gap-2 shadow-xs"
                 >
                   {submitting ? (
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>

@@ -10,6 +10,7 @@ import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS, DraggableVertex } from './PolygonDrawerMap';
 import { validatePointInBoundary } from '@/lib/geo/spatial';
+import { MapPin, Zap } from 'lucide-react';
 
 // Fix Leaflet marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -374,33 +375,33 @@ export default function FenceMap({
       />
 
       {/* Legend Badge Bar */}
-      <div className="absolute top-4 left-4 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-3 py-1.5 shadow-md flex flex-wrap items-center gap-3 text-[11px] font-medium pointer-events-none">
+      <div className="absolute top-4 left-4 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-3 py-2 shadow-md flex flex-wrap items-center gap-3 text-[11px] font-medium pointer-events-none">
         {farmPolygon.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-green-500 border border-green-600"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-green-500 border border-green-600"></span>
             <span>Campo</span>
           </div>
         )}
         {geofences.some((g) => g.active !== false) && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-cyan-400 border border-cyan-500"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-cyan-400 border border-cyan-500"></span>
             <span>Cerco Activo</span>
           </div>
         )}
         {geofences.some((g) => g.active === false) && (
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-slate-400 border border-slate-500"></span>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-sm bg-slate-400 border border-slate-500"></span>
             <span>Cerco Desactivado</span>
           </div>
         )}
         {newPoints.length > 0 && (
-          <div className="flex items-center gap-1.5 text-blue-300">
-            <span className="w-2.5 h-2.5 rounded-sm bg-blue-500 border border-blue-400"></span>
+          <div className="flex items-center gap-2 text-blue-300">
+            <span className="w-2 h-2 rounded-sm bg-blue-500 border border-blue-400"></span>
             <span>Nuevo trazado ({newPoints.length} pts)</span>
           </div>
         )}
         {selectedIndex !== null && (
-          <div className="flex items-center gap-1.5 text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-400/40">
+          <div className="flex items-center gap-2 text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded border border-amber-400/40">
             <span>● Vértice #{selectedIndex + 1} activo para insertar</span>
           </div>
         )}
@@ -487,7 +488,9 @@ export default function FenceMap({
                   <Tooltip sticky>
                     <div className="text-xs">
                       <div className={`font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
-                        ⚡ {fence.name}
+                        <span className="inline-flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> {fence.name}
+                        </span>
                       </div>
                       <div className="text-[10px] text-zinc-500">
                         {isActive ? 'Cerco Activo' : 'Desactivado'}
@@ -558,7 +561,9 @@ export default function FenceMap({
             )
           ) : selectedIndex !== null ? (
             <div className="flex items-center gap-2">
-              <span className="text-amber-300 font-semibold">📍 Vértice #{selectedIndex + 1} seleccionado:</span>
+              <span className="text-amber-300 font-semibold inline-flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" /> Vértice #{selectedIndex + 1} seleccionado:
+              </span>
               <span>El próximo clic insertará un punto contiguo a este vértice.</span>
               <button
                 type="button"

@@ -63,13 +63,13 @@ export default function FarmMapView({ farm, geofences, center }: FarmMapViewProp
       {/* Estado de la hacienda: solo con la capa de animales prendida */}
       {herd.enabled && (
         <div className="flex flex-wrap items-center gap-2 px-2 pt-1">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+          <span className="inline-flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-semibold bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
             {herdStatus.live} con señal
           </span>
           {herdStatus.stale > 0 && (
             <span
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
+              className="px-2 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400"
               title="Sin señal en las últimas 6 horas"
             >
               {herdStatus.stale} sin señal reciente
@@ -77,7 +77,7 @@ export default function FarmMapView({ farm, geofences, center }: FarmMapViewProp
           )}
           {herdStatus.noSignal > 0 && (
             <span
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
+              className="px-2 py-1 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400"
               title="Tienen collar pero todavía no enviaron ninguna posición"
             >
               {herdStatus.noSignal} collar(es) sin datos
@@ -162,10 +162,10 @@ function RefreshButton({
       type="button"
       onClick={onRefresh}
       disabled={loading}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 hover:border-green-500/60 hover:text-green-700 dark:hover:text-green-400 shadow-xs transition-colors cursor-pointer disabled:cursor-wait"
+      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 hover:border-green-500/60 hover:text-green-700 dark:hover:text-green-400 shadow-xs transition-colors cursor-pointer disabled:cursor-wait"
       title="Actualizar ahora (se actualiza solo cada 30 s)"
     >
-      <RotateCcw className={`w-3.5 h-3.5 ${loading ? 'animate-spin [animation-direction:reverse]' : ''}`} />
+      <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin [animation-direction:reverse]' : ''}`} />
       <span>{loading ? 'Actualizando…' : `Actualizado ${formatAgo(Math.max(0, now - fetchedAt))}`}</span>
     </button>
   );

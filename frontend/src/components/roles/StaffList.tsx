@@ -7,8 +7,8 @@ import { useFarmPermissions, FARM_ROLE_LABELS } from '@/hooks/useFarmPermissions
 import { AccessDeniedState } from '@/components/roles/AccessDeniedState';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import { Select } from '@/components/ui/Select';
-import { Button } from '@/components/ui/Button';
-import { UserPlus, Key, Copy, Check, X, Pencil, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { EmptyFarmState, EmptyState } from '@/components/ui/EmptyState';
+import { UserPlus, Users, Key, Copy, Check, X, Pencil, KeyRound, ShieldAlert, ShieldCheck } from 'lucide-react';
 
 // El administrador de campos crea su personal solo como operador o lector, con el mismo rol en
 // todos los campos que le asigne (el backend valida que esos campos sean suyos).
@@ -35,7 +35,7 @@ interface StaffRecord {
 type FormTarget = { id: string | null } | null;
 
 const inputClass =
-  'w-full px-3.5 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500';
+  'w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-xl text-sm bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500';
 
 async function errorMessage(res: Response, fallback: string) {
   const data = (await res.json().catch(() => ({}))) as { message?: string | string[] };
@@ -261,14 +261,14 @@ export function StaffList() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleCopyCredentials}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               {copied ? '¡Copiado!' : 'Copiar Credenciales'}
             </button>
             <button
               onClick={() => setCredentials(null)}
-              className="p-1.5 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg cursor-pointer"
+              className="p-2 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg cursor-pointer"
               title="Cerrar"
             >
               <X className="w-4 h-4" />
@@ -278,46 +278,45 @@ export function StaffList() {
       )}
 
       <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">Tu personal</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Operadores y lectores de tus campos. Cada persona tiene el mismo rol en todos sus campos.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800">
-              Integrantes: {staff.length}
-            </span>
-            <button
-              onClick={openCreate}
-              disabled={farms.length === 0}
-              title={farms.length === 0 ? 'Registrá un campo antes de crear personal' : undefined}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UserPlus className="w-4 h-4" />
-              Nueva persona
-            </button>
-          </div>
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-end items-center gap-4">
+          <span className="bg-purple-100 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 text-xs font-semibold px-3 py-1 rounded-full border border-purple-200 dark:border-purple-800">
+            Integrantes: {staff.length}
+          </span>
+          <button
+            onClick={openCreate}
+            disabled={farms.length === 0}
+            title={farms.length === 0 ? 'Registrá un campo antes de crear personal' : undefined}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="w-4 h-4" />
+            Nuevo empleado
+          </button>
         </div>
 
         {farms.length === 0 ? (
-          <div className="px-6 py-10 text-center space-y-3">
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
-              Todavía no tenés campos registrados. Registrá tu primer campo para poder asignarle personal.
-            </p>
-            <Button href="/farms/new" variant="success" size="md" label="Registrar campo" />
+          <div className="p-8">
+            <EmptyFarmState />
+          </div>
+        ) : staff.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              icon={Users}
+              title="Todavía no agregaste personal a tus campos."
+              description="Sumá un operador para que pueda entrar a tus campos."
+              actionLabel="Nuevo empleado"
+              onAction={openCreate}
+            />
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-zinc-600 dark:text-zinc-300">
               <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-700 dark:text-zinc-400 uppercase font-semibold text-xs border-b border-zinc-200 dark:border-zinc-800">
                 <tr>
-                  <th className="px-6 py-3.5">Nombre / Email</th>
-                  <th className="px-6 py-3.5">Rol</th>
-                  <th className="px-6 py-3.5">Campos</th>
-                  <th className="px-6 py-3.5">Estado Clave</th>
-                  <th className="px-6 py-3.5 text-right">Acciones</th>
+                  <th className="px-6 py-4">Nombre / Email</th>
+                  <th className="px-6 py-4">Rol</th>
+                  <th className="px-6 py-4">Campos</th>
+                  <th className="px-6 py-4">Estado Clave</th>
+                  <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -333,7 +332,7 @@ export function StaffList() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {s.farms.map((f) => (
                           <span
                             key={f.id}
@@ -346,13 +345,13 @@ export function StaffList() {
                     </td>
                     <td className="px-6 py-4">
                       {s.mustChangePassword ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                          <ShieldAlert className="w-4 h-4 shrink-0" />
                           Provisional
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
-                          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20">
+                          <ShieldCheck className="w-4 h-4 shrink-0" />
                           Clave definitiva
                         </span>
                       )}
@@ -361,14 +360,14 @@ export function StaffList() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEdit(s)}
-                          className="p-1.5 text-zinc-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-zinc-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg transition-colors cursor-pointer"
                           title="Editar rol y campos"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => void handleResetPassword(s)}
-                          className="p-1.5 text-zinc-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-colors cursor-pointer"
+                          className="p-2 text-zinc-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-colors cursor-pointer"
                           title="Generar nueva contraseña temporal"
                         >
                           <KeyRound className="w-4 h-4" />
@@ -383,13 +382,6 @@ export function StaffList() {
                     </td>
                   </tr>
                 ))}
-                {staff.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-zinc-400 dark:text-zinc-500">
-                      Todavía no agregaste personal a tus campos.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
@@ -447,13 +439,13 @@ export function StaffList() {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Campos asignados</label>
-                <div className="space-y-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3">
+                <div className="space-y-2 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3">
                   {farms.map((f) => (
                     <label
                       key={f.id}
-                      className="flex items-center gap-2.5 text-sm text-zinc-800 dark:text-zinc-200 cursor-pointer"
+                      className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200 cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -483,7 +475,7 @@ export function StaffList() {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setFormTarget(null)}

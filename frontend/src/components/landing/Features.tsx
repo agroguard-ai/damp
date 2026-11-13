@@ -46,25 +46,25 @@ export function Features() {
   const listRef = useScrollReveal<HTMLDivElement>({ stagger: 0.08 });
 
   return (
-    <section id="producto" className="mx-auto max-w-7xl px-6 py-24 scroll-mt-20">
+    <section id="producto" className="mx-auto max-w-7xl px-page-sm sm:px-page py-section-sm sm:py-section scroll-mt-20">
       <div className="max-w-2xl">
         <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider">Plataforma DAMP Agro</span>
-        <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">
+        <h2 className="mt-stack-tight font-display text-3xl sm:text-4xl font-bold tracking-tight">
           Control total de tu hacienda desde una sola pantalla
         </h2>
       </div>
 
-      <div ref={listRef} className="mt-16 grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div ref={listRef} className="mt-group grid sm:grid-cols-2 lg:grid-cols-3 gap-gutter">
         {features.map((feature) => (
           <div
             key={feature.title}
             className="rounded-2xl border border-border bg-surface p-6 shadow-xs hover:border-border-strong transition-all"
           >
-            <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-950 flex items-center justify-center text-primary-700 dark:text-primary-300">
-              <feature.icon className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl bg-primary-50 dark:bg-primary-950 flex items-center justify-center text-primary-700 dark:text-primary-300">
+              <feature.icon className="w-6 h-6" />
             </div>
-            <h3 className="mt-4 text-lg font-semibold tracking-tight">{feature.title}</h3>
-            <p className="mt-2 text-sm text-muted leading-relaxed">{feature.description}</p>
+            <h3 className="mt-stack text-lg font-semibold tracking-tight">{feature.title}</h3>
+            <p className="mt-stack-tight text-sm text-muted leading-relaxed">{feature.description}</p>
           </div>
         ))}
       </div>

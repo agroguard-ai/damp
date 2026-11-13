@@ -273,7 +273,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
         {/* Panel lateral: Lista de animales */}
         <div className="p-4 border-b lg:border-b-0 lg:border-r border-zinc-100 dark:border-zinc-800 space-y-3">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
@@ -311,7 +311,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                 return (
                   <label
                     key={a.id}
-                    className={`flex items-center gap-2.5 p-2 rounded-lg text-xs transition-colors ${
+                    className={`flex items-center gap-2 p-2 rounded-lg text-xs transition-colors ${
                       disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
                     } ${
                       color
@@ -324,10 +324,10 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                       checked={!!color}
                       disabled={disabled}
                       onChange={() => toggleAnimal(a.id)}
-                      className="w-3.5 h-3.5 cursor-pointer accent-blue-600"
+                      className="w-4 h-4 cursor-pointer accent-blue-600"
                     />
                     <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0 border border-zinc-300 dark:border-zinc-600"
+                      className="w-2 h-2 rounded-full shrink-0 border border-zinc-300 dark:border-zinc-600"
                       style={color ? { backgroundColor: color, borderColor: color } : undefined}
                     ></span>
                     <span className="truncate flex-1">
@@ -349,16 +349,16 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
         {/* Panel principal: Controles de Tiempo, Reproductor y Mapa */}
         <div className="p-3 sm:p-4 space-y-3 flex flex-col justify-between">
           {/* Barra Superior de Filtros y Fechas */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             {/* Presets rápidos */}
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
                 {PRESET_RANGES.map((preset) => (
                   <button
                     key={preset.days}
                     type="button"
                     onClick={() => handlePresetClick(preset.days)}
-                    className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                    className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                       selectedPreset === preset.days
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -374,23 +374,23 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                 <button
                   type="button"
                   onClick={() => setShowDatePicker((prev) => !prev)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold rounded-lg border transition-all cursor-pointer ${
                     selectedPreset === 'custom'
                       ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
                       : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   }`}
                 >
-                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <CalendarIcon className="w-4 h-4" />
                   <span>
                     {selectedPreset === 'custom' ? `${customFrom} al ${customTo}` : 'Rango personalizado'}
                   </span>
-                  <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                  <ChevronDown className="w-4 h-4 opacity-60" />
                 </button>
 
                 {/* Popover con inputs de Fecha */}
                 {showDatePicker && (
                   <div className="absolute left-0 mt-2 z-40 w-72 p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl space-y-3 animate-in fade-in zoom-in-95 duration-100">
-                    <div className="text-xs font-bold text-zinc-900 dark:text-white pb-1.5 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="text-xs font-bold text-zinc-900 dark:text-white pb-2 border-b border-zinc-100 dark:border-zinc-800">
                       Seleccionar Rango de Estadía
                     </div>
                     <div className="space-y-2 text-xs">
@@ -401,7 +401,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                           value={customFrom}
                           max={customTo || formatDate(new Date())}
                           onChange={(e) => setCustomFrom(e.target.value)}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                         />
                       </div>
                       <div>
@@ -412,7 +412,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                           min={customFrom}
                           max={formatDate(new Date())}
                           onChange={(e) => setCustomTo(e.target.value)}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                         />
                       </div>
                     </div>
@@ -421,7 +421,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                       <button
                         type="button"
                         onClick={() => setShowDatePicker(false)}
-                        className="px-2.5 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
+                        className="px-2 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 cursor-pointer"
                       >
                         Cancelar
                       </button>
@@ -442,7 +442,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
             {/* Contador / Estado */}
             <span className="text-xs text-zinc-400 flex items-center gap-2">
               {loadingTrajectories && selectedIds.length > 0 ? (
-                <span className="w-3.5 h-3.5 border-2 border-blue-500/20 border-t-blue-600 rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-blue-500/20 border-t-blue-600 rounded-full animate-spin"></span>
               ) : selectedIds.length === 0 ? (
                 'Elegí animales de la lista'
               ) : (
@@ -453,7 +453,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
 
           {!loadingTrajectories && selectedIds.length > 0 && trajectories.length === 0 && (
             <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/25 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2 flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               No hay posiciones de estos animales en el período elegido. Probá ampliando el rango de fechas.
             </p>
           )}
@@ -478,20 +478,20 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                   <button
                     type="button"
                     onClick={handlePlayToggle}
-                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-2 rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
                     title={isPlaying ? 'Pausar recorrido' : 'Reproducir progreso del movimiento'}
                   >
-                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                     <span>{isPlaying ? 'Pausa' : 'Play'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleResetPlayback}
-                    className="p-1.5 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                    className="p-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
                     title="Reiniciar al inicio"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-4 h-4" />
                   </button>
 
                   {/* Selector de velocidad */}
@@ -502,7 +502,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                         key={speed}
                         type="button"
                         onClick={() => setPlaybackSpeed(speed)}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
                           playbackSpeed === speed
                             ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-900 dark:text-white font-bold'
                             : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500'
@@ -537,7 +537,7 @@ export default function TrajectoriesModal({ farm, initialAnimalIds = [], onClose
                     setIsPlaying(false);
                     setPlaybackProgress(parseFloat(e.target.value));
                   }}
-                  className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  className="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                 />
               </div>
             </div>

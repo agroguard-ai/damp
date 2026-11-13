@@ -35,12 +35,12 @@ export function Faq() {
   const listRef = useScrollReveal<HTMLDivElement>({ stagger: 0.05 });
 
   return (
-    <section id="preguntas-frecuentes" className="mx-auto max-w-3xl px-6 py-24 scroll-mt-20">
+    <section id="preguntas-frecuentes" className="mx-auto max-w-3xl px-page-sm sm:px-page py-section-sm sm:py-section scroll-mt-20">
       <div className="text-center">
-        <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">Preguntas frecuentes</h2>
+        <h2 className="font-display text-3xl sm:text-4xl font-bold tracking-tight">Preguntas frecuentes</h2>
       </div>
 
-      <div ref={listRef} className="mt-12 divide-y divide-border border-y border-border">
+      <div ref={listRef} className="mt-group divide-y divide-border border-y border-border">
         {faqs.map((faq, index) => {
           const isOpen = openIndex === index;
           return (
@@ -50,11 +50,11 @@ export function Faq() {
                 onClick={() => setOpenIndex(isOpen ? null : index)}
                 aria-expanded={isOpen}
                 aria-controls={`faq-answer-${index}`}
-                className="w-full flex items-center justify-between gap-4 py-5 text-left"
+                className="w-full flex items-center justify-between gap-4 py-6 text-left"
               >
                 <span className="font-semibold">{faq.question}</span>
                 <ChevronDown
-                  className={`w-4.5 h-4.5 shrink-0 text-muted transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                  className={`w-4 h-4 shrink-0 text-muted transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
                 />
               </button>
               <div
@@ -63,7 +63,7 @@ export function Faq() {
                 style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
               >
                 <div className="overflow-hidden">
-                  <p className="pb-5 text-muted leading-relaxed">{faq.answer}</p>
+                  <p className="pb-6 text-muted leading-relaxed">{faq.answer}</p>
                 </div>
               </div>
             </div>

@@ -9,12 +9,18 @@ import AnimalMarkersLayer, { type MapAnimal } from './AnimalMarkersLayer';
 import HeatmapCanvasLayer from './HeatmapCanvasLayer';
 import { type MapLayerType } from './controls/MapLayerControl';
 import { MAP_PROVIDERS } from './PolygonDrawerMap';
+import { Circle, Flag, Timer, Zap } from 'lucide-react';
 import type { TrajectoryPoint, HeatmapPoint } from '@/types';
+
+const START_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="6"/></svg>';
+const FLAG_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>';
 
 const createTrajectoryEndpointIcon = (type: 'start' | 'end', color: string) => {
   const isStart = type === 'start';
   const bg = isStart ? '#16a34a' : color;
-  const icon = isStart ? '🟢' : '🏁';
+  const icon = isStart ? START_SVG : FLAG_SVG;
   return new L.DivIcon({
     className: 'trajectory-endpoint-icon',
     html: `
@@ -226,8 +232,8 @@ function TrajectoryLayer({
       >
         <Popup>
           <div className="p-2 text-xs space-y-1 text-zinc-900">
-            <span className="inline-block bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded text-[10px]">
-              🟢 Punto de Partida
+            <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded text-[10px]">
+              <Circle className="w-3 h-3 fill-green-600 text-green-600" /> Punto de Partida
             </span>
             <h4 className="font-bold">{animalName}</h4>
             <p className="text-zinc-600">Fecha: {new Date(startPoint.timestamp).toLocaleString()}</p>
@@ -250,7 +256,7 @@ function TrajectoryLayer({
           }}
         >
           <Popup>
-            <div className="p-1.5 text-xs text-zinc-900">
+            <div className="p-2 text-xs text-zinc-900">
               <p className="font-semibold" style={{ color }}>
                 {animalName} · punto intermedio
               </p>
@@ -270,11 +276,19 @@ function TrajectoryLayer({
           <Popup>
             <div className="p-2 text-xs space-y-1 text-zinc-900">
               <span
-                className={`inline-block font-bold px-1.5 py-0.5 rounded text-[10px] ${
+                className={`inline-block font-bold px-2 py-0.5 rounded text-[10px] ${
                   isAnimatedInProgress ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                 }`}
               >
-                {isAnimatedInProgress ? '⏱️ Progreso / En movimiento' : '🏁 Fin / Posición más reciente'}
+                {isAnimatedInProgress ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Timer className="w-3 h-3" /> Progreso / En movimiento
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <Flag className="w-3 h-3" /> Fin / Posición más reciente
+                  </span>
+                )}
               </span>
               <h4 className="font-bold">{animalName}</h4>
               <p className="text-zinc-600">Fecha: {new Date(currentPoint.timestamp).toLocaleString()}</p>
@@ -333,21 +347,21 @@ export default function LiveTrackingMap({
 
       {/* Legend Badge Bar */}
       {(farmPolygon.length > 0 || geofences.length > 0) && (
-        <div className="absolute top-3 left-14 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-2.5 py-1 text-[11px] font-medium hidden sm:flex items-center gap-2.5 pointer-events-none shadow-sm">
+        <div className="absolute top-3 left-14 z-400 bg-zinc-900/85 backdrop-blur-md border border-white/10 text-white rounded-xl px-2 py-1 text-[11px] font-medium hidden sm:flex items-center gap-2 pointer-events-none shadow-sm">
           {farmPolygon.length > 0 && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-green-500 border border-green-600"></span>
               <span>Campo</span>
             </div>
           )}
           {geofences.some((g) => g.active !== false) && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-cyan-400 border border-cyan-500"></span>
               <span>Cerco Activo</span>
             </div>
           )}
           {geofences.some((g) => g.active === false) && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-xs bg-slate-400 border border-slate-500"></span>
               <span>Cerco Desactivado</span>
             </div>
@@ -408,13 +422,13 @@ export default function LiveTrackingMap({
               }}
             >
               <Popup>
-                <div className="p-1.5 text-xs space-y-1 text-zinc-900">
-                  <div className={`flex items-center gap-1.5 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
-                    <span>⚡</span>
+                <div className="p-2 text-xs space-y-1 text-zinc-900">
+                  <div className={`flex items-center gap-2 font-bold ${isActive ? 'text-cyan-700' : 'text-zinc-600'}`}>
+                    <Zap className="w-4 h-4" />
                     <span>{geofence.name}</span>
                   </div>
                   <span
-                    className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
                       isActive ? 'bg-cyan-100 text-cyan-800' : 'bg-zinc-200 text-zinc-700'
                     }`}
                   >

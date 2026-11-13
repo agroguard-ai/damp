@@ -26,20 +26,20 @@ export function HowItWorks() {
 
   return (
     <section id="como-funciona" className="bg-surface-raised/50 border-y border-border scroll-mt-20">
-      <div className="mx-auto max-w-7xl px-6 py-24">
+      <div className="mx-auto max-w-7xl px-page-sm sm:px-page py-section-sm sm:py-section">
         <div className="max-w-2xl">
           <span className="text-sm font-semibold text-primary-700 uppercase tracking-wider">Paso a paso</span>
-          <h2 className="mt-3 font-display text-3xl sm:text-4xl font-bold tracking-tight">
+          <h2 className="mt-stack-tight font-display text-3xl sm:text-4xl font-bold tracking-tight">
             De la colocación del collar a la primera alerta en 3 pasos
           </h2>
         </div>
 
-        <div ref={gridRef} className="mt-14 grid lg:grid-cols-3 gap-8">
+        <div ref={gridRef} className="mt-group grid lg:grid-cols-3 gap-8">
           {steps.map((step, index) => (
             <div key={step.number} className="relative">
               <div className="text-5xl font-bold text-primary-200 dark:text-primary-900/60">{step.number}</div>
-              <h3 className="mt-3 text-xl font-semibold">{step.title}</h3>
-              <p className="mt-2 text-muted leading-relaxed">{step.description}</p>
+              <h3 className="mt-stack-tight text-xl font-semibold">{step.title}</h3>
+              <p className="mt-stack text-muted leading-relaxed">{step.description}</p>
               {index < steps.length - 1 && (
                 <ArrowRight className="hidden lg:block absolute top-2 -right-8 w-5 h-5 text-subtle" />
               )}

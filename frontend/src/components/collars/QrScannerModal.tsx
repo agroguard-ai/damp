@@ -439,11 +439,11 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
           {/* Selector de cámara */}
           {cameras.length > 0 && (
             <label className="flex items-center gap-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-              <Camera className="w-3.5 h-3.5 shrink-0" />
+              <Camera className="w-4 h-4 shrink-0" />
               <select
                 value={cameras.some((camera) => camera.deviceId === selectedCameraId) ? selectedCameraId : ''}
                 onChange={(e) => handleCameraChange(e.target.value)}
-                className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-2 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
               >
                 <option value="">Cámara automática</option>
                 {cameras.map((camera) => (
@@ -494,7 +494,7 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
               <button
                 type="button"
                 onClick={handleRetry}
-                className="inline-flex items-center gap-1.5 font-bold text-[11px] px-2.5 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+                className="inline-flex items-center gap-2 font-bold text-[11px] px-2 py-1 rounded-lg bg-red-600 text-white hover:bg-red-700 cursor-pointer"
               >
                 <RefreshCw className="w-3 h-3" />
                 Reintentar
@@ -514,22 +514,22 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
 
           {/* Fallback manual: sirve si el QR está gastado o el navegador no soporta detección */}
           <form onSubmit={handleManualSubmit} className="pt-2 border-t border-zinc-100 dark:border-zinc-800">
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-              <Keyboard className="w-3.5 h-3.5" />
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+              <Keyboard className="w-4 h-4" />
               ¿No lee el QR? Ingresá el ID manualmente
             </label>
-            <div className="flex items-center gap-2 mt-1.5">
+            <div className="flex items-center gap-2 mt-2">
               <input
                 value={manualCode}
                 onChange={(e) => setManualCode(e.target.value)}
                 inputMode="numeric"
                 placeholder="Ej.: 2"
-                className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
+                className="flex-1 min-w-0 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-green-500"
               />
               <button
                 type="submit"
                 disabled={!manualCode.trim()}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="px-3 py-2 text-xs font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Usar ID
               </button>
@@ -538,7 +538,7 @@ export function QrScannerModal({ isOpen, onClose, onScan }: QrScannerModalProps)
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex justify-end">
+        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex justify-end">
           <button
             type="button"
             onClick={onClose}

@@ -62,21 +62,21 @@ export default function Topbar() {
   );
 
   return (
-    <header className="h-16 flex items-center justify-between gap-4 px-6 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
+    <header className="h-16 flex items-center justify-between gap-4 px-page-sm md:px-frame border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shrink-0">
       {/* Left Area: Emulation Selector for SuperAdmin */}
       <div className="flex items-center gap-3">
         {isSuperAdmin && (
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen((prev) => !prev)}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer border ${
+              className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer border ${
                 emulatedUser
                   ? 'bg-amber-500/15 border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/25'
                   : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
               <Eye
-                className={`w-3.5 h-3.5 ${emulatedUser ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}
+                className={`w-4 h-4 ${emulatedUser ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-500 dark:text-zinc-400'}`}
               />
               {emulatedUser ? (
                 <span>
@@ -86,14 +86,16 @@ export default function Topbar() {
                   </span>
                 </span>
               ) : (
-                <span>👤 Seleccionar Usuario a Emular</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" /> Seleccionar Usuario a Emular
+                </span>
               )}
-              <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+              <ChevronDown className="w-4 h-4 opacity-60" />
             </button>
 
             {/* Dropdown menu */}
             {dropdownOpen && (
-              <div className="absolute left-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-3 z-50 space-y-2.5">
+              <div className="absolute left-0 mt-2 w-80 bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-3 z-50 space-y-2">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
                   <span className="text-xs font-bold text-zinc-900 dark:text-white">Emular Usuario / Cliente</span>
                   {emulatedUser && (
@@ -111,20 +113,20 @@ export default function Topbar() {
                 </div>
 
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <Search className="w-4 h-4 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     placeholder="Filtrar por nombre o email..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-purple-500"
                   />
                 </div>
 
                 <div className="max-h-56 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800/60 rounded-lg border border-zinc-100 dark:border-zinc-800">
                   {loadingUsers ? (
-                    <div className="p-4 text-center text-xs text-zinc-400 flex items-center justify-center gap-1.5">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <div className="p-4 text-center text-xs text-zinc-400 flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Cargando usuarios...
                     </div>
                   ) : filteredUsers.length === 0 ? (
@@ -139,7 +141,7 @@ export default function Topbar() {
                             void setEmulation(u.id);
                             setDropdownOpen(false);
                           }}
-                          className={`w-full text-left p-2.5 hover:bg-purple-500/10 transition-colors flex items-center justify-between gap-2 cursor-pointer ${
+                          className={`w-full text-left p-2 hover:bg-purple-500/10 transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                             isSelected ? 'bg-purple-500/15' : ''
                           }`}
                         >
@@ -180,7 +182,7 @@ export default function Topbar() {
             </div>
 
             {isSuperAdmin && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
                 <ShieldCheck className="w-3 h-3" />
                 SUPER ADMIN
               </span>

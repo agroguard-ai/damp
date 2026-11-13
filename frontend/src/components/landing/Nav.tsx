@@ -26,7 +26,7 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
         isDark ? 'border-white/10 bg-neutral-950/70' : 'border-border bg-background/80'
       }`}
     >
-      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-page-sm sm:px-page h-16 flex items-center justify-between">
         <Brand className={`text-lg ${isDark ? 'text-white' : 'text-foreground'}`} />
 
         <nav
@@ -49,7 +49,7 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
           {isSignedIn ? (
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm"
             >
               Ir al dashboard
               <ArrowRight className="w-4 h-4" />
@@ -66,7 +66,7 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
               </Link>
               <a
                 href="mailto:ventas@damp.com"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active transition-colors shadow-sm"
               >
                 Solicitar Demo
               </a>
@@ -75,14 +75,14 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
           <button
             type="button"
             onClick={() => setIsOpen((prev) => !prev)}
-            className={`md:hidden p-2 transition-colors ${
+            className={`md:hidden inline-flex items-center justify-center size-12 transition-colors ${
               isDark ? 'text-neutral-300 hover:text-white' : 'text-muted hover:text-foreground'
             }`}
             aria-label={isOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={isOpen}
             aria-controls="mobile-nav-menu"
           >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
@@ -90,14 +90,14 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
       {isOpen && (
         <nav
           id="mobile-nav-menu"
-          className="md:hidden border-t border-border bg-background px-6 py-4 flex flex-col gap-1 text-sm font-medium text-muted"
+          className="md:hidden border-t border-border bg-background px-page-sm py-4 flex flex-col gap-2 text-sm font-medium text-muted"
         >
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
               onClick={() => setIsOpen(false)}
-              className="py-2.5 hover:text-foreground transition-colors"
+              className="py-4 hover:text-foreground transition-colors"
             >
               {link.label}
             </a>
@@ -106,7 +106,7 @@ export function Nav({ isSignedIn }: { isSignedIn: boolean }) {
             <Link
               href="/sign-in"
               onClick={() => setIsOpen(false)}
-              className="py-2.5 hover:text-foreground transition-colors sm:hidden"
+              className="py-4 hover:text-foreground transition-colors sm:hidden"
             >
               Iniciar sesión
             </Link>

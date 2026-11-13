@@ -20,11 +20,11 @@ const secondaryLinks = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-12 overflow-hidden">
-      <div className="mx-auto max-w-7xl px-6">
+    <footer className="border-t border-border py-section-sm overflow-hidden">
+      <div className="mx-auto max-w-7xl px-page-sm sm:px-page">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <Brand className="text-base text-foreground shrink-0" />
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 text-sm font-medium text-muted">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-4 text-sm font-medium text-muted">
             {navSectionLinks.map((link) => (
               <a key={link.href} href={link.href} className="hover:text-foreground transition-colors">
                 {link.label}
@@ -36,7 +36,7 @@ export function Footer() {
         <div className="my-8 border-t border-border w-full" />
 
         <div className="flex flex-col lg:flex-row items-center justify-between gap-6 text-sm">
-          <div className="flex flex-wrap items-center gap-3 text-subtle text-center lg:text-left">
+          <div className="flex flex-wrap items-center gap-4 text-subtle text-center lg:text-left">
             <p className="text-xs sm:text-sm">
               © {new Date().getFullYear()} DAMP Agro por Matias Luhmann, Santino Cataldi y Tomás Wardoloff.
             </p>

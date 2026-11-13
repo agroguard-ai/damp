@@ -88,22 +88,22 @@ export default function AdminFarmsPage() {
 
   if (error) {
     return (
-      <div className="p-6 w-full">
+      <div className="p-page-sm md:p-frame w-full">
         <div className="p-4 bg-red-50 text-red-700 rounded-xl border border-red-200">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-8 w-full space-y-6">
+    <div className="p-page-sm md:p-frame w-full space-y-gutter">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
             <Building2 className="w-7 h-7 text-purple-600" />
             Todos los Campos
           </h1>
         </div>
-        <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700">
+        <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold px-3 py-2 rounded-full border border-zinc-200 dark:border-zinc-700">
           Activos: {meta?.activeItems ?? farms.filter((f) => f.isActive !== false).length}
           {meta && meta.totalItems > (meta.activeItems ?? 0) && (
             <span className="text-zinc-400 dark:text-zinc-500">
@@ -114,7 +114,7 @@ export default function AdminFarmsPage() {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
         {farms.map((f) => {
           const adminMember = f.farmUsers.find((fu) => fu.role.name === 'ADMIN')?.user;
           const isArchived = f.isActive === false;
@@ -143,14 +143,14 @@ export default function AdminFarmsPage() {
 
                 <div className="text-xs text-zinc-500 dark:text-zinc-400 flex flex-wrap items-center gap-x-4 gap-y-1">
                   {(f.location || f.province) && (
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-zinc-400 shrink-0" />
                       <span>{[f.location, f.province].filter(Boolean).join(', ')}</span>
                     </div>
                   )}
                   {f.totalAreaHa != null && (
-                    <div className="flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-zinc-400 shrink-0" />
                       <span>{f.totalAreaHa} Hectáreas</span>
                     </div>
                   )}
@@ -201,11 +201,11 @@ export default function AdminFarmsPage() {
                         toast.error(err instanceof Error ? err.message : 'Error al iniciar emulación')
                       )
                     }
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 cursor-pointer"
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 cursor-pointer"
                   >
-                    <Users className="w-3.5 h-3.5" />
+                    <Users className="w-4 h-4" />
                     Gestionar Empleados
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
               )}

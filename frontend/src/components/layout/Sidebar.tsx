@@ -38,7 +38,7 @@ export default function Sidebar() {
       }`}
     >
       {/* Brand Header */}
-      <div className="h-16 flex items-center border-b border-zinc-800 px-5 shrink-0">
+      <div className="h-16 flex items-center border-b border-zinc-800 px-4 shrink-0">
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="w-full flex items-center font-bold text-lg tracking-tight text-white transition-colors focus:outline-none cursor-pointer"
@@ -58,7 +58,7 @@ export default function Sidebar() {
           </div>
           <span
             className={`transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden text-left ${
-              isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-40 ml-2.5'
+              isCollapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-40 ml-2'
             }`}
           >
             DAMP Agro
@@ -71,7 +71,7 @@ export default function Sidebar() {
         {/* MODO 1: SUPER_ADMIN SIN EMULACIÓN (Gestión Central & Inventario) */}
         {isSuperAdminWithoutEmulation ? (
           <>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {!isCollapsed && (
                 <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-purple-400">
                   Inventario & Plataforma
@@ -100,7 +100,7 @@ export default function Sidebar() {
               />
             </div>
 
-            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+            <div className="pt-2 border-t border-zinc-800/80 space-y-2">
               {!isCollapsed && (
                 <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-purple-400">
                   Administración Global
@@ -126,7 +126,7 @@ export default function Sidebar() {
               />
             </div>
 
-            <div className="pt-2 border-t border-zinc-800/80 space-y-1.5">
+            <div className="pt-2 border-t border-zinc-800/80 space-y-2">
               {!isCollapsed && (
                 <div className="px-3 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
                   Gestión de Campo (Requiere Emular)
@@ -172,7 +172,7 @@ export default function Sidebar() {
           </>
         ) : (
           /* MODO 2: GRANJERO / USUARIO ESTÁNDAR O SUPER_ADMIN EMULANDO */
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <SidebarLink href="/dashboard" label="Dashboard" logo={<LayoutDashboard />} isCollapsed={isCollapsed} />
             <SidebarLink href="/farms" label="Campos" logo={<Tractor />} isCollapsed={isCollapsed} />
             <SidebarLink href="/cercos" label="Cercos" logo={<Zap />} isCollapsed={isCollapsed} />
@@ -195,7 +195,7 @@ export default function Sidebar() {
       <div className="p-3 border-t border-zinc-800">
         <button
           onClick={() => void logout()}
-          className="w-full flex items-center py-2.5 rounded-lg text-sm font-medium transition-colors text-zinc-400 hover:text-red-400 hover:bg-zinc-800/60 px-3 cursor-pointer"
+          className="w-full flex items-center py-2 rounded-lg text-sm font-medium transition-colors text-zinc-400 hover:text-red-400 hover:bg-zinc-800/60 px-3 cursor-pointer"
           title="Cerrar sesión"
         >
           <span className="shrink-0 w-6 h-6 flex items-center justify-center">

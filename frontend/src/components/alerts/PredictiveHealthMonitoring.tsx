@@ -249,7 +249,7 @@ export default function PredictiveHealthMonitoring({
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           {/* Selector Animal */}
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500 font-semibold">Animal:</span>
             <Select
               value={String(selectedAnimal)}
@@ -263,7 +263,7 @@ export default function PredictiveHealthMonitoring({
           </div>
 
           {/* Selector Evento */}
-          <div className="flex items-center gap-1.5 text-xs">
+          <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500 font-semibold">Evento:</span>
             <Select
               value={selectedEvent}

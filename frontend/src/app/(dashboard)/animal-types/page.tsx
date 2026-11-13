@@ -190,7 +190,7 @@ export default function AnimalTypesPage() {
 
   if (!isAuthorized) {
     return (
-      <div className="p-8 max-w-lg mx-auto text-center space-y-3">
+      <div className="p-frame max-w-lg mx-auto text-center space-y-stack-tight">
         <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
           Los tipos de animal son administrados centralmente por la plataforma.
         </div>
@@ -200,7 +200,7 @@ export default function AnimalTypesPage() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-page-sm md:p-frame space-y-gutter">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -219,14 +219,14 @@ export default function AnimalTypesPage() {
 
         {/* Quick Stats Badges */}
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-xs">
+          <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 shadow-xs">
             Total: <strong>{types.length}</strong>
           </span>
-          <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 text-green-700 dark:text-green-300 shadow-xs">
+          <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/40 text-green-700 dark:text-green-300 shadow-xs">
             Activos: <strong>{activeCount}</strong>
           </span>
           {archivedCount > 0 && (
-            <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/40 text-zinc-600 dark:text-zinc-400 shadow-xs">
+            <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/40 text-zinc-600 dark:text-zinc-400 shadow-xs">
               Archivados: <strong>{archivedCount}</strong>
             </span>
           )}
@@ -248,7 +248,7 @@ export default function AnimalTypesPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               {/* Search Box */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -261,13 +261,13 @@ export default function AnimalTypesPage() {
                     onClick={() => setSearchTerm('')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
               {/* Species Filter */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Select
                   value={speciesFilter}
                   onChange={(v) => setSpeciesFilter(v)}
@@ -284,7 +284,7 @@ export default function AnimalTypesPage() {
               </div>
 
               {/* Status Filter */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Select
                   value={statusFilter}
                   onChange={(v) => setStatusFilter(v)}
@@ -347,11 +347,11 @@ export default function AnimalTypesPage() {
                           }`}
                         >
                           {/* Name */}
-                          <td className="py-3.5 px-4 font-bold text-zinc-900 dark:text-white">
+                          <td className="py-4 px-4 font-bold text-zinc-900 dark:text-white">
                             <div className="flex items-center gap-2">
                               <span>{type.name}</span>
                               {isEditing && (
-                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                                <span className="text-[10px] font-extrabold px-2 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
                                   Editando
                                 </span>
                               )}
@@ -359,7 +359,7 @@ export default function AnimalTypesPage() {
                           </td>
 
                           {/* Species */}
-                          <td className="py-3.5 px-3 whitespace-nowrap">
+                          <td className="py-4 px-3 whitespace-nowrap">
                             <span
                               className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${getSpeciesBadge(
                                 type.species
@@ -371,14 +371,14 @@ export default function AnimalTypesPage() {
 
                           {/* Description */}
                           <td
-                            className="py-3.5 px-3 text-zinc-500 dark:text-zinc-400 max-w-[220px] truncate"
+                            className="py-4 px-3 text-zinc-500 dark:text-zinc-400 max-w-[220px] truncate"
                             title={type.description || ''}
                           >
                             {type.description || <span className="italic text-zinc-400">Sin descripción</span>}
                           </td>
 
                           {/* Animals Count */}
-                          <td className="py-3.5 px-3 whitespace-nowrap">
+                          <td className="py-4 px-3 whitespace-nowrap">
                             {assignedCount > 0 ? (
                               <span className="font-semibold text-zinc-800 dark:text-zinc-200">
                                 {assignedCount} cabezas
@@ -389,33 +389,33 @@ export default function AnimalTypesPage() {
                           </td>
 
                           {/* Status Badge */}
-                          <td className="py-3.5 px-3 whitespace-nowrap">
+                          <td className="py-4 px-3 whitespace-nowrap">
                             {type.isActive ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/40">
-                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                <span className="w-2 h-2 rounded-full bg-green-500"></span>
                                 Activo
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-150 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700/50">
-                                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                                <span className="w-2 h-2 rounded-full bg-zinc-400"></span>
                                 Archivado
                               </span>
                             )}
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3.5 pr-4 pl-2 text-right whitespace-nowrap space-x-1">
+                          <td className="py-4 pr-4 pl-2 text-right whitespace-nowrap space-x-1">
                             <button
                               type="button"
                               onClick={() => setEditingType(type)}
-                              className={`p-1.5 rounded-lg text-xs font-semibold inline-flex items-center transition-colors cursor-pointer ${
+                              className={`p-2 rounded-lg text-xs font-semibold inline-flex items-center transition-colors cursor-pointer ${
                                 isEditing
                                   ? 'bg-amber-500 text-white shadow-xs'
                                   : 'text-zinc-500 hover:text-green-700 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/30 border border-zinc-200 dark:border-zinc-800'
                               }`}
                               title="Editar datos de esta raza"
                             >
-                              <Edit2 className="w-3.5 h-3.5" />
+                              <Edit2 className="w-4 h-4" />
                             </button>
 
                             {type.isActive ? (
@@ -423,20 +423,20 @@ export default function AnimalTypesPage() {
                                 type="button"
                                 onClick={() => handleDelete(type)}
                                 disabled={deleting}
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
+                                className="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 border border-zinc-200 dark:border-zinc-800 transition-colors cursor-pointer"
                                 title="Dar de baja este tipo de animal"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => handleReactivate(type)}
                                 disabled={reactivating}
-                                className="p-1.5 rounded-lg text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30 border border-green-200 dark:border-green-800/40 transition-colors cursor-pointer"
+                                className="p-2 rounded-lg text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30 border border-green-200 dark:border-green-800/40 transition-colors cursor-pointer"
                                 title="Reactivar tipo de animal para nuevos registros"
                               >
-                                <RotateCcw className="w-3.5 h-3.5" />
+                                <RotateCcw className="w-4 h-4" />
                               </button>
                             )}
                           </td>
@@ -470,14 +470,14 @@ export default function AnimalTypesPage() {
                   onClick={handleCancelEdit}
                   className="text-xs font-semibold text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                   <span>Cancelar</span>
                 </button>
               )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Nombre de la Raza / Categoría
                 </label>
@@ -487,11 +487,11 @@ export default function AnimalTypesPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ej: Aberdeen Angus, Holando Argentino"
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm font-medium"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Especie Ganadera</label>
                 <Select
                   value={species}
@@ -506,7 +506,7 @@ export default function AnimalTypesPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Descripción / Aptitud Productiva (Opcional)
                 </label>
@@ -515,12 +515,12 @@ export default function AnimalTypesPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Notas sobre aptitud carnicera, lechera, rusticidad o zona recomendada..."
                   rows={3}
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm resize-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-sm resize-none"
                 />
               </div>
 
               {editingType && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>
                     Las modificaciones de nombre y especie se reflejarán de inmediato en todos los animales que ya
@@ -534,7 +534,7 @@ export default function AnimalTypesPage() {
                   <button
                     type="button"
                     onClick={handleCancelEdit}
-                    className="w-1/3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold py-2.5 px-3 rounded-xl transition-all text-xs"
+                    className="w-1/3 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold py-2 px-3 rounded-xl transition-all text-xs"
                   >
                     Descartar
                   </button>
@@ -542,7 +542,7 @@ export default function AnimalTypesPage() {
                 <button
                   type="submit"
                   disabled={creating || updating}
-                  className={`font-semibold py-2.5 px-4 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm ${
+                  className={`font-semibold py-2 px-4 rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer text-sm ${
                     editingType
                       ? 'w-2/3 bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500/50'
                       : 'w-full bg-green-600 hover:bg-green-700 text-white focus:ring-green-500/50'

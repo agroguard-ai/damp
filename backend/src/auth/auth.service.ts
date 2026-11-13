@@ -7,6 +7,21 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtPayload } from './current-user.decorator';
 
+export const SERVICE_SUSPENDED_MESSAGE =
+  'El servicio para este establecimiento se encuentra suspendido. Comuníquese con soporte.';
+
+/** Membresía activa en un campo cuyo dueño está suspendido. No contempla más de un campo. */
+export async function membershipUnderSuspendedOwner(prisma: PrismaService, userId: string) {
+  return prisma.farmUser.findFirst({
+    where: {
+      userId,
+      isActive: true,
+      farm: { user: { isActive: false } },
+    },
+    select: { id: true },
+  });
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -42,6 +57,10 @@ export class AuthService {
 
     if (!user.isActive) {
       throw new UnauthorizedException('Su cuenta se encuentra suspendida o inhabilitada. Comuníquese con soporte.');
+    }
+
+    if (await membershipUnderSuspendedOwner(this.prisma, user.id)) {
+      throw new UnauthorizedException(SERVICE_SUSPENDED_MESSAGE);
     }
 
     const payload: JwtPayload = {

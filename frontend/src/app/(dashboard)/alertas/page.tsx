@@ -14,7 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
 import PredictiveHealthMonitoring from '@/components/alerts/PredictiveHealthMonitoring';
-import { Bell, BrainCircuit, CheckCircle2, Clock, Zap } from 'lucide-react';
+import { Bell, BrainCircuit, CheckCircle2, Clock, Zap, Bot, PersonStanding, Siren, Check } from 'lucide-react';
 import type { Alert, AlertType } from '@/types';
 import { Select } from '@/components/ui/Select';
 
@@ -93,11 +93,11 @@ function AlertasContent() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-8">
+    <div className="p-page-sm md:p-frame space-y-block">
       {/* Header y Selector de Campo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2">
             <span>Centro de Notificaciones y Salud Predictiva</span>
             {activeAlertsCount > 0 && (
               <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-mono font-bold animate-pulse">
@@ -143,7 +143,7 @@ function AlertasContent() {
               <Bell className="w-4 h-4" />
               <span>Historial de Alertas</span>
               {activeAlertsCount > 0 && (
-                <span className="bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 text-[10px] px-1.5 py-0.2 rounded-full font-mono">
+                <span className="bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 text-[10px] px-2 py-0.2 rounded-full font-mono">
                   {activeAlertsCount}
                 </span>
               )}
@@ -172,9 +172,9 @@ function AlertasContent() {
           ) : (
             <div className="space-y-6">
               {/* Barra de Filtros */}
-              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-2xl shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Origen de Alerta */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Origen / Fuente
                     </label>
@@ -183,16 +183,16 @@ function AlertasContent() {
                       onChange={(v) => setFilters({ ...filters, source: v })}
                       options={[
                         { value: '', label: 'Todos los orígenes' },
-                        { value: 'ML', label: '🤖 Modelo Predictivo (IA)' },
-                        { value: 'THRESHOLD', label: '⚡ Sensor / Umbral Físico' },
-                        { value: 'ESCAPE', label: '🏃 Escape de Cerco' },
+                        { value: 'ML', label: 'Modelo Predictivo (IA)', icon: Bot },
+                        { value: 'THRESHOLD', label: 'Sensor / Umbral Físico', icon: Zap },
+                        { value: 'ESCAPE', label: 'Escape de Cerco', icon: PersonStanding },
                       ]}
                       size="sm"
                     />
                   </div>
 
                   {/* Animal */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Animal</label>
                     <Select
                       value={String(filters.animalId)}
@@ -209,7 +209,7 @@ function AlertasContent() {
                   </div>
 
                   {/* Tipo */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Tipo de Evento
                     </label>
@@ -227,7 +227,7 @@ function AlertasContent() {
                   </div>
 
                   {/* Estado */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
                       Estado de Resolución
                     </label>
@@ -236,8 +236,8 @@ function AlertasContent() {
                       onChange={(v) => setFilters({ ...filters, resolved: v })}
                       options={[
                         { value: '', label: 'Todas las alertas' },
-                        { value: 'false', label: '🚨 Solo activas (Sin resolver)' },
-                        { value: 'true', label: '✓ Resueltas / Validadas' },
+                        { value: 'false', label: 'Solo activas (Sin resolver)', icon: Siren },
+                        { value: 'true', label: 'Resueltas / Validadas', icon: Check },
                       ]}
                       size="sm"
                     />
@@ -283,7 +283,7 @@ function AlertasContent() {
                             }`}
                           >
                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                              <div className="space-y-1.5 flex-1">
+                              <div className="space-y-2 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   {/* Badge de Origen */}
                                   {isMl ? (
@@ -315,7 +315,7 @@ function AlertasContent() {
 
                                   {/* Horizonte futuro */}
                                   {isMl && (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded text-zinc-500 flex items-center gap-1">
+                                    <span className="text-[10px] px-2 py-0.5 rounded text-zinc-500 flex items-center gap-1">
                                       <Clock className="w-3 h-3" />
                                       <span>Próximas 6hs</span>
                                     </span>
@@ -350,7 +350,7 @@ function AlertasContent() {
                                 <div className="flex items-center shrink-0 pt-2 sm:pt-0">
                                   <button
                                     onClick={() => handleResolve(a.id)}
-                                    className="px-2.5 py-1.5 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors"
+                                    className="px-2 py-2 rounded-lg bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-100 text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors"
                                   >
                                     Marcar resuelta
                                   </button>

@@ -211,8 +211,8 @@ export function CollarExplode() {
 
   if (reduced) {
     return (
-      <section ref={sectionRef} id="collar" className="relative bg-neutral-950 text-neutral-50 py-24 scroll-mt-20">
-        <div className="mx-auto max-w-7xl px-6">
+      <section ref={sectionRef} id="collar" className="relative bg-neutral-950 text-neutral-50 py-section-sm sm:py-section scroll-mt-20">
+        <div className="mx-auto max-w-7xl px-page-sm sm:px-page">
           <SectionHeading />
           {!webglFailed && (
             <div ref={pinRef} className="relative mt-10 h-[60vh] min-h-80">
@@ -238,7 +238,7 @@ export function CollarExplode() {
         />
 
         {webglFailed ? (
-          <div className="relative mx-auto max-w-7xl px-6 py-24">
+          <div className="relative mx-auto max-w-7xl px-page-sm sm:px-page py-section-sm sm:py-section">
             <SectionHeading />
             <PartsList />
           </div>
@@ -269,7 +269,7 @@ export function CollarExplode() {
             </div>
 
             {/* Encabezado fijo */}
-            <div className="pointer-events-none absolute left-0 right-0 top-0 mx-auto max-w-7xl px-5 sm:px-6 pt-20 lg:pt-28 flex items-center justify-between">
+            <div className="pointer-events-none absolute left-0 right-0 top-0 mx-auto max-w-7xl px-page-sm sm:px-page pt-20 lg:pt-28 flex items-center justify-between">
               <span className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-primary-400">
                 Por dentro del collar
               </span>
@@ -282,7 +282,7 @@ export function CollarExplode() {
 
             {/* Lista de piezas + progreso (escritorio) */}
             <div
-              className={`pointer-events-none absolute bottom-10 left-0 right-0 mx-auto hidden max-w-7xl px-6 transition-opacity duration-500 lg:block ${
+              className={`pointer-events-none absolute bottom-10 left-0 right-0 mx-auto hidden max-w-7xl px-page transition-opacity duration-500 lg:block ${
                 activePart >= 0 ? 'opacity-100' : 'opacity-0'
               }`}
             >
@@ -377,7 +377,7 @@ function StepPanel({ visible, children }: { visible: boolean; children: React.Re
   return (
     <div
       aria-hidden={!visible}
-      className={`absolute inset-x-0 bottom-5 sm:bottom-10 px-5 sm:px-6 transition-[opacity,margin,filter] duration-500 ease-out lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:pl-0 lg:pr-12 ${
+      className={`absolute inset-x-0 bottom-4 sm:bottom-10 px-page-sm sm:px-page transition-[opacity,margin,filter] duration-500 ease-out lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2 lg:pl-0 lg:pr-12 ${
         visible ? 'mt-0 opacity-100 blur-none' : 'mt-6 opacity-0 blur-[2px]'
       }`}
     >
@@ -390,16 +390,16 @@ function SectionHeading() {
   return (
     <div className="max-w-2xl">
       <span className="text-sm font-semibold uppercase tracking-wider text-primary-400">Por dentro del collar</span>
-      <h2 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">Siete piezas que cuidan a cada animal</h2>
+      <h2 className="mt-stack-tight font-display text-3xl font-bold tracking-tight sm:text-4xl">Siete piezas que cuidan a cada animal</h2>
     </div>
   );
 }
 
 function PartsList() {
   return (
-    <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <ol className="mt-group grid gap-gutter sm:grid-cols-2 lg:grid-cols-3">
       {PARTS.map((part, i) => (
-        <li key={part.name} className="rounded-xl border border-white/10 bg-white/3 p-5">
+        <li key={part.name} className="rounded-xl border border-white/10 bg-white/3 p-6">
           <p className={`font-mono text-xs uppercase tracking-[0.18em] ${toneText[part.tone]}`}>
             {String(i + 1).padStart(2, '0')} / {String(PARTS.length).padStart(2, '0')}
           </p>

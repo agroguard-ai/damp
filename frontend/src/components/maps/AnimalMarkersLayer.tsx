@@ -3,7 +3,12 @@
 import { useState, useMemo } from 'react';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { BrainCircuit, FileText, Route } from 'lucide-react';
+import { BrainCircuit, FileText, Route, Thermometer, TriangleAlert } from 'lucide-react';
+
+const PAW_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>';
+const CLOCK_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
 
 const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 horas sin señal = desactualizado
 
@@ -17,7 +22,9 @@ const createAnimalIcon = (label: string, hasAlert: boolean, isStale = false) => 
     bg = 'linear-gradient(135deg, #f59e0b, #b45309)';
   }
 
+  const isCount = /^\d+$/.test(label);
   const fontSize = label.length > 2 ? '13px' : '18px';
+  const glyph = isCount ? label : PAW_SVG;
   return new L.DivIcon({
     className: 'animal-cluster-badge',
     html: `
@@ -36,12 +43,12 @@ const createAnimalIcon = (label: string, hasAlert: boolean, isStale = false) => 
           border: 2.5px solid white;
           box-shadow: 0 4px 12px rgba(0,0,0,0.35);
           letter-spacing: -0.5px;
-        ">${label}</div>
+        ">${glyph}</div>
         ${
           hasAlert
             ? '<div style="position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ef4444;border-radius:50%;border:2px solid white;animation:pulse-alert 1s ease-in-out infinite;"></div>'
             : isStale
-              ? '<div style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;background:#f59e0b;border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;font-size:8px;color:white;font-weight:bold;" title="Señal desactualizada">⏱</div>'
+              ? `<div style="position:absolute;top:-2px;right:-2px;width:13px;height:13px;background:#f59e0b;border-radius:50%;border:1.5px solid white;display:flex;align-items:center;justify-content:center;" title="Señal desactualizada">${CLOCK_SVG}</div>`
               : ''
         }
       </div>
@@ -160,19 +167,23 @@ export default function AnimalMarkersLayer({
             <Marker
               key={animal.id}
               position={[latitude, longitude]}
-              icon={createAnimalIcon('🐄', !!animal.hasActiveAlert, isStale)}
+              icon={createAnimalIcon('', !!animal.hasActiveAlert, isStale)}
             >
               <Popup>
                 <div className="p-2 space-y-2 text-xs min-w-50 text-zinc-900">
                   {animal.hasActiveAlert && (
                     <div className="bg-red-50 border border-red-200 rounded px-2 py-1 mb-1">
-                      <span className="text-red-600 font-bold text-[11px]">⚠ ALERTA: Fuera de geocerca</span>
+                      <span className="text-red-600 font-bold text-[11px] inline-flex items-center gap-1">
+                        <TriangleAlert className="w-3 h-3" /> ALERTA: Fuera de geocerca
+                      </span>
                     </div>
                   )}
 
                   {isStale && !animal.hasActiveAlert && (
                     <div className="bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-1">
-                      <span className="text-amber-800 font-bold text-[11px]">⚠️ Ubicación desactualizada</span>
+                      <span className="text-amber-800 font-bold text-[11px] inline-flex items-center gap-1">
+                        <TriangleAlert className="w-3 h-3" /> Ubicación desactualizada
+                      </span>
                       <p className="text-[10px] text-amber-700">Sin señal reciente (&gt; 6 horas)</p>
                     </div>
                   )}
@@ -186,7 +197,9 @@ export default function AnimalMarkersLayer({
                   <div className="space-y-1">
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Temperatura:</span>
-                      <span className="font-semibold text-zinc-800">🌡️ {temperature.toFixed(1)} °C</span>
+                      <span className="font-semibold text-zinc-800 inline-flex items-center gap-1">
+                        <Thermometer className="w-3 h-3" /> {temperature.toFixed(1)} °C
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-500">Cerco actual:</span>
@@ -200,7 +213,7 @@ export default function AnimalMarkersLayer({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-zinc-100 flex flex-col gap-1.5">
+                  <div className="pt-2 border-t border-zinc-100 flex flex-col gap-2">
                     {onSelectAnimalForTrajectory && (
                       <button
                         type="button"

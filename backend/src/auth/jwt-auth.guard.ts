@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
 import { AuthorizedRequest } from '@/auth/guards/global-roles.guard';
 import { JwtPayload } from '@/auth/current-user.decorator';
+import { membershipUnderSuspendedOwner, SERVICE_SUSPENDED_MESSAGE } from '@/auth/auth.service';
 import { GlobalRole } from '@generated/prisma';
 
 @Injectable()
@@ -90,6 +91,11 @@ export class JwtAuthGuard implements CanActivate {
         isEmulated: true,
         realSuperAdminId: dbUser.id,
       };
+      return true;
+    }
+
+    if (await membershipUnderSuspendedOwner(this.prisma, dbUser.id)) {
+      throw new UnauthorizedException(SERVICE_SUSPENDED_MESSAGE);
     }
 
     return true;

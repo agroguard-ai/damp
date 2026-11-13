@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, Suspense } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import BreedSelect from '@/components/animals/BreedSelect';
+import { EmptyFarmState, EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonRowList } from '@/components/ui/Skeleton';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
@@ -23,6 +24,7 @@ import { animalsApi, type Animal } from '@/lib/api/animals';
 import type { MedicalEventType } from '@/types';
 import {
   CirclePlus,
+  ClipboardList,
   Search,
   Radio,
   Zap,
@@ -31,7 +33,6 @@ import {
   ArrowRightLeft,
   X,
   AlertTriangle,
-  Tag,
   CheckCircle2,
   Edit2,
   FileDown,
@@ -551,12 +552,22 @@ function AnimalsContent() {
     return <EmulationRequiredState title="la Hacienda y Animales" />;
   }
 
+  const listFiltered =
+    searchTerm.trim() !== '' ||
+    filters.animalType !== '' ||
+    filters.healthStatus !== '' ||
+    filters.geofenceId !== '' ||
+    filters.status !== 'ACTIVE' ||
+    filters.hasActiveAlert ||
+    filters.hasCollar !== '';
+
   return (
-    <div className="p-6 md:p-8 space-y-6">
+    <div className="p-page-sm md:p-frame space-y-gutter">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-2.5">
+            <ClipboardList className="w-6 h-6 text-green-600 dark:text-green-500" />
             Gestión y Asignación de Hacienda
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">
@@ -590,18 +601,18 @@ function AnimalsContent() {
             <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
               {/* Universal Dual Search */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar por Caravana (Tag), Raza o Identificador de Collar..."
-                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-10 py-2.5 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium"
+                  className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-10 py-2 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -746,9 +757,9 @@ function AnimalsContent() {
 
           {/* Bulk Action Sticky Bar */}
           {canOperate && selectedIds.length > 0 && (
-            <div className="sticky top-4 z-40 bg-zinc-900/95 dark:bg-zinc-800/95 text-white p-3.5 rounded-2xl shadow-xl border border-zinc-700/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
+            <div className="sticky top-4 z-40 bg-zinc-900/95 dark:bg-zinc-800/95 text-white p-4 rounded-2xl shadow-xl border border-zinc-700/60 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-3 duration-200">
               <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 <span className="text-sm font-bold">
                   {selectedIds.length} {selectedIds.length === 1 ? 'animal seleccionado' : 'animales seleccionados'}
                 </span>
@@ -761,7 +772,7 @@ function AnimalsContent() {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 {!isUnassignedView && (
                   <button
                     type="button"
@@ -769,9 +780,9 @@ function AnimalsContent() {
                       setTargetGeofenceId('');
                       setIsBulkGeofenceModalOpen(true);
                     }}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                   >
-                    <Zap className="w-3.5 h-3.5" />
+                    <Zap className="w-4 h-4" />
                     <span>Asignar a cerco...</span>
                   </button>
                 )}
@@ -784,9 +795,9 @@ function AnimalsContent() {
                       setTargetFarmId(otherFarms[0]?.id || '');
                       setIsBulkTransferModalOpen(true);
                     }}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                   >
-                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                    <ArrowRightLeft className="w-4 h-4" />
                     <span>{isUnassignedView ? 'Asignar a un Campo...' : 'Transferir a otro Campo...'}</span>
                   </button>
                 )}
@@ -801,56 +812,46 @@ function AnimalsContent() {
                 <SkeletonRowList count={6} />
               </div>
             ) : filteredAnimals.length === 0 ? (
-              <div className="py-16 px-4 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto">
-                  <Tag className="w-6 h-6" />
+              !isUnassignedView && filters.geofenceId && animals.length === 0 ? (
+                <div className="py-16 text-center space-y-2">
+                  <p className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm">
+                    {selectedGeofence
+                      ? `El cerco "${selectedGeofence.name}" no tiene animales asignados actualmente.`
+                      : 'El cerco seleccionado no tiene animales asignados actualmente.'}
+                  </p>
+                  <p className="text-zinc-400 text-xs">
+                    Podés asignar animales a este cerco desde la lista general del campo.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleGeofenceFilterChange('')}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Ver todos los animales del campo
+                  </button>
                 </div>
-                {!isUnassignedView && filters.geofenceId && animals.length === 0 ? (
-                  <>
-                    <p className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm">
-                      {selectedGeofence
-                        ? `El cerco "${selectedGeofence.name}" no tiene animales asignados actualmente.`
-                        : 'El cerco seleccionado no tiene animales asignados actualmente.'}
-                    </p>
-                    <p className="text-zinc-400 text-xs">
-                      Podés asignar animales a este cerco desde la lista general del campo.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => handleGeofenceFilterChange('')}
-                      className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors cursor-pointer"
-                    >
-                      <Zap className="w-3.5 h-3.5" />
-                      Ver todos los animales del campo
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-zinc-600 dark:text-zinc-300 font-semibold text-sm">
-                      No se encontraron animales registrados.
-                    </p>
-                    <p className="text-zinc-400 text-xs">
-                      Modificá el término de búsqueda o filtros, o añadí una nueva cabeza a este campo.
-                    </p>
-                    {!isUnassignedView && filters.geofenceId && (
-                      <button
-                        type="button"
-                        onClick={() => handleGeofenceFilterChange('')}
-                        className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-cyan-600 hover:bg-cyan-700 text-white transition-colors cursor-pointer"
-                      >
-                        <Zap className="w-3.5 h-3.5" />
-                        Ver todos los animales del campo
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+              ) : listFiltered ? (
+                <div className="py-16 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+                  No se encontraron animales que coincidan con la búsqueda.
+                </div>
+              ) : (
+                <div className="p-8">
+                  <EmptyState
+                    icon={ClipboardList}
+                    title="No se encontraron animales registrados."
+                    description="Añadí el primer animal a este campo."
+                    actionLabel={canOperate ? 'Añadir animal' : undefined}
+                    onAction={canOperate ? () => setIsAddModalOpen(true) : undefined}
+                  />
+                </div>
+              )
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
-                      <th className="py-3.5 pl-4 pr-2 w-10 text-center">
+                      <th className="py-4 pl-4 pr-2 w-10 text-center">
                         <input
                           type="checkbox"
                           checked={selectedIds.length === filteredAnimals.length && filteredAnimals.length > 0}
@@ -858,12 +859,12 @@ function AnimalsContent() {
                           className="rounded border-zinc-300 text-green-600 focus:ring-green-500 cursor-pointer"
                         />
                       </th>
-                      <th className="py-3.5 px-3">Caravana (Tag) / Especie</th>
-                      <th className="py-3.5 px-3">Estado / Salud</th>
-                      <th className="py-3.5 px-3">Peso & Edad</th>
-                      <th className="py-3.5 px-3">Collar IoT</th>
-                      <th className="py-3.5 px-3">Cerco</th>
-                      <th className="py-3.5 pr-4 pl-2 text-right">Acciones</th>
+                      <th className="py-4 px-3">Caravana (Tag) / Especie</th>
+                      <th className="py-4 px-3">Estado / Salud</th>
+                      <th className="py-4 px-3">Peso & Edad</th>
+                      <th className="py-4 px-3">Collar IoT</th>
+                      <th className="py-4 px-3">Cerco</th>
+                      <th className="py-4 pr-4 pl-2 text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
@@ -900,7 +901,7 @@ function AnimalsContent() {
                                 {animal.tag || `ID: ${animal.id.slice(0, 6)}`}
                               </span>
                               {animal.status !== 'ACTIVE' && (
-                                <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
+                                <span className="text-[10px] font-extrabold uppercase px-2 py-0.2 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300">
                                   {animal.status === 'SOLD' ? 'Vendido' : 'Baja'}
                                 </span>
                               )}
@@ -920,7 +921,7 @@ function AnimalsContent() {
                             {mlRiskByAnimal.get(animal.id)?.map((risk) => (
                               <span
                                 key={risk.event}
-                                className="ml-1.5 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-full border bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300"
+                                className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-full border bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800/40 text-purple-700 dark:text-purple-300"
                                 title="Predicción del modelo de IA para las próximas 6 h (ver Alertas → Salud Predictiva)"
                               >
                                 <BrainCircuit className="w-3 h-3" />
@@ -932,7 +933,7 @@ function AnimalsContent() {
                           {/* Weight & Age */}
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className="font-bold text-zinc-800 dark:text-zinc-200">{animal.weightKg} kg</span>
-                            <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-1.5">
+                            <span className="text-zinc-400 dark:text-zinc-500 text-[11px] ml-2">
                               {animal.birthDate ? `• ${animal.birthDate.slice(0, 10)}` : ''}
                             </span>
                           </td>
@@ -946,12 +947,12 @@ function AnimalsContent() {
                                   setSingleCollarAnimal(animal);
                                   setTargetCollarId(String(collar.id));
                                 }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
                                 title={canEdit ? 'Clic para gestionar collar' : undefined}
                                 disabled={!canEdit}
                               >
                                 <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
+                                  className={`w-2 h-2 rounded-full ${
                                     collar.telemetryReadings?.[0] ? 'bg-green-500' : 'bg-amber-500'
                                   }`}
                                 ></span>
@@ -988,7 +989,7 @@ function AnimalsContent() {
                                   setSingleGeofenceAnimal(animal);
                                   setTargetGeofenceId(activeGeofence.id);
                                 }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-800/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-semibold bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-800/40 hover:bg-cyan-100 dark:hover:bg-cyan-900/40 transition-colors cursor-pointer"
                                 title={canEdit ? 'Clic para gestionar cerco' : undefined}
                                 disabled={!canEdit}
                               >
@@ -1014,19 +1015,19 @@ function AnimalsContent() {
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-semibold text-zinc-400 bg-zinc-100/60 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-zinc-800 select-none cursor-not-allowed"
                                 title="Regla de negocio: Requiere collar activo para poder ser contenido en un cerco virtual"
                               >
-                                <Lock className="w-2.5 h-2.5 text-zinc-400" />
+                                <Lock className="w-2 h-2 text-zinc-400" />
                                 <span>Requiere collar</span>
                               </span>
                             )}
                           </td>
 
                           {/* Quick Actions */}
-                          <td className="py-3 pr-4 pl-2 text-right whitespace-nowrap space-x-1.5">
+                          <td className="py-3 pr-4 pl-2 text-right whitespace-nowrap space-x-2">
                             {canEdit && animal.status === 'ACTIVE' && (
                               <button
                                 type="button"
                                 onClick={() => handleOpenEditModal(animal)}
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors cursor-pointer inline-flex items-center"
+                                className="p-2 rounded-lg text-zinc-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors cursor-pointer inline-flex items-center"
                                 title="Editar datos del animal"
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -1036,7 +1037,7 @@ function AnimalsContent() {
                             <button
                               type="button"
                               onClick={() => setMedicalHistoryAnimalId(animal.id)}
-                              className="p-1.5 rounded-lg text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors cursor-pointer inline-flex items-center"
+                              className="p-2 rounded-lg text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors cursor-pointer inline-flex items-center"
                               title="Historial médico y pesajes"
                             >
                               <HeartPulse className="w-4 h-4" />
@@ -1085,7 +1086,7 @@ function AnimalsContent() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Cerco de destino</label>
                 <Select
                   value={String(targetGeofenceId)}
@@ -1147,7 +1148,7 @@ function AnimalsContent() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Campo Destino</label>
                 <Select
                   value={String(targetFarmId)}
@@ -1160,7 +1161,7 @@ function AnimalsContent() {
                 />
               </div>
 
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 p-3 rounded-xl flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
                   {isUnassignedView ? (
@@ -1222,7 +1223,7 @@ function AnimalsContent() {
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                   Collar Disponible
                 </label>
@@ -1301,7 +1302,7 @@ function AnimalsContent() {
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                     Cerco Virtual Activo
                   </label>
@@ -1312,9 +1313,10 @@ function AnimalsContent() {
                       { value: '', label: 'Sin cerco virtual (liberar)' },
                       ...farmGeofences.map((g) => ({
                         value: String(g.id),
-                        label: `⚡ ${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
+                        label: `${g.name} ${g.pastureType ? `(${g.pastureType})` : ''}${
                           g.active ? '' : ' · inactivo (sin descargas)'
                         }`,
+                        icon: Zap,
                       })),
                     ]}
                   />
@@ -1592,10 +1594,10 @@ function AnimalsContent() {
                       href={`/api/reports/animals/${medicalHistoryAnimalId}/medical-history`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
                       title="Descargar Ficha Médica en PDF"
                     >
-                      <FileDown className="w-3.5 h-3.5 text-red-500" />
+                      <FileDown className="w-4 h-4 text-red-500" />
                       <span>PDF</span>
                     </a>
                     <button
@@ -1613,7 +1615,7 @@ function AnimalsContent() {
                       <div className="w-6 h-6 border-2 border-green-500/20 border-t-green-600 rounded-full animate-spin"></div>
                     </div>
                   ) : medicalEvents.length === 0 ? (
-                    <div className="py-8 px-4 text-center space-y-1.5 bg-zinc-50/60 dark:bg-zinc-950/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                    <div className="py-8 px-4 text-center space-y-2 bg-zinc-50/60 dark:bg-zinc-950/40 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
                       <HeartPulse className="w-8 h-8 text-zinc-300 dark:text-zinc-600 mx-auto" />
                       <p className="text-zinc-700 dark:text-zinc-300 font-semibold text-xs">
                         Sin intervenciones previas
@@ -1664,7 +1666,7 @@ function AnimalsContent() {
                     onSubmit={handleAddMedicalEvent}
                     className="p-6 pt-0 space-y-3 border-t border-zinc-100 dark:border-zinc-800"
                   >
-                    <div className="grid grid-cols-3 gap-2.5 pt-4">
+                    <div className="grid grid-cols-3 gap-2 pt-4">
                       <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Tipo</label>
                         <Select
@@ -1690,7 +1692,7 @@ function AnimalsContent() {
                           placeholder={medicalForm.type === 'WEIGHING' ? 'Ej: 420' : 'Ej: 1'}
                           value={medicalForm.value}
                           onChange={(e) => setMedicalForm({ ...medicalForm, value: e.target.value })}
-                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium"
                         />
                       </div>
                       <div className="flex flex-col gap-1">
@@ -1699,7 +1701,7 @@ function AnimalsContent() {
                           type="date"
                           value={medicalForm.occurredAt}
                           onChange={(e) => setMedicalForm({ ...medicalForm, occurredAt: e.target.value })}
-                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2.5 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
+                          className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-2 py-2 text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 text-xs font-medium cursor-pointer"
                         />
                       </div>
                     </div>
