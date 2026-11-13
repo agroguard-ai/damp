@@ -13,31 +13,14 @@ import { TelemetryPayloadDto } from './dto/telemetry-payload.dto';
 import { isPointInPolygon } from './utils/geofencing.utils';
 import { hasGpsFix } from '@/common/gps';
 import { haversineMeters } from './utils/haversine.utils';
-import { MlHealthService } from './ml-health.service';
+import { EVENT_LABELS_ES, ML_HEALTH_THRESHOLDS, MlHealthService } from './ml-health.service';
 import { buildMlWindow, blockStartFor, ML_BLOCK_MINUTES, ML_MIN_BLOCKS_WITH_DATA, ML_WINDOW_BLOCKS } from './ml-window';
 import { RotationsService } from '@/rotations/rotations.service';
 
+export { ML_HEALTH_THRESHOLDS };
+
 // Distancia por debajo de la cual un conjunto de lecturas se considera "sin movimiento" (jitter de GPS incluido).
 const INACTIVITY_RADIUS_M = 15;
-
-const EVENT_LABELS_ES: Record<string, string> = {
-  fiebre: 'fiebre',
-  celo: 'celo',
-  inactividad: 'inactividad prolongada',
-  anomalia: 'un evento anómalo',
-};
-
-/**
- * Umbrales de decisión clínica gestionados en el backend (regla de negocio / alertas).
- * ml-service provee la probabilidad pura calculada por la red; el backend decide
- * con qué umbral se activa una alerta y se registra como detectado.
- */
-export const ML_HEALTH_THRESHOLDS: Record<string, number> = {
-  fiebre: 0.75,
-  celo: 0.30,
-  inactividad: 0.70,
-  anomalia: 0.70,
-};
 
 @Injectable()
 export class IotService {

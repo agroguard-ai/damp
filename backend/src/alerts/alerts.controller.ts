@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { AlertsService } from './alerts.service';
 import { AlertType } from '@generated/prisma';
 import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
@@ -20,7 +20,6 @@ export class AlertsController {
     @Query('animalId') animalId?: string,
     @Query('type') type?: AlertType,
     @Query('resolved') resolved?: string,
-    @Query('isFalsePositive') isFalsePositive?: string,
     @Query('source') source?: 'ML' | 'THRESHOLD' | 'ESCAPE',
     @Query('from') from?: string,
     @Query('to') to?: string
@@ -30,7 +29,6 @@ export class AlertsController {
       animalId,
       type,
       resolved: resolved === undefined ? undefined : resolved === 'true',
-      isFalsePositive: isFalsePositive === undefined ? undefined : isFalsePositive === 'true',
       source,
       from,
       to,
@@ -63,6 +61,21 @@ export class AlertsController {
     return this.alertsService.getCurrentMlRisk(userId, farmId);
   }
 
+  /** CU014 - Fuerza una predicción inmediata de salud para un animal específico. */
+  @Post('predictions/run')
+  @UseGuards(GlobalRolesGuard, FarmRoleGuard)
+  @ResolveFarmIdFrom('animal', 'animalId')
+  @RequireFarmRole('ADMIN', 'OPERATOR')
+  runAnimalPrediction(@CurrentUser('sub') userId: string, @Body('animalId') animalId: string) {
+    return this.alertsService.triggerAnimalPrediction(userId, animalId);
+  }
+
+  /** Proyección futura a 48 h (tramos de 12 h) para un animal específico. */
+  @Get('predictions/trajectory-48h')
+  getAnimalTrajectory48h(@CurrentUser('sub') userId: string, @Query('animalId') animalId: string) {
+    return this.alertsService.getAnimalTrajectory48h(userId, animalId);
+  }
+
   /** CU014 - Datos de entrada (ventana de 24 h) que analizó el modelo para una predicción. */
   @Get('predictions/:id/inputs')
   getPredictionInputs(@CurrentUser('sub') userId: string, @Param('id') id: string) {
@@ -70,19 +83,11 @@ export class AlertsController {
   }
 
   /**
-   * CU014 - Métricas de precisión y falsos positivos del modelo ML en campo.
+   * Métricas del modelo ML en campo.
    */
   @Get('ml-metrics')
   getMlPerformanceMetrics(@CurrentUser('sub') userId: string, @Query('farmId') farmId: string) {
     return this.alertsService.getMlPerformanceMetrics(userId, farmId);
-  }
-
-  /**
-   * CU014 - Dataset de feedback de operarios para reentrenamiento futuro del modelo.
-   */
-  @Get('feedback-dataset')
-  getFeedbackDataset(@CurrentUser('sub') userId: string, @Query('farmId') farmId?: string) {
-    return this.alertsService.getFeedbackDataset(userId, farmId);
   }
 
   @Patch(':id/resolve')
@@ -91,22 +96,5 @@ export class AlertsController {
   @RequireFarmRole('ADMIN', 'OPERATOR')
   resolveAlert(@Param('id') id: string, @CurrentUser('sub') userId: string) {
     return this.alertsService.resolveAlert(id, userId);
-  }
-
-  /**
-   * CU014 - Camino alternativo 3:
-   * Permite que el usuario marque una alerta generada por el modelo como falso positivo,
-   * guardando el feedback para el reentrenamiento futuro del modelo.
-   */
-  @Patch(':id/false-positive')
-  @UseGuards(GlobalRolesGuard, FarmRoleGuard)
-  @ResolveFarmIdFrom('alert')
-  @RequireFarmRole('ADMIN', 'OPERATOR')
-  markFalsePositive(
-    @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
-    @Body('feedbackNote') feedbackNote?: string
-  ) {
-    return this.alertsService.markFalsePositive(id, userId, feedbackNote);
   }
 }

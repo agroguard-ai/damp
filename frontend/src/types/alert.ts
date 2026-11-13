@@ -27,7 +27,6 @@ export interface HealthPrediction {
     type: AlertType;
     message: string;
     isResolved: boolean;
-    isFalsePositive: boolean;
     feedbackNote?: string | null;
   } | null;
 }
@@ -71,9 +70,6 @@ export interface AnimalMlRisk {
 
 export interface MlHealthMetrics {
   totalMlAlerts: number;
-  falsePositives: number;
-  truePositives: number;
-  fieldPrecision: number;
   totalPredictions: number;
   eventBreakdown: Array<{
     predictedEvent: string;
@@ -88,7 +84,6 @@ export interface Alert {
   message: string;
   animalId: string;
   isResolved: boolean;
-  isFalsePositive?: boolean;
   feedbackNote?: string | null;
   feedbackAt?: string | null;
   feedbackUserId?: string | null;
@@ -102,7 +97,6 @@ export interface AlertsQueryParams {
   animalId?: string;
   type?: AlertType;
   resolved?: boolean;
-  isFalsePositive?: boolean;
   source?: 'ML' | 'THRESHOLD' | 'ESCAPE';
   from?: string;
   to?: string;

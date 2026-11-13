@@ -447,6 +447,7 @@ export default function LiveTrackingMap({
           <AnimalMarkersLayer
             animals={animals}
             referenceTime={animalsReferenceTime}
+            farmId={farmId}
             onSelectAnimalForTrajectory={onSelectAnimalForTrajectory}
           />
         )}

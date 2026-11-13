@@ -37,8 +37,10 @@ import {
   Archive,
   Flame,
   Route,
+  List,
 } from 'lucide-react';
 import { Select } from '@/components/ui/Select';
+import VertexListPanel from '@/components/farms/VertexListPanel';
 
 const PolygonDrawerMap = dynamic(() => import('@/components/maps/PolygonDrawerMap'), { ssr: false });
 const HeatmapModal = dynamic(() => import('@/components/farms/HeatmapModal'), { ssr: false });
@@ -71,6 +73,7 @@ export default function FarmsPage() {
   const [farmFences, setFarmFences] = useState<Geofence[]>([]);
   const [loadingFences, setLoadingFences] = useState<boolean>(false);
   const [showFences, setShowFences] = useState<boolean>(true);
+  const [showVerticesPanel, setShowVerticesPanel] = useState<boolean>(true);
   const [editPolygonPoints, setEditPolygonPoints] = useState<[number, number][]>([]);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
 
@@ -125,17 +128,21 @@ export default function FarmsPage() {
     );
   }, [farms, activeFarms, includeArchived, searchQuery]);
 
-  // Dynamic map center stably memoized for modal
+  // Dynamic map center stably memoized for modal (only recalculates when opening another farm)
   const perimeterMapCenter = useMemo<[number, number]>(() => {
-    if (editPolygonPoints.length > 0) {
-      return editPolygonPoints[0];
+    if (perimeterModalFarm?.polygonCoordinates) {
+      const pts = parsePolygon(perimeterModalFarm.polygonCoordinates);
+      if (pts.length > 0) {
+        const sum = pts.reduce((acc, p) => [acc[0] + p[0], acc[1] + p[1]], [0, 0]);
+        return [sum[0] / pts.length, sum[1] / pts.length];
+      }
     }
     if (perimeterModalFarm?.province) {
       const provCenter = getProvinceCenter(perimeterModalFarm.province);
       if (provCenter) return provCenter;
     }
     return [-34.6037, -58.3816];
-  }, [editPolygonPoints, perimeterModalFarm]);
+  }, [perimeterModalFarm]);
 
   // Real-time calculated area during perimeter editing
   const liveEditingHa = useMemo(() => {
@@ -632,7 +639,7 @@ export default function FarmsPage() {
           {/* Modal Container — clicking inside does not bubble */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl max-w-5xl w-full flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-150"
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl max-w-6xl w-full flex flex-col max-h-[92vh] overflow-hidden animate-in zoom-in-95 duration-150"
           >
             {/* Modal Header */}
             <div className="p-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-900/50">
@@ -667,6 +674,20 @@ export default function FarmsPage() {
                     <span>Cercos ({farmFences.length})</span>
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowVerticesPanel((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                    showVerticesPanel
+                      ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  }`}
+                  title={showVerticesPanel ? 'Ocultar listado de vértices' : 'Mostrar listado de vértices'}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Vértices</span>
+                </button>
 
                 <div className="hidden sm:flex items-center gap-3 text-xs bg-white dark:bg-zinc-950 px-3.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xs">
                   <div>
@@ -717,23 +738,37 @@ export default function FarmsPage() {
               </div>
             )}
 
-            {/* Modal Body: Map Drawer */}
-            <div className="flex-1 relative min-h-[420px] h-[55vh] w-full bg-zinc-100 dark:bg-zinc-950">
-              <PolygonDrawerMap
-                points={editPolygonPoints}
-                onChangePoints={setEditPolygonPoints}
-                center={perimeterMapCenter}
-                zoom={14}
-                strokeColor={conflictingFences.length > 0 ? '#ea580c' : '#f59e0b'}
-                fillColor={conflictingFences.length > 0 ? '#f97316' : '#fbbf24'}
-                selectedVertexIndex={selectedVertexIndex}
-                onSelectVertex={setSelectedVertexIndex}
-                farmId={perimeterModalFarm?.id}
-                existingPolygons={existingFencePolygons}
-                showExistingPolygons={showFences}
-                onToggleExistingPolygons={() => setShowFences((prev) => !prev)}
-                readOnly={perimeterModalFarm?.isActive === false}
-              />
+            {/* Modal Body: Map Drawer + Vertex Coordinates Panel */}
+            <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:flex-none lg:h-[58vh] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-950">
+              <div className="flex-1 min-h-[300px] relative h-full w-full">
+                <PolygonDrawerMap
+                  points={editPolygonPoints}
+                  onChangePoints={setEditPolygonPoints}
+                  center={perimeterMapCenter}
+                  zoom={14}
+                  strokeColor={conflictingFences.length > 0 ? '#ea580c' : '#f59e0b'}
+                  fillColor={conflictingFences.length > 0 ? '#f97316' : '#fbbf24'}
+                  selectedVertexIndex={selectedVertexIndex}
+                  onSelectVertex={setSelectedVertexIndex}
+                  farmId={perimeterModalFarm?.id}
+                  existingPolygons={existingFencePolygons}
+                  showExistingPolygons={showFences}
+                  onToggleExistingPolygons={() => setShowFences((prev) => !prev)}
+                  readOnly={perimeterModalFarm?.isActive === false}
+                  fullBleed
+                />
+              </div>
+
+              {showVerticesPanel && (
+                <VertexListPanel
+                  points={editPolygonPoints}
+                  onChangePoints={setEditPolygonPoints}
+                  selectedVertexIndex={selectedVertexIndex}
+                  onSelectVertex={setSelectedVertexIndex}
+                  readOnly={perimeterModalFarm?.isActive === false}
+                  defaultCenter={perimeterMapCenter}
+                />
+              )}
             </div>
 
             {/* Modal Footer & Actions */}

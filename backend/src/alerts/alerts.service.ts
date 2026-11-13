@@ -1,8 +1,20 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
-import { AlertType } from '@generated/prisma';
-import { MlHealthService } from '@/iot/ml-health.service';
-import { blockStartFor, buildMlWindow, ML_BLOCK_MINUTES, ML_WINDOW_BLOCKS } from '@/iot/ml-window';
+import { AlertType, HealthPrediction } from '@generated/prisma';
+import { EVENT_LABELS_ES, ML_HEALTH_THRESHOLDS, MlHealthService } from '@/iot/ml-health.service';
+import {
+  blockStartFor,
+  buildMlWindow,
+  ML_BLOCK_MINUTES,
+  ML_MIN_BLOCKS_WITH_DATA,
+  ML_WINDOW_BLOCKS,
+} from '@/iot/ml-window';
 
 /** Antigüedad máxima de una predicción para contar como "riesgo actual" de un animal. */
 const CURRENT_RISK_HOURS = 6;
@@ -12,7 +24,6 @@ export interface AlertsQuery {
   animalId?: string;
   type?: AlertType;
   resolved?: boolean;
-  isFalsePositive?: boolean;
   source?: 'ML' | 'THRESHOLD' | 'ESCAPE';
   from?: string;
   to?: string;
@@ -67,9 +78,6 @@ export class AlertsService {
     }
     if (query.resolved !== undefined) {
       where.isResolved = query.resolved;
-    }
-    if (query.isFalsePositive !== undefined) {
-      where.isFalsePositive = query.isFalsePositive;
     }
     if (query.source === 'ML') {
       where.message = { contains: '[IA:' };
@@ -141,61 +149,6 @@ export class AlertsService {
   }
 
   /**
-   * CU014 - Camino alternativo 3:
-   * Permite que el usuario marque una alerta generada por el modelo como falso positivo,
-   * guardando el feedback explícito para usarlo en futuros reentrenamientos.
-   */
-  async markFalsePositive(id: string, userId: string, feedbackNote?: string) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { id },
-      include: {
-        animal: {
-          include: {
-            farm: {
-              include: {
-                farmUsers: { where: { userId, isActive: true } },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!alert) {
-      throw new NotFoundException(`Alerta con ID ${id} no encontrada.`);
-    }
-
-    const farm = alert.animal.farm;
-    if (!farm) {
-      throw new ForbiddenException('La alerta pertenece a un animal sin campo asignado.');
-    }
-    const isOwner = farm.userId === userId;
-    const isMember = farm.farmUsers.length > 0;
-    if (!isOwner && !isMember) {
-      throw new ForbiddenException('No tienes acceso a esta alerta.');
-    }
-
-    return this.prisma.alert.update({
-      where: { id },
-      data: {
-        isFalsePositive: true,
-        isResolved: true,
-        feedbackNote: feedbackNote?.trim() || 'Marcado como falso positivo por el productor / operario.',
-        feedbackAt: new Date(),
-        feedbackUserId: userId,
-      },
-      include: {
-        animal: {
-          include: {
-            animalType: true,
-          },
-        },
-        healthPredictions: true,
-      },
-    });
-  }
-
-  /**
    * CU014 - Camino alternativo 2:
    * Consulta el historial de predicciones de salud del rodeo o de un animal puntual,
    * incluyendo aquellas predicciones de baja certeza guardadas para revisión preventiva.
@@ -224,7 +177,6 @@ export class AlertsService {
             type: true,
             message: true,
             isResolved: true,
-            isFalsePositive: true,
             feedbackNote: true,
           },
         },
@@ -243,12 +195,9 @@ export class AlertsService {
   async getMlPerformanceMetrics(userId: string, farmId: string) {
     await this.assertFarmAccess(farmId, userId);
 
-    const [totalMlAlerts, falsePositives, totalPredictions, eventCounts] = await Promise.all([
+    const [totalMlAlerts, totalPredictions, eventCounts] = await Promise.all([
       this.prisma.alert.count({
         where: { animal: { farmId }, message: { contains: '[IA:' } },
-      }),
-      this.prisma.alert.count({
-        where: { animal: { farmId }, message: { contains: '[IA:' }, isFalsePositive: true },
       }),
       this.prisma.healthPrediction.count({
         where: { animal: { farmId } },
@@ -260,48 +209,11 @@ export class AlertsService {
       }),
     ]);
 
-    const truePositives = Math.max(0, totalMlAlerts - falsePositives);
-    const fieldPrecision = totalMlAlerts > 0 ? Number(((truePositives / totalMlAlerts) * 100).toFixed(1)) : 100;
-
     return {
       totalMlAlerts,
-      falsePositives,
-      truePositives,
-      fieldPrecision,
       totalPredictions,
       eventBreakdown: eventCounts,
     };
-  }
-
-  /**
-   * CU014 - Dataset de feedback para reentrenamiento futuro:
-   * Exporta alertas y predicciones con feedback de operarios (falsos positivos vs alertas validadas).
-   */
-  async getFeedbackDataset(userId: string, farmId?: string) {
-    if (farmId) {
-      await this.assertFarmAccess(farmId, userId);
-    } else {
-      const farmIds = await this.getAccessibleFarmIds(userId);
-      if (farmIds.length === 0) return [];
-    }
-
-    const farmIds = farmId ? [farmId] : await this.getAccessibleFarmIds(userId);
-
-    return this.prisma.alert.findMany({
-      where: {
-        animal: { farmId: { in: farmIds } },
-        message: { contains: '[IA:' },
-      },
-      include: {
-        animal: {
-          select: { id: true, tag: true, breed: true, sex: true },
-        },
-        healthPredictions: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
   }
 
   /** Estado del servicio de IA (para avisar en el front si está caído o sin modelo). */
@@ -398,5 +310,196 @@ export class AlertsService {
     }
 
     return Array.from(byAnimal.entries()).map(([animalId, events]) => ({ animalId, events }));
+  }
+
+  /**
+   * Fuerza una predicción inmediata de salud para un animal específico usando las últimas 24 h
+   * de telemetría (48 bloques de 30 min), sin esperar al siguiente bloque ni omitir si ya existía
+   * una predicción previa para la ventana actual.
+   */
+  async triggerAnimalPrediction(userId: string, animalId: string) {
+    if (!animalId) {
+      throw new BadRequestException('Debes indicar el animal para ejecutar la predicción.');
+    }
+
+    const animal = await this.prisma.animal.findUnique({
+      where: { id: animalId },
+      select: { id: true, farmId: true, sex: true, tag: true },
+    });
+    if (!animal) {
+      throw new NotFoundException('Animal no encontrado.');
+    }
+    if (!animal.farmId) {
+      throw new ForbiddenException('El animal no pertenece a ningún campo.');
+    }
+    await this.assertFarmAccess(animal.farmId, userId);
+
+    const blockMs = ML_BLOCK_MINUTES * 60 * 1000;
+    const windowEnd = blockStartFor(new Date());
+    const windowStart = new Date(windowEnd.getTime() - ML_WINDOW_BLOCKS * blockMs);
+    const from = new Date(windowStart.getTime() - blockMs);
+
+    const animalCollars = await this.prisma.animalCollar.findMany({
+      where: {
+        animalId,
+        startAt: { lt: windowEnd },
+        OR: [{ endAt: null }, { endAt: { gt: from } }],
+      },
+      select: { collarId: true },
+    });
+
+    const readings = animalCollars.length
+      ? await this.prisma.telemetryReading.findMany({
+          where: {
+            collarId: { in: animalCollars.map((ac) => ac.collarId) },
+            timestamp: { gte: from, lt: windowEnd },
+          },
+          orderBy: { timestamp: 'asc' },
+          select: { temperature: true, latitude: true, longitude: true, timestamp: true },
+        })
+      : [];
+
+    const window = buildMlWindow(readings, new Date(windowEnd.getTime() - 1));
+    if (window.blocksWithData < ML_MIN_BLOCKS_WITH_DATA) {
+      throw new BadRequestException(
+        `Historial insuficiente para predecir: se requieren al menos ${ML_MIN_BLOCKS_WITH_DATA} bloques de 30 min con datos en las últimas 24 h (actualmente hay ${window.blocksWithData}).`
+      );
+    }
+
+    const result = await this.mlHealthService.predict(animalId, animal.sex, window.blocks);
+    if (!result) {
+      throw new ServiceUnavailableException('El servicio de IA (ml-service) no respondió o no está disponible.');
+    }
+    if (!result.ready) {
+      throw new BadRequestException('El modelo de IA aún no está listo o la ventana es insuficiente.');
+    }
+
+    const created: HealthPrediction[] = [];
+    for (const [eventName, prediction] of Object.entries(result.events)) {
+      const label = EVENT_LABELS_ES[eventName] ?? eventName;
+      const confidencePct = Math.round(prediction.probability * 100);
+      const threshold = prediction.threshold ?? ML_HEALTH_THRESHOLDS[eventName] ?? 0.5;
+      const isDetected = prediction.detected ?? prediction.probability >= threshold;
+
+      let alertId: string | null = null;
+      if (isDetected) {
+        const dedupeKey = `[IA:${eventName.toUpperCase()}]`;
+        const existingAlert = await this.prisma.alert.findFirst({
+          where: { animalId, type: 'HEALTH', isResolved: false, message: { startsWith: dedupeKey } },
+          select: { id: true },
+        });
+        if (existingAlert) {
+          alertId = existingAlert.id;
+        } else {
+          const alert = await this.prisma.alert.create({
+            data: {
+              animalId,
+              type: 'HEALTH',
+              message: `${dedupeKey} Modelo predictivo: posible ${label} en las próximas 6hs (confianza ${confidencePct}%).`,
+            },
+          });
+          alertId = alert.id;
+        }
+      }
+
+      const saved = await this.prisma.healthPrediction.create({
+        data: {
+          animalId,
+          predictedEvent: eventName,
+          probability: prediction.probability,
+          threshold,
+          detected: isDetected,
+          horizonHours: 6,
+          windowReadingsCount: window.blocksWithData,
+          windowEndAt: windowEnd,
+          alertId,
+        },
+      });
+      created.push(saved);
+    }
+
+    return {
+      animalId,
+      windowEndAt: windowEnd,
+      blocksWithData: window.blocksWithData,
+      predictions: created,
+    };
+  }
+
+  /**
+   * Proyección futura a 48 h (4 tramos de 12 h: 0-12h, 12-24h, 24-36h, 36-48h) para un animal.
+   * Devuelve available=false de forma controlada si falta historial (< 72 bloques de 48h) o ml-service no responde.
+   */
+  async getAnimalTrajectory48h(userId: string, animalId: string) {
+    if (!animalId) {
+      throw new BadRequestException('Debes indicar el animal.');
+    }
+
+    const animal = await this.prisma.animal.findUnique({
+      where: { id: animalId },
+      select: { id: true, farmId: true, sex: true },
+    });
+    if (!animal) {
+      throw new NotFoundException('Animal no encontrado.');
+    }
+    if (!animal.farmId) {
+      throw new ForbiddenException('El animal no pertenece a ningún campo.');
+    }
+    await this.assertFarmAccess(animal.farmId, userId);
+
+    const windowBlocks48h = 96;
+    const minBlocks48h = 72;
+    const blockMs = ML_BLOCK_MINUTES * 60 * 1000;
+    const windowEnd = blockStartFor(new Date());
+    const windowStart = new Date(windowEnd.getTime() - windowBlocks48h * blockMs);
+    const from = new Date(windowStart.getTime() - blockMs);
+
+    const animalCollars = await this.prisma.animalCollar.findMany({
+      where: {
+        animalId,
+        startAt: { lt: windowEnd },
+        OR: [{ endAt: null }, { endAt: { gt: from } }],
+      },
+      select: { collarId: true },
+    });
+
+    const readings = animalCollars.length
+      ? await this.prisma.telemetryReading.findMany({
+          where: {
+            collarId: { in: animalCollars.map((ac) => ac.collarId) },
+            timestamp: { gte: from, lt: windowEnd },
+          },
+          orderBy: { timestamp: 'asc' },
+          select: { temperature: true, latitude: true, longitude: true, timestamp: true },
+        })
+      : [];
+
+    const window = buildMlWindow(readings, new Date(windowEnd.getTime() - 1), windowBlocks48h);
+    if (window.blocksWithData < minBlocks48h) {
+      return {
+        available: false,
+        reason: `Se requieren al menos ${minBlocks48h} bloques con datos en 48 h (actualmente ${window.blocksWithData}).`,
+        stages: [],
+        summary: {},
+      };
+    }
+
+    const result = await this.mlHealthService.predictTrajectory48h(animalId, animal.sex, window.blocks);
+    if (!result || !result.ready) {
+      return {
+        available: false,
+        reason: 'El modelo de trayectoria 48 h no está disponible en este momento.',
+        stages: [],
+        summary: {},
+      };
+    }
+
+    return {
+      available: true,
+      generatedAt: windowEnd.toISOString(),
+      blocksWithData: window.blocksWithData,
+      stages: result.trajectory_stages,
+      summary: result.passed_states_summary,
+    };
   }
 }

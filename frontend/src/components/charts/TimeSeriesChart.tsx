@@ -8,6 +8,10 @@ export interface TimeSeriesPoint {
   value: number;
   /** Punto atenuado (p. ej. un bloque sin datos reales que se rellenó). */
   muted?: boolean;
+  /** Punto proyectado hacia el futuro (se dibuja en color distinto y línea punteada). */
+  projected?: boolean;
+  /** Etiqueta opcional para mostrar en el tooltip (p. ej. "+6h", "0-12h"). */
+  tag?: string;
 }
 
 interface TimeSeriesChartProps {
@@ -85,6 +89,8 @@ export default function TimeSeriesChart({
   };
 
   const hovered = hover !== null ? points[hover] : null;
+  const firstProjectedIdx = points.findIndex((p) => p.projected);
+  const splitIdx = firstProjectedIdx > 0 ? firstProjectedIdx - 1 : firstProjectedIdx;
 
   return (
     <div ref={containerRef} className="relative w-full text-[#2a78d6] dark:text-[#3987e5]" style={{ height }}>
@@ -126,16 +132,83 @@ export default function TimeSeriesChart({
             </text>
           ))}
 
+          {/* Zona de proyección futura */}
+          {kind === 'line' && firstProjectedIdx !== -1 && (
+            <g>
+              <rect
+                x={xOf(splitIdx)}
+                y={MARGIN.top}
+                width={Math.max(0, width - MARGIN.right - xOf(splitIdx))}
+                height={innerH}
+                className="fill-purple-500/8 dark:fill-purple-400/10"
+              />
+              <line
+                x1={xOf(splitIdx)}
+                x2={xOf(splitIdx)}
+                y1={MARGIN.top}
+                y2={MARGIN.top + innerH}
+                className="stroke-purple-400/60 dark:stroke-purple-500/50"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+              />
+            </g>
+          )}
+
           {/* Serie */}
           {kind === 'line' ? (
-            <path
-              d={points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(i)},${yOf(p.value)}`).join(' ')}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
+            firstProjectedIdx === -1 ? (
+              <path
+                d={points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(i)},${yOf(p.value)}`).join(' ')}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ) : (
+              <g>
+                {firstProjectedIdx > 0 && (
+                  <path
+                    d={points
+                      .slice(0, firstProjectedIdx)
+                      .map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(i)},${yOf(p.value)}`)
+                      .join(' ')}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                )}
+                <path
+                  d={points
+                    .slice(Math.max(0, firstProjectedIdx - 1))
+                    .map((p, offset) => {
+                      const idx = Math.max(0, firstProjectedIdx - 1) + offset;
+                      return `${offset === 0 ? 'M' : 'L'}${xOf(idx)},${yOf(p.value)}`;
+                    })
+                    .join(' ')}
+                  fill="none"
+                  className="stroke-purple-600 dark:stroke-purple-400"
+                  strokeWidth={2.2}
+                  strokeDasharray="5 4"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                {points.map((p, i) =>
+                  p.projected ? (
+                    <circle
+                      key={`proj-${i}`}
+                      cx={xOf(i)}
+                      cy={yOf(p.value)}
+                      r={3.5}
+                      className="fill-purple-600 dark:fill-purple-400 stroke-white dark:stroke-zinc-900"
+                      strokeWidth={1.5}
+                    />
+                  ) : null
+                )}
+              </g>
+            )
           ) : (
             points.map((p, i) => {
               const barW = Math.max(1, band - 2); // 2 px de separación entre barras
@@ -194,8 +267,12 @@ export default function TimeSeriesChart({
                   cx={xOf(hover)}
                   cy={yOf(hovered.value)}
                   r={4.5}
-                  fill="currentColor"
-                  className="stroke-white dark:stroke-zinc-900"
+                  fill={hovered.projected ? undefined : 'currentColor'}
+                  className={
+                    hovered.projected
+                      ? 'fill-purple-600 dark:fill-purple-400 stroke-white dark:stroke-zinc-900'
+                      : 'stroke-white dark:stroke-zinc-900'
+                  }
                   strokeWidth={2}
                 />
               )}
@@ -220,7 +297,14 @@ export default function TimeSeriesChart({
           className="pointer-events-none absolute z-10 -translate-x-1/2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 shadow-md text-[11px] whitespace-nowrap"
           style={{ left: Math.min(Math.max(xOf(hover), 60), width - 60), top: 0 }}
         >
-          <div className="text-zinc-500 dark:text-zinc-400">{formatTime(hovered.t)}</div>
+          <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+            <span>{formatTime(hovered.t)}</span>
+            {hovered.projected && (
+              <span className="px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-semibold text-[10px]">
+                {hovered.tag ? `Proyección ${hovered.tag}` : 'Proyección'}
+              </span>
+            )}
+          </div>
           <div className="font-semibold text-zinc-900 dark:text-white">
             {formatValue(hovered.value)}
             {hovered.muted && <span className="font-normal text-zinc-400"> (sin datos, rellenado)</span>}

@@ -5,6 +5,25 @@ import type { MlBlock } from './ml-window';
 /** La predicción corre en segundo plano, pero no debe quedar colgada si ml-service no responde. */
 const ML_REQUEST_TIMEOUT_MS = 10_000;
 
+export const EVENT_LABELS_ES: Record<string, string> = {
+  fiebre: 'fiebre',
+  celo: 'celo',
+  inactividad: 'inactividad prolongada',
+  anomalia: 'un evento anómalo',
+};
+
+/**
+ * Umbrales de decisión clínica gestionados en el backend (regla de negocio / alertas).
+ * ml-service provee la probabilidad pura calculada por la red; el backend decide
+ * con qué umbral se activa una alerta y se registra como detectado.
+ */
+export const ML_HEALTH_THRESHOLDS: Record<string, number> = {
+  fiebre: 0.75,
+  celo: 0.30,
+  inactividad: 0.70,
+  anomalia: 0.70,
+};
+
 export interface MlEventPrediction {
   probability: number;
   threshold?: number;
@@ -24,6 +43,17 @@ export interface MlServiceStatus {
 export interface MlPredictionResult {
   ready: boolean;
   events: Record<string, MlEventPrediction>;
+}
+
+export interface MlTrajectoryStage {
+  stage: string;
+  probabilities: Record<string, number>;
+}
+
+export interface MlTrajectory48hResult {
+  ready: boolean;
+  trajectory_stages: MlTrajectoryStage[];
+  passed_states_summary: Record<string, { max_probability: number; peak_stage: string }>;
 }
 
 /**
@@ -91,6 +121,36 @@ export class MlHealthService {
       return { ready: body.ready, events: body.events ?? {} };
     } catch (error) {
       this.logger.warn(`No se pudo contactar a ml-service: ${(error as Error).message}`);
+      return null;
+    }
+  }
+
+  async predictTrajectory48h(
+    animalId: string,
+    sex: string | null | undefined,
+    readings: MlBlock[]
+  ): Promise<MlTrajectory48hResult | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/predict/trajectory-48h`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ animal_id: animalId, sex, readings }),
+        signal: AbortSignal.timeout(ML_REQUEST_TIMEOUT_MS),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`ml-service (/predict/trajectory-48h) respondió ${response.status} para el animal ${animalId}`);
+        return null;
+      }
+
+      const body = await response.json();
+      return {
+        ready: Boolean(body.ready),
+        trajectory_stages: body.trajectory_stages ?? [],
+        passed_states_summary: body.passed_states_summary ?? {},
+      };
+    } catch (error) {
+      this.logger.warn(`No se pudo contactar a ml-service (/predict/trajectory-48h): ${(error as Error).message}`);
       return null;
     }
   }

@@ -18,13 +18,6 @@ export const alertsApi = {
   /** PATCH /api/alerts/[id]/resolve — marks an alert as resolved */
   resolve: (id: string): Promise<Alert> => apiFetch<Alert>(`/api/alerts/${id}/resolve`, { method: 'PATCH' }),
 
-  /** PATCH /api/alerts/[id]/false-positive — marks an alert as false positive with feedback note */
-  markFalsePositive: (id: string, feedbackNote?: string): Promise<Alert> =>
-    apiFetch<Alert>(`/api/alerts/${id}/false-positive`, {
-      method: 'PATCH',
-      body: JSON.stringify({ feedbackNote }),
-    }),
-
   /** GET /api/alerts/predictions — gets recent health predictions (including sub-threshold ones for review) */
   getPredictions: (params: { farmId: string; animalId?: string; limit?: number }): Promise<any[]> => {
     const query = new URLSearchParams();
@@ -49,4 +42,25 @@ export const alertsApi = {
   /** GET /api/alerts/predictions/current-risk — eventos detectados recientemente, por animal */
   getCurrentMlRisk: (farmId: string): Promise<AnimalMlRisk[]> =>
     apiFetch<AnimalMlRisk[]>(`/api/alerts/predictions/current-risk?farmId=${encodeURIComponent(farmId)}`),
+
+  /** POST /api/alerts/predictions/run — fuerza una predicción inmediata de salud para un animal */
+  runPrediction: (
+    animalId: string
+  ): Promise<{ animalId: string; windowEndAt: string; blocksWithData: number; predictions: any[] }> =>
+    apiFetch('/api/alerts/predictions/run', {
+      method: 'POST',
+      body: JSON.stringify({ animalId }),
+    }),
+
+  /** GET /api/alerts/predictions/trajectory-48h — proyección futura a 48 h para un animal */
+  getTrajectory48h: (
+    animalId: string
+  ): Promise<{
+    available: boolean;
+    reason?: string;
+    generatedAt?: string;
+    blocksWithData?: number;
+    stages: Array<{ stage: string; probabilities: Record<string, number> }>;
+    summary: Record<string, { max_probability: number; peak_stage: string }>;
+  }> => apiFetch(`/api/alerts/predictions/trajectory-48h?animalId=${encodeURIComponent(animalId)}`),
 };

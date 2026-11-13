@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { BrainCircuit, FileText, Route } from 'lucide-react';
 
 const STALE_THRESHOLD_MS = 6 * 60 * 60 * 1000; // 6 horas sin señal = desactualizado
 
@@ -84,10 +85,12 @@ interface ClusterGroup {
 export default function AnimalMarkersLayer({
   animals,
   referenceTime,
+  farmId,
   onSelectAnimalForTrajectory,
 }: {
   animals: MapAnimal[];
   referenceTime: number;
+  farmId?: string;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
 }) {
   const map = useMap();
@@ -197,21 +200,32 @@ export default function AnimalMarkersLayer({
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t flex flex-col gap-1.5">
+                  <div className="pt-2 border-t border-zinc-100 flex flex-col gap-1.5">
                     {onSelectAnimalForTrajectory && (
                       <button
                         type="button"
                         onClick={() => onSelectAnimalForTrajectory(animal.id)}
-                        className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2.5 rounded-lg text-[11px] transition-colors shadow-xs"
+                        className="w-full flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors shadow-xs cursor-pointer"
                       >
-                        📍 Ver recorrido histórico
+                        <Route className="w-3.5 h-3.5 shrink-0" />
+                        Ver recorrido histórico
                       </button>
                     )}
                     <a
-                      href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
-                      className="block text-center text-green-700 dark:text-green-600 hover:underline text-[11px] font-medium"
+                      href={`/alertas?tab=predictive&animalId=${encodeURIComponent(animal.id)}${
+                        farmId ? `&farmId=${encodeURIComponent(farmId)}` : ''
+                      }`}
+                      className="w-full flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700! border border-purple-200 font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors no-underline!"
                     >
-                      Ver ficha completa &rarr;
+                      <BrainCircuit className="w-3.5 h-3.5 shrink-0" />
+                      Ir a predicciones de IA
+                    </a>
+                    <a
+                      href={`/animals?search=${encodeURIComponent(animal.tag || animal.id)}`}
+                      className="w-full flex items-center justify-center gap-1.5 bg-zinc-50 hover:bg-zinc-100 text-zinc-700! border border-zinc-200 font-semibold py-1.5 px-3 rounded-lg text-[11px] transition-colors no-underline!"
+                    >
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                      Ver ficha completa
                     </a>
                   </div>
                 </div>

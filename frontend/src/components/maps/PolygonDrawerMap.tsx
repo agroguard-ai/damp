@@ -51,6 +51,8 @@ export interface PolygonDrawerMapProps {
   farmId?: string;
   /** Solo visualización: no permite agregar, mover ni borrar vértices. */
   readOnly?: boolean;
+  /** Ocupa todo el alto disponible sin bordes redondeados ni separación interna (ideal para modales con panel lateral). */
+  fullBleed?: boolean;
 }
 
 /**
@@ -228,6 +230,31 @@ function MapRecenter({ center, zoom }: { center: [number, number]; zoom: number 
   return null;
 }
 
+function MapResizeSync() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let rafId: number | null = null;
+    const observer = new ResizeObserver(() => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        map.invalidateSize({ pan: false });
+      });
+    });
+
+    observer.observe(container);
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
 export interface MapProviderConfig {
   url: string;
   attribution: string;
@@ -267,6 +294,7 @@ export default function PolygonDrawerMap({
   onSelectVertex: controlledOnSelectVertex,
   farmId,
   readOnly = false,
+  fullBleed = false,
 }: PolygonDrawerMapProps) {
   const herd = useAnimalsToggle(farmId);
   const [internalShowExisting, setInternalShowExisting] = useState<boolean>(true);
@@ -436,11 +464,15 @@ export default function PolygonDrawerMap({
 
   const activeProvider = MAP_PROVIDERS[currentLayer];
 
+  const toolbarClass = fullBleed
+    ? 'flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 px-4 py-2.5 border-b border-zinc-200 dark:border-zinc-800 text-xs shrink-0'
+    : 'flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs';
+
   return (
-    <div className="w-full space-y-3">
+    <div className={fullBleed ? 'w-full h-full flex flex-col' : 'w-full space-y-3'}>
       {/* Control Bar for Drawing Actions */}
       {readOnly ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
+        <div className={toolbarClass}>
           <span className="text-zinc-500 font-medium">
             {points.length} {points.length === 1 ? 'vértice' : 'vértices'} del perímetro archivado
           </span>
@@ -449,7 +481,7 @@ export default function PolygonDrawerMap({
           </span>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
+        <div className={toolbarClass}>
           <div className="flex items-center gap-2 text-zinc-500 font-medium">
             <span>
               {points.length} {points.length === 1 ? 'vértice' : 'vértices'} trazados
@@ -508,7 +540,14 @@ export default function PolygonDrawerMap({
       )}
 
       {/* Map Container Canvas */}
-      <div ref={containerRef} className="w-full h-105 rounded-xl overflow-hidden relative z-10 group">
+      <div
+        ref={containerRef}
+        className={
+          fullBleed
+            ? 'w-full flex-1 min-h-0 overflow-hidden relative z-10 group'
+            : 'w-full h-105 rounded-xl overflow-hidden relative z-10 group'
+        }
+      >
         {/* Floating Round Action Controls inside the map */}
         <MapActionControls
           targetRef={containerRef}
@@ -545,6 +584,7 @@ export default function PolygonDrawerMap({
             />
           )}
           <MapRecenter center={center} zoom={zoom} />
+          <MapResizeSync />
 
           {/* Render existing polygons (e.g. established farm boundary or existing fences) */}
           {showExisting &&

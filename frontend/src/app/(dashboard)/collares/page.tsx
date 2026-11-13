@@ -24,8 +24,7 @@ import {
   PlusCircle,
   Check,
   X,
-  ChevronDown,
-  ChevronUp,
+  History,
   RadioOff,
   CheckCheck,
   Plus,
@@ -119,10 +118,14 @@ export default function CollaresPage() {
   const { mutate: archiveCollar } = useMutation(collarsApi.archive);
   const { mutate: restoreCollar } = useMutation(collarsApi.restore);
 
-  const [expandedId, setExpandedId] = useState<number | null>(null);
-  const { data: collarDetail, refetch: refetchDetail } = useApi(
-    () => (expandedId !== null ? collarsApi.getOne(expandedId) : Promise.resolve(undefined)),
-    [expandedId]
+  const [historyCollar, setHistoryCollar] = useState<Collar | null>(null);
+  const {
+    data: collarDetail,
+    loading: loadingDetail,
+    refetch: refetchDetail,
+  } = useApi(
+    () => (historyCollar !== null ? collarsApi.getOne(historyCollar.id) : Promise.resolve(undefined)),
+    [historyCollar?.id]
   );
 
   // Load farms & users
@@ -390,7 +393,7 @@ export default function CollaresPage() {
       await archiveCollar(collar.id);
       toast.success(`Collar ${collar.identifier} archivado correctamente`);
       refetch();
-      if (expandedId === collar.id) refetchDetail();
+      if (historyCollar?.id === collar.id) refetchDetail();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al archivar el collar');
     }
@@ -411,7 +414,7 @@ export default function CollaresPage() {
       await restoreCollar(collar.id);
       toast.success(`Collar ${collar.identifier} reactivado en el inventario`);
       refetch();
-      if (expandedId === collar.id) refetchDetail();
+      if (historyCollar?.id === collar.id) refetchDetail();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Error al reactivar el collar');
     }
@@ -768,72 +771,69 @@ export default function CollaresPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredCollars.map((c) => {
-              const farmObj = allFarms.find((f) => f.id === c.farmId);
-              const ownerName = c.farm?.user?.name || farmObj?.user?.name;
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/40 text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider">
+                    <th className="py-3.5 pl-4 pr-3">Collar</th>
+                    <th className="py-3.5 px-3">Animal / Cerco</th>
+                    <th className="py-3.5 px-3">Campo / Propietario</th>
+                    <th className="py-3.5 px-3">Última Telemetría</th>
+                    <th className="py-3.5 pr-4 pl-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                  {filteredCollars.map((c) => {
+                    const farmObj = allFarms.find((f) => f.id === c.farmId);
+                    const ownerName = c.farm?.user?.name || farmObj?.user?.name;
 
-              return (
-                <div
-                  key={c.id}
-                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-2xl p-5 shadow-xs transition-all space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2.5 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono">
-                            ID #{c.id}
-                          </span>
-                          <span className="font-bold text-zinc-900 dark:text-white font-mono text-sm tracking-wide">
-                            {c.identifier}
-                          </span>
-                          <span
-                            className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold border ${
-                              c.isArchived
-                                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700'
-                                : c.farmId
-                                ? 'bg-purple-50 dark:bg-purple-950/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800/40'
-                                : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
-                            }`}
-                          >
-                            {c.isArchived
-                              ? 'Archivado'
-                              : c.farmId
-                              ? 'Asignado a Campo'
-                              : 'Disponible (Stock Central)'}
-                          </span>
-                        </div>
+                    return (
+                      <tr
+                        key={c.id}
+                        className="hover:bg-zinc-50/60 dark:hover:bg-zinc-800/30 transition-colors"
+                      >
+                        {/* Collar ID & Identifier */}
+                        <td className="py-3.5 pl-4 pr-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center text-[11px] px-2 py-0.5 rounded-md font-bold bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono">
+                              ID #{c.id}
+                            </span>
+                            <span className="font-bold text-zinc-900 dark:text-white font-mono text-sm tracking-wide">
+                              {c.identifier}
+                            </span>
+                          </div>
+                        </td>
 
-                        {/* Assigned Animal Pill */}
-                        <div className="text-xs pt-1">
+                        {/* Assigned Animal & Fence Sync */}
+                        <td className="py-3.5 px-3">
                           {c.isArchived ? (
-                            <span className="text-zinc-500 dark:text-zinc-400 font-medium inline-flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800/60 px-2.5 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700/40">
-                              <RadioOff className="w-3.5 h-3.5 text-zinc-400" />
+                            <span className="text-zinc-500 dark:text-zinc-400 font-medium inline-flex items-center gap-1.5">
+                              <RadioOff className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                               Dado de baja / Fuera de servicio
                             </span>
                           ) : !c.farmId ? (
-                            <span className="text-amber-700 dark:text-amber-400 font-medium inline-flex items-center gap-1.5 bg-amber-50/60 dark:bg-amber-950/20 px-2.5 py-1 rounded-lg border border-amber-200/50 dark:border-amber-800/40">
-                              <Layers className="w-3.5 h-3.5 text-amber-500" />
-                              Stock Central: disponible para asignación a un campo (Superadministrador)
+                            <span className="text-amber-700 dark:text-amber-400 font-medium inline-flex items-center gap-1.5">
+                              <Layers className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              Stock Central (Sin asignar)
                             </span>
                           ) : c.assignedAnimal ? (
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-green-700 dark:text-green-400 font-semibold inline-flex items-center gap-1.5 bg-green-50/60 dark:bg-green-950/20 px-2.5 py-1 rounded-lg border border-green-200/50 dark:border-green-800/40">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                                Colocado en: {c.assignedAnimal.tag || `Animal (${c.assignedAnimal.id.slice(0, 5)})`}
+                              <span className="text-green-700 dark:text-green-400 font-semibold inline-flex items-center gap-1 bg-green-50/60 dark:bg-green-950/20 px-2 py-0.5 rounded-md border border-green-200/50 dark:border-green-800/40">
+                                <CheckCircle2 className="w-3 h-3 text-green-600 shrink-0" />
+                                {c.assignedAnimal.tag || `Animal (${c.assignedAnimal.id.slice(0, 5)})`}
                               </span>
                               {c.fenceNotificationPending ? (
                                 <span
-                                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 font-medium"
+                                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 font-medium"
                                   title="Las coordenadas del cerco se enviarán en el próximo reporte de telemetría"
                                 >
                                   <RefreshCw className="w-2.5 h-2.5 text-amber-500 animate-spin" />
-                                  Cerco pendiente de envío
+                                  Cerco pendiente
                                 </span>
                               ) : (
                                 <span
-                                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 font-medium"
+                                  className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 font-medium"
                                   title={
                                     c.lastFenceSyncedAt
                                       ? `Sincronizado: ${new Date(c.lastFenceSyncedAt).toLocaleString('es-AR')}`
@@ -841,183 +841,230 @@ export default function CollaresPage() {
                                   }
                                 >
                                   <Check className="w-2.5 h-2.5 text-emerald-500" />
-                                  Cerco sincronizado
+                                  Cerco sync
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="text-emerald-700 dark:text-emerald-400 font-medium inline-flex items-center gap-1.5 bg-emerald-50/60 dark:bg-emerald-950/20 px-2.5 py-1 rounded-lg border border-emerald-200/50 dark:border-emerald-800/40">
-                              <Check className="w-3.5 h-3.5 text-emerald-500" />
-                              Libre para colocar en ganado del campo
+                            <span className="text-emerald-700 dark:text-emerald-400 font-medium inline-flex items-center gap-1.5">
+                              <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              Libre para colocar
                             </span>
                           )}
-                        </div>
-                      </div>
-                    </div>
+                        </td>
 
-                    {/* Location and Farm Pill */}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {c.farm?.name ? (
-                        <>
-                          {ownerName && (
-                            <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium">
-                              <UserIcon className="w-3 h-3 text-zinc-500" />
-                              {ownerName}
-                            </span>
-                          )}
-                          <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40 font-medium">
-                            <Building2 className="w-3 h-3" />
-                            Campo: {c.farm.name}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40 font-medium">
-                          <Layers className="w-3 h-3" />
-                          Stock Libre Central (Sin asignar a campo)
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Telemetry info */}
-                    <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {!c.lastTelemetryDate ? (
-                        <span className="text-zinc-400 italic">Sin lecturas de telemetría registradas aún</span>
-                      ) : (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="inline-flex items-center gap-1 font-medium text-zinc-800 dark:text-zinc-200">
-                            <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                            Señal: {new Date(c.lastTelemetryDate).toLocaleString('es-AR')}
-                          </span>
-                          {c.telemetryReadings?.[0] && (
-                            <span className="font-mono text-zinc-600 dark:text-zinc-300">
-                              · Temp: {c.telemetryReadings[0].temperature.toFixed(1)}°C
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Footer Actions */}
-                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      {/* Sync fence button */}
-                      {canEditIn(c.farmId) && c.assignedAnimal && !c.isArchived && (
-                        <button
-                          type="button"
-                          onClick={() => void handleSyncFence(c)}
-                          disabled={syncingCollarId === c.id}
-                          className="p-1.5 text-indigo-600 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 rounded-lg hover:bg-indigo-100 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
-                          title={
-                            c.lastFenceSyncedAt
-                              ? `Forzar reenvío del cerco (Última sincronización confirmada: ${new Date(c.lastFenceSyncedAt).toLocaleString('es-AR')})`
-                              : 'Forzar retransmisión de las coordenadas del cerco en el próximo reporte del collar'
-                          }
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${syncingCollarId === c.id ? 'animate-spin' : ''}`} />
-                          Sincronizar Cerco
-                        </button>
-                      )}
-
-                      {/* Expand history */}
-                      <button
-                        onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
-                        className="p-1.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        {expandedId === c.id ? (
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        ) : (
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        )}
-                        Historial
-                      </button>
-                    </div>
-
-                    {isSuperAdmin && (
-                      <div className="flex items-center gap-1">
-                        {c.isArchived ? (
-                          <button
-                            onClick={() => void handleRestore(c)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
-                            title="Reactivar collar y habilitarlo para uso"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            Reactivar
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => handleOpenAssignModal(c)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
-                              title="Asignar collar a un administrador de campo"
-                            >
-                              <UserIcon className="w-3.5 h-3.5" />
-                              {c.farmId ? 'Reasignar Campo' : 'Asignar a Campo'}
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenEditModal(c)}
-                              className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                              title="Editar ID numérico del hardware (#define COLLAR_ID)"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-
-                            <button
-                              onClick={() => void handleArchive(c)}
-                              className="p-1.5 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                              title="Archivar / Dar de baja collar (conserva historial)"
-                            >
-                              <Archive className="w-4 h-4" />
-                            </button>
-                          </>
-                        )}
-
-                        <button
-                          onClick={() => void handleDelete(c)}
-                          className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                          title="Eliminar o dar de baja collar"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expandable History Drawer */}
-                  {expandedId === c.id && collarDetail && (
-                    <div className="mt-2 pt-3 border-t border-zinc-100 dark:border-zinc-800 space-y-2 animate-in fade-in duration-150">
-                      <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
-                        Historial de colocación en animales
-                      </p>
-                      {!collarDetail.animalCollars || collarDetail.animalCollars.length === 0 ? (
-                        <p className="text-xs text-zinc-400 italic">Este collar nunca fue asignado a un animal.</p>
-                      ) : (
-                        <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                          {collarDetail.animalCollars.map((ac) => (
-                            <div
-                              key={ac.id}
-                              className="text-[11px] flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800"
-                            >
-                              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                                Animal: {ac.animal.tag || ac.animal.id.slice(0, 8)}
+                        {/* Farm & Owner */}
+                        <td className="py-3.5 px-3">
+                          {c.farm?.name ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 font-medium text-purple-700 dark:text-purple-300">
+                                <Building2 className="w-3 h-3 shrink-0" />
+                                {c.farm.name}
                               </span>
-                              <span className="text-zinc-400">
-                                {new Date(ac.startAt).toLocaleDateString('es-AR')}{' '}
-                                {ac.endAt ? `→ ${new Date(ac.endAt).toLocaleDateString('es-AR')}` : '(Actual)'}
-                              </span>
+                              {ownerName && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                                  <UserIcon className="w-3 h-3 shrink-0" />
+                                  {ownerName}
+                                </span>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          ) : (
+                            <span className="text-amber-700 dark:text-amber-400 text-[11px] font-medium">
+                              Stock Libre Central
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Telemetry */}
+                        <td className="py-3.5 px-3 whitespace-nowrap">
+                          {!c.lastTelemetryDate ? (
+                            <span className="text-zinc-400 italic text-[11px]">Sin lecturas aún</span>
+                          ) : (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-flex items-center gap-1 font-medium text-zinc-800 dark:text-zinc-200 text-[11px]">
+                                <Radio className="w-3 h-3 text-green-500 animate-pulse shrink-0" />
+                                {new Date(c.lastTelemetryDate).toLocaleString('es-AR')}
+                              </span>
+                              {c.telemetryReadings?.[0] && (
+                                <span className="font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                                  Temp: {c.telemetryReadings[0].temperature.toFixed(1)}°C
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-3.5 pr-4 pl-3 whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Sync fence button */}
+                            {canEditIn(c.farmId) && c.assignedAnimal && !c.isArchived && (
+                              <button
+                                type="button"
+                                onClick={() => void handleSyncFence(c)}
+                                disabled={syncingCollarId === c.id}
+                                className="p-1.5 text-indigo-600 hover:text-indigo-700 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/40 rounded-lg hover:bg-indigo-100 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50"
+                                title={
+                                  c.lastFenceSyncedAt
+                                    ? `Forzar reenvío del cerco (Última sincronización confirmada: ${new Date(c.lastFenceSyncedAt).toLocaleString('es-AR')})`
+                                    : 'Forzar retransmisión de las coordenadas del cerco en el próximo reporte del collar'
+                                }
+                              >
+                                <RefreshCw className={`w-3.5 h-3.5 ${syncingCollarId === c.id ? 'animate-spin' : ''}`} />
+                                <span className="hidden xl:inline">Sincronizar</span>
+                              </button>
+                            )}
+
+                            {/* History Modal button */}
+                            <button
+                              type="button"
+                              onClick={() => setHistoryCollar(c)}
+                              className="p-1.5 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                              title="Ver historial de colocación en animales"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+
+                            {isSuperAdmin && (
+                              <>
+                                {c.isArchived ? (
+                                  <button
+                                    onClick={() => void handleRestore(c)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
+                                    title="Reactivar collar y habilitarlo para uso"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5" />
+                                    Reactivar
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleOpenAssignModal(c)}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200/60 dark:border-green-800/40 transition-colors cursor-pointer"
+                                      title="Asignar collar a un administrador de campo"
+                                    >
+                                      <UserIcon className="w-3.5 h-3.5" />
+                                      <span className="hidden xl:inline">
+                                        {c.farmId ? 'Reasignar' : 'Asignar'}
+                                      </span>
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleOpenEditModal(c)}
+                                      className="p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                      title="Editar ID numérico del hardware (#define COLLAR_ID)"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                      onClick={() => void handleArchive(c)}
+                                      className="p-1.5 text-zinc-400 hover:text-amber-600 dark:hover:text-amber-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                      title="Archivar / Dar de baja collar (conserva historial)"
+                                    >
+                                      <Archive className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+
+                                <button
+                                  onClick={() => void handleDelete(c)}
+                                  className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                                  title="Eliminar o dar de baja collar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
+
+      {/* ========================================================= */}
+      {/* MODAL: HISTORIAL DE COLOCACIÓN EN ANIMALES                */}
+      {/* ========================================================= */}
+      {historyCollar && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setHistoryCollar(null)}
+        >
+          <div
+            className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+                  <History className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-zinc-900 dark:text-white">
+                    Historial de colocación
+                  </h3>
+                  <p className="text-xs text-zinc-500 font-mono">
+                    ID #{historyCollar.id} · {historyCollar.identifier}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHistoryCollar(null)}
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {loadingDetail ? (
+              <div className="py-8 flex flex-col items-center justify-center gap-2 text-zinc-400">
+                <div className="w-6 h-6 border-2 border-zinc-300 dark:border-zinc-700 border-t-green-600 rounded-full animate-spin" />
+                <span className="text-xs">Cargando historial...</span>
+              </div>
+            ) : !collarDetail?.animalCollars || collarDetail.animalCollars.length === 0 ? (
+              <div className="py-6 text-center bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+                <p className="text-xs text-zinc-400 italic">
+                  Este collar nunca fue asignado a un animal.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {collarDetail.animalCollars.map((ac) => (
+                  <div
+                    key={ac.id}
+                    className="text-xs flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800"
+                  >
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                      Animal: {ac.animal.tag || ac.animal.id.slice(0, 8)}
+                    </span>
+                    <span className="text-zinc-500 dark:text-zinc-400 font-mono text-[11px]">
+                      {new Date(ac.startAt).toLocaleDateString('es-AR')}{' '}
+                      {ac.endAt ? `→ ${new Date(ac.endAt).toLocaleDateString('es-AR')}` : '→ Actual'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setHistoryCollar(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================= */}
       {/* MODAL: REGISTRAR NUEVO COLLAR EN STOCK (SUPERADMIN)        */}
