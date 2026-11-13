@@ -402,8 +402,23 @@ export class AlertsService {
         }
       }
 
-      const saved = await this.prisma.healthPrediction.create({
-        data: {
+      const saved = await this.prisma.healthPrediction.upsert({
+        where: {
+          animalId_predictedEvent_windowEndAt: {
+            animalId,
+            predictedEvent: eventName,
+            windowEndAt: windowEnd,
+          },
+        },
+        update: {
+          probability: prediction.probability,
+          threshold,
+          detected: isDetected,
+          horizonHours: 6,
+          windowReadingsCount: window.blocksWithData,
+          alertId,
+        },
+        create: {
           animalId,
           predictedEvent: eventName,
           probability: prediction.probability,
