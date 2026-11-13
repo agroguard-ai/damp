@@ -9,6 +9,7 @@ import {
 } from '../generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcryptjs';
+import { buildMlWindow, type RawReading } from '../src/iot/ml-window';
 
 const connectionString =
   process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5435/damp_db?schema=public';
@@ -24,6 +25,75 @@ const FARM_UTC_OFFSET_MS = -180 * 60 * 1000; // UTC-3 Argentina
 function blockStartFor(date: Date): Date {
   const localMs = date.getTime() + FARM_UTC_OFFSET_MS;
   return new Date(Math.floor(localMs / BLOCK_MS) * BLOCK_MS - FARM_UTC_OFFSET_MS);
+}
+
+/** Desplaza una coordenada (lat, lng) una distancia en metros en un ángulo aleatorio */
+function moveByMeters(lat: number, lng: number, meters: number, angleRad: number): [number, number] {
+  const dLat = (meters * Math.cos(angleRad)) / 111_111;
+  const cosLat = Math.cos((lat * Math.PI) / 180) || 1;
+  const dLng = (meters * Math.sin(angleRad)) / (111_111 * cosLat);
+  return [lat + dLat, lng + dLng];
+}
+
+const ML_SEED_BASE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const ML_SEED_THRESHOLDS: Record<string, number> = {
+  fiebre: 0.35,
+  celo: 0.5,
+  inactividad: 0.4,
+  anomalia: 0.4,
+};
+const ML_EVENT_LABELS: Record<string, string> = {
+  fiebre: 'fiebre',
+  celo: 'celo',
+  inactividad: 'inactividad prolongada',
+  anomalia: 'anomalía de comportamiento',
+};
+
+async function checkMlServiceOnline(): Promise<boolean> {
+  try {
+    const res = await fetch(`${ML_SEED_BASE_URL}/health`, { signal: AbortSignal.timeout(1500) });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { model_loaded?: boolean };
+    return Boolean(body.model_loaded);
+  } catch {
+    return false;
+  }
+}
+
+async function predictWithMlService(
+  animalId: string,
+  sex: Sex,
+  readings: RawReading[],
+  windowEnd: Date
+): Promise<Record<string, { probability: number; threshold: number; detected: boolean }> | null> {
+  try {
+    const window = buildMlWindow(readings, new Date(windowEnd.getTime() - 1));
+    if (window.blocksWithData < 36) return null;
+    const res = await fetch(`${ML_SEED_BASE_URL}/predict/health`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ animal_id: animalId, sex, readings: window.blocks }),
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      ready?: boolean;
+      events?: Record<string, { probability: number; threshold?: number; detected?: boolean }>;
+    };
+    if (!body.ready || !body.events) return null;
+    const out: Record<string, { probability: number; threshold: number; detected: boolean }> = {};
+    for (const [k, v] of Object.entries(body.events)) {
+      const threshold = v.threshold ?? ML_SEED_THRESHOLDS[k] ?? 0.5;
+      out[k] = {
+        probability: Number(v.probability.toFixed(4)),
+        threshold,
+        detected: v.detected ?? v.probability >= threshold,
+      };
+    }
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 /** Generador pseudoaleatorio determinístico para reproducibilidad */
@@ -937,6 +1007,11 @@ async function main() {
   await prisma.alert.createMany({ data: historicalAlertsData });
 
   // 11.6 Predicciones del modelo de IA (HealthPrediction) para la ventana actual de 24h (48 bloques)
+  const mlOnline = await checkMlServiceOnline();
+  if (mlOnline) {
+    console.log('ml-service detectado online: sembrando predicciones reales del modelo para consistencia con "Forzar predicción".');
+  }
+
   const healthPredictionsData: {
     animalId: string;
     predictedEvent: string;
@@ -955,38 +1030,64 @@ async function main() {
     const isFeverAnimal = i === 2; // ER-1003
     const isEstrusAnimal = i === 5; // ER-1006
 
-    const predictionsForAnimal = [
+    const animalReadings: RawReading[] = mlOnline
+      ? allTelemetryReadings
+          .filter((r) => r.collarId === animal.collarId)
+          .map((r) => ({
+            temperature: r.temperature,
+            latitude: r.latitude,
+            longitude: r.longitude,
+            timestamp: r.timestamp,
+          }))
+      : [];
+
+    const mlEvents = mlOnline ? await predictWithMlService(animal.id, animal.sex, animalReadings, latestWindowEnd) : null;
+
+    const fallbackPredictions = [
       {
         predictedEvent: 'fiebre',
         probability: isFeverAnimal ? 0.91 : 0.08 + (i % 3) * 0.03,
-        threshold: 0.65,
+        threshold: 0.35,
         detected: isFeverAnimal,
-        alertId: isFeverAnimal ? mlFeverAlert.id : null,
       },
       {
         predictedEvent: 'celo',
         probability: isEstrusAnimal ? 0.86 : animal.sex === Sex.FEMALE ? 0.14 + (i % 4) * 0.04 : 0.01,
-        threshold: 0.6,
+        threshold: 0.5,
         detected: isEstrusAnimal,
-        alertId: isEstrusAnimal ? mlEstrusAlert.id : null,
       },
       {
         predictedEvent: 'inactividad',
         probability: 0.11 + (i % 4) * 0.03,
-        threshold: 0.65,
+        threshold: 0.4,
         detected: false,
-        alertId: null,
       },
       {
         predictedEvent: 'anomalia',
-        probability: i === 3 ? 0.58 : 0.09 + (i % 3) * 0.02,
-        threshold: 0.7,
+        probability: i === 3 ? 0.34 : 0.05 + (i % 3) * 0.02,
+        threshold: 0.4,
         detected: false,
-        alertId: null,
       },
     ];
 
+    const predictionsForAnimal = mlEvents
+      ? Object.entries(mlEvents).map(([predictedEvent, ev]) => ({
+          predictedEvent,
+          probability: ev.probability,
+          threshold: ev.threshold,
+          detected: ev.detected,
+        }))
+      : fallbackPredictions;
+
     for (const pred of predictionsForAnimal) {
+      let alertId: string | null = null;
+      if (pred.detected) {
+        if (isFeverAnimal && pred.predictedEvent === 'fiebre') {
+          alertId = mlFeverAlert.id;
+        } else if (isEstrusAnimal && pred.predictedEvent === 'celo') {
+          alertId = mlEstrusAlert.id;
+        }
+      }
       healthPredictionsData.push({
         animalId: animal.id,
         predictedEvent: pred.predictedEvent,
@@ -996,7 +1097,7 @@ async function main() {
         horizonHours: 6,
         windowReadingsCount: 48,
         windowEndAt: latestWindowEnd,
-        alertId: pred.alertId,
+        alertId,
         createdAt: new Date(nowMs - 20 * 60 * 1000),
       });
     }
@@ -1202,6 +1303,8 @@ async function main() {
   });
 
   // 3 animales monitoreados con evoluciones diferenciadas + 1 animal libre sin collar
+  // Las curvas de fallback están calibradas con la salida real de ml-service para que al forzar predicción
+  // solo haya un reajuste mínimo (~1-2%) sin saltos bruscos ni cambios de evento.
   const mjMonitoredSpecs = [
     {
       tag: 'MJ-201',
@@ -1210,10 +1313,14 @@ async function main() {
       weightKg: 430,
       ageMonths: 27,
       collarIdentifier: 'COLLAR-MJ-01',
-      targetEvent: 'inactividad' as const,
-      threshold: 0.65,
-      probabilities: [0.14, 0.21, 0.29, 0.38, 0.46, 0.54, 0.61, 0.88],
-      alertMessage: '[IA:INACTIVIDAD] Modelo predictivo: posible inactividad prolongada en las próximas 6hs (confianza 88%).',
+      targetEvent: 'celo' as const,
+      eventCurves: {
+        fiebre: [0.06, 0.07, 0.08, 0.07, 0.08, 0.09, 0.08, 0.09],
+        celo: [0.12, 0.17, 0.23, 0.29, 0.36, 0.42, 0.48, 0.54],
+        inactividad: [0.14, 0.16, 0.19, 0.21, 0.24, 0.26, 0.27, 0.28],
+        anomalia: [0.03, 0.04, 0.03, 0.05, 0.04, 0.03, 0.04, 0.03],
+      } as Record<string, number[]>,
+      alertMessage: '[IA:CELO] Modelo predictivo: posible celo en las próximas 6hs (confianza 54%).',
     },
     {
       tag: 'MJ-202',
@@ -1222,10 +1329,14 @@ async function main() {
       weightKg: 415,
       ageMonths: 25,
       collarIdentifier: 'COLLAR-MJ-02',
-      targetEvent: 'celo' as const,
-      threshold: 0.6,
-      probabilities: [0.12, 0.19, 0.27, 0.35, 0.43, 0.5, 0.56, 0.86],
-      alertMessage: '[IA:CELO] Modelo predictivo: posible celo en las próximas 6hs (confianza 86%).',
+      targetEvent: 'fiebre' as const,
+      eventCurves: {
+        fiebre: [0.1, 0.16, 0.22, 0.29, 0.37, 0.45, 0.53, 0.61],
+        celo: [0.05, 0.04, 0.05, 0.04, 0.03, 0.04, 0.03, 0.03],
+        inactividad: [0.04, 0.03, 0.04, 0.03, 0.02, 0.03, 0.02, 0.02],
+        anomalia: [0.08, 0.12, 0.17, 0.22, 0.28, 0.34, 0.4, 0.46],
+      } as Record<string, number[]>,
+      alertMessage: '[IA:FIEBRE] Modelo predictivo: posible fiebre en las próximas 6hs (confianza 61%).',
     },
     {
       tag: 'MJ-203',
@@ -1235,9 +1346,13 @@ async function main() {
       ageMonths: 31,
       collarIdentifier: 'COLLAR-MJ-03',
       targetEvent: 'fiebre' as const,
-      threshold: 0.65,
-      probabilities: [0.1, 0.17, 0.25, 0.34, 0.44, 0.52, 0.6, 0.91],
-      alertMessage: '[IA:FIEBRE] Modelo predictivo: posible fiebre en las próximas 6hs (confianza 91%).',
+      eventCurves: {
+        fiebre: [0.1, 0.18, 0.27, 0.38, 0.5, 0.64, 0.8, 0.96],
+        celo: [0.03, 0.04, 0.03, 0.05, 0.04, 0.03, 0.04, 0.04],
+        inactividad: [0.02, 0.01, 0.02, 0.01, 0.01, 0.02, 0.01, 0.0],
+        anomalia: [0.03, 0.02, 0.03, 0.02, 0.02, 0.01, 0.02, 0.01],
+      } as Record<string, number[]>,
+      alertMessage: '[IA:FIEBRE] Modelo predictivo: posible fiebre en las próximas 6hs (confianza 96%).',
     },
   ];
 
@@ -1327,78 +1442,134 @@ async function main() {
       },
     });
 
-    // Generar telemetría de 72h dentro de mjActiveGeofence acorde al patrón del animal
+    // Generar telemetría de 72h dentro de mjActiveGeofence acorde al patrón del animal (en metros reales por bloque)
     const rng = createSeededRng(20261112 + idx * 773);
     let lat = -32.72 + (idx - 1) * 0.0012;
     let lng = -62.124 + (idx - 1) * 0.0014;
+    const animalReadings: RawReading[] = [];
 
     for (const tMs of mjTimestamps) {
       const hoursBeforeNow = (nowMs - tMs) / HOUR_MS;
-      const isStagnantWindow = spec.targetEvent === 'inactividad' && hoursBeforeNow <= 18;
-      const stepScale = isStagnantWindow ? 0.00003 : spec.targetEvent === 'celo' && hoursBeforeNow <= 18 ? 0.00055 : 0.00035;
+      const isStagnantWindow = idx === 0 && hoursBeforeNow <= 18;
+      let meters = 24 + (rng() - 0.5) * 6;
+      if (isStagnantWindow) {
+        meters = 3.5 + rng() * 2;
+      } else if (idx === 1 && hoursBeforeNow <= 18) {
+        meters = 58 + (rng() - 0.5) * 10;
+      } else if (idx === 2 && hoursBeforeNow <= 18) {
+        meters = 33 + (rng() - 0.5) * 6;
+      }
 
-      lat = Math.max(-32.723, Math.min(-32.717, lat + (rng() - 0.5) * stepScale));
-      lng = Math.max(-62.1275, Math.min(-62.1205, lng + (rng() - 0.5) * stepScale));
+      const [nextLat, nextLng] = moveByMeters(lat, lng, meters, rng() * Math.PI * 2);
+      lat = Math.max(-32.723, Math.min(-32.717, nextLat));
+      lng = Math.max(-62.1275, Math.min(-62.1205, nextLng));
 
       let temp = 38.4 + circadianTempOffset(new Date(tMs)) + (rng() - 0.5) * 0.12;
-      if (spec.targetEvent === 'celo' && hoursBeforeNow <= 18) {
+      if (isStagnantWindow) {
+        temp -= 0.25;
+      } else if (idx === 1 && hoursBeforeNow <= 18) {
         temp += 0.35;
-      } else if (spec.targetEvent === 'fiebre' && hoursBeforeNow <= 18) {
+      } else if (idx === 2 && hoursBeforeNow <= 18) {
         const feverIntensity = Math.min(1, (18 - hoursBeforeNow) / 10);
         temp = 38.65 + feverIntensity * 1.45 + (rng() - 0.5) * 0.1;
       }
 
-      mjTelemetryData.push({
+      const reading = {
         collarId: collar.id,
         latitude: Number(lat.toFixed(6)),
         longitude: Number(lng.toFixed(6)),
         temperature: Number(temp.toFixed(2)),
         timestamp: new Date(tMs),
-      });
+      };
+      mjTelemetryData.push(reading);
+      animalReadings.push(reading);
     }
 
-    // Alerta activa vinculada a la última predicción detectada
-    const activeAlert = await prisma.alert.create({
-      data: {
-        animalId: animal.id,
-        type: AlertType.HEALTH,
-        message: spec.alertMessage,
-        isResolved: false,
-        createdAt: new Date(nowMs - 45 * 60 * 1000),
-      },
-    });
-
-    // Evolución de predicciones (8 ventanas * 4 eventos)
+    // Evolución de predicciones (8 ventanas * 4 eventos). Si ml-service está online, usa el modelo real.
     const allEvents = [
-      { key: 'fiebre', threshold: 0.65, base: 0.09 },
-      { key: 'celo', threshold: 0.6, base: spec.sex === Sex.FEMALE ? 0.13 : 0.02 },
-      { key: 'inactividad', threshold: 0.65, base: 0.11 },
-      { key: 'anomalia', threshold: 0.7, base: 0.08 },
+      { key: 'fiebre', threshold: 0.35 },
+      { key: 'celo', threshold: 0.5 },
+      { key: 'inactividad', threshold: 0.4 },
+      { key: 'anomalia', threshold: 0.4 },
     ];
+
+    const mlWindowPredictions: Array<{
+      wEnd: Date;
+      events: Record<string, { probability: number; threshold: number; detected: boolean }> | null;
+    }> = [];
 
     for (let wIdx = 0; wIdx < mjWindowEnds.length; wIdx++) {
       const wEnd = mjWindowEnds[wIdx];
-      const isLastWindow = wIdx === mjWindowEnds.length - 1;
+      const events = mlOnline ? await predictWithMlService(animal.id, spec.sex, animalReadings, wEnd) : null;
+      mlWindowPredictions.push({ wEnd, events });
+    }
 
-      for (const ev of allEvents) {
-        const isTarget = ev.key === spec.targetEvent;
-        const probability = isTarget
-          ? spec.probabilities[wIdx]
-          : Number((ev.base + ((wIdx + idx) % 3) * 0.02).toFixed(2));
-        const detected = isTarget && probability >= ev.threshold;
+    // Determinar alerta activa acorde a la última ventana
+    const lastWindowPred = mlWindowPredictions[mlWindowPredictions.length - 1]?.events;
+    const detectedEntries = lastWindowPred
+      ? Object.entries(lastWindowPred)
+          .filter(([, ev]) => ev.detected)
+          .sort((a, b) => b[1].probability - a[1].probability)
+      : [];
 
-        mjPredictionsData.push({
-          animalId: animal.id,
-          predictedEvent: ev.key,
-          probability,
-          threshold: ev.threshold,
-          detected,
-          horizonHours: 6,
-          windowReadingsCount: 48,
-          windowEndAt: wEnd,
-          alertId: isTarget && isLastWindow ? activeAlert.id : null,
-          createdAt: new Date(wEnd.getTime() + 5 * 60 * 1000),
-        });
+    const topDetected = detectedEntries[0];
+    const alertMessage = topDetected
+      ? `[IA:${topDetected[0].toUpperCase()}] Modelo predictivo: posible ${ML_EVENT_LABELS[topDetected[0]] ?? topDetected[0]} en las próximas 6hs (confianza ${Math.round(topDetected[1].probability * 100)}%).`
+      : spec.alertMessage;
+
+    const activeAlert =
+      !lastWindowPred || topDetected
+        ? await prisma.alert.create({
+            data: {
+              animalId: animal.id,
+              type: AlertType.HEALTH,
+              message: alertMessage,
+              isResolved: false,
+              createdAt: new Date(nowMs - 45 * 60 * 1000),
+            },
+          })
+        : null;
+
+    for (let wIdx = 0; wIdx < mlWindowPredictions.length; wIdx++) {
+      const { wEnd, events } = mlWindowPredictions[wIdx];
+      const isLastWindow = wIdx === mlWindowPredictions.length - 1;
+
+      if (events) {
+        for (const [key, ev] of Object.entries(events)) {
+          const linkAlert = isLastWindow && topDetected && topDetected[0] === key ? activeAlert?.id ?? null : null;
+          mjPredictionsData.push({
+            animalId: animal.id,
+            predictedEvent: key,
+            probability: ev.probability,
+            threshold: ev.threshold,
+            detected: ev.detected,
+            horizonHours: 6,
+            windowReadingsCount: 48,
+            windowEndAt: wEnd,
+            alertId: linkAlert,
+            createdAt: new Date(wEnd.getTime() + 5 * 60 * 1000),
+          });
+        }
+      } else {
+        for (const ev of allEvents) {
+          const isTarget = ev.key === spec.targetEvent;
+          const curve = spec.eventCurves[ev.key] ?? [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05];
+          const probability = curve[wIdx] ?? 0.05;
+          const detected = probability >= ev.threshold;
+
+          mjPredictionsData.push({
+            animalId: animal.id,
+            predictedEvent: ev.key,
+            probability,
+            threshold: ev.threshold,
+            detected,
+            horizonHours: 6,
+            windowReadingsCount: 48,
+            windowEndAt: wEnd,
+            alertId: isTarget && isLastWindow ? activeAlert?.id ?? null : null,
+            createdAt: new Date(wEnd.getTime() + 5 * 60 * 1000),
+          });
+        }
       }
     }
   }
