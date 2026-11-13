@@ -1042,21 +1042,6 @@ function AnimalsContent() {
                             >
                               <HeartPulse className="w-4 h-4" />
                             </button>
-
-                            {canEdit && animal.status === 'ACTIVE' && (
-                              <Select
-                                value=""
-                                onChange={(v) => {
-                                  if (v) handleArchive(animal.id, v);
-                                }}
-                                placeholder="Baja..."
-                                size="sm"
-                                options={[
-                                  { value: 'SOLD', label: 'Vendido' },
-                                  { value: 'DEAD', label: 'Fallecido' },
-                                ]}
-                              />
-                            )}
                           </td>
                         </tr>
                       );

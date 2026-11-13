@@ -2,10 +2,11 @@
 
 import { useState, useMemo, type ComponentType, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import { X, Undo2, RotateCcw, MousePointerClick, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Undo2, RotateCcw, MousePointerClick, AlertCircle, CheckCircle2, List } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { calculatePolygonAreaHa } from '@/lib/geo/area';
 import { isPolygonInsideBoundary, type LatLngTuple } from '@/lib/geo/spatial';
+import VertexListPanel from '@/components/farms/VertexListPanel';
 import type { FenceMapProps } from './FenceMap';
 
 const FenceMap = dynamic(() => import('./FenceMap'), { ssr: false });
@@ -77,6 +78,7 @@ export default function PolygonFormModal({
   const [name, setName] = useState(initialName);
   const [points, setPoints] = useState<[number, number][]>(initialPoints);
   const [selectedVertexIndex, setSelectedVertexIndex] = useState<number | null>(null);
+  const [showVerticesPanel, setShowVerticesPanel] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const areaHa = useMemo(() => calculatePolygonAreaHa(points), [points]);
@@ -123,7 +125,7 @@ export default function PolygonFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="polygon-modal-title"
-        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-6xl max-h-[96vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-7xl max-h-[96vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       >
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between gap-4 shrink-0">
@@ -138,22 +140,37 @@ export default function PolygonFormModal({
               {subtitle && <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{subtitle}</p>}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-            title="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowVerticesPanel((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                showVerticesPanel
+                  ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 shadow-xs'
+                  : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+              }`}
+              title={showVerticesPanel ? 'Ocultar listado de vértices' : 'Mostrar listado de vértices'}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Vértices ({points.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              title="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="flex-1 min-h-0 overflow-y-auto grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px]"
+          className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row"
         >
           {/* Mapa */}
-          <div className="p-3 lg:p-4">
+          <div className="flex-1 min-w-0 p-3 lg:p-4">
             <FenceMap
               {...mapContext}
               heightClassName="h-[45vh] lg:h-[64vh]"
@@ -169,8 +186,18 @@ export default function PolygonFormModal({
             />
           </div>
 
+          {showVerticesPanel && (
+            <VertexListPanel
+              points={points}
+              onChangePoints={setPoints}
+              selectedVertexIndex={selectedVertexIndex}
+              onSelectVertex={setSelectedVertexIndex}
+              defaultCenter={mapContext.center}
+            />
+          )}
+
           {/* Datos */}
-          <div className="p-5 lg:border-l border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800 flex flex-col gap-5">
+          <div className="w-full lg:w-80 shrink-0 p-5 lg:border-l border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800 flex flex-col gap-5 lg:overflow-y-auto">
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="polygon-name"

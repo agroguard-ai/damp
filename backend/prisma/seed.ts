@@ -1141,13 +1141,6 @@ async function main() {
     [-32.7235, -62.128],
   ];
 
-  const mjInactiveGeofencePolygon: [number, number][] = [
-    [-32.7237, -62.1285],
-    [-32.7237, -62.1195],
-    [-32.7247, -62.1195],
-    [-32.7247, -62.1285],
-  ];
-
   const thirtyDaysAgo = new Date(nowMs - 30 * DAY_MS);
 
   const mjFarm = await prisma.farm.create({
@@ -1204,17 +1197,6 @@ async function main() {
       polygonCoordinates: mjActiveGeofencePolygon,
       active: true,
       activatedAt: thirtyDaysAgo,
-      createdAt: thirtyDaysAgo,
-    },
-  });
-
-  const mjInactiveGeofence = await prisma.geofence.create({
-    data: {
-      farmId: mjFarm.id,
-      name: 'Potrero Sur - Reserva (Para Asignación)',
-      pastureType: 'Pastizal Natural',
-      polygonCoordinates: mjInactiveGeofencePolygon,
-      active: false,
       createdAt: thirtyDaysAgo,
     },
   });
@@ -1424,15 +1406,18 @@ async function main() {
   await prisma.telemetryReading.createMany({ data: mjTelemetryData });
   await prisma.healthPrediction.createMany({ data: mjPredictionsData });
 
-  // Animal libre y collar libre sin datos listos para vincular y asignar a un cerco
+  // Animal libre y collar asignado pero con última lectura reciente POR FUERA del cerco virtual activo
+  // Coordenadas: lat -32.7220, lng -62.1186 (dentro del campo, pero al este del cerco cuyo límite es -62.1200)
+  // Esto permite probar en vivo la validación al intentar asignar este animal al cerco activo.
+  const mjOutsideReadingDate = new Date(nowMs - 12 * 60 * 1000); // 12 minutos atrás (reciente)
   const mjFreeCollar = await prisma.collar.create({
     data: {
       identifier: 'COLLAR-MJ-LIBRE-01',
       status: CollarStatus.AVAILABLE,
       isArchived: false,
-      fenceNotificationPending: true,
+      fenceNotificationPending: false,
       lastFenceSyncedAt: null,
-      lastTelemetryDate: null,
+      lastTelemetryDate: mjOutsideReadingDate,
       farmId: mjFarm.id,
       createdAt: thirtyDaysAgo,
     },
@@ -1454,6 +1439,26 @@ async function main() {
     },
   });
 
+  // Vincular collar a MJ-204
+  await prisma.animalCollar.create({
+    data: {
+      animalId: mjFreeAnimal.id,
+      collarId: mjFreeCollar.id,
+      startAt: thirtyDaysAgo,
+    },
+  });
+
+  // Generar lectura de telemetría reciente que sitúa al animal fuera del cerco activo (al este)
+  await prisma.telemetryReading.create({
+    data: {
+      collarId: mjFreeCollar.id,
+      latitude: -32.7220,
+      longitude: -62.1186,
+      temperature: 38.5,
+      timestamp: mjOutsideReadingDate,
+    },
+  });
+
   console.log('\n============================================================');
   console.log('✅ SEED COMPLETADO EXITOSAMENTE');
   console.log('============================================================');
@@ -1469,10 +1474,10 @@ async function main() {
   console.log('------------------------------------------------------------');
   console.log(`👤 Productor 2:     Santiago Morín (${santiagoUser.email} / clave: Santiago1234!)`);
   console.log(`🌾 Campo 2:         ${mjFarm.name} (${mjFarm.province} - ${mjFarm.location}, ${mjFarm.totalAreaHa} Ha)`);
-  console.log(`⚡ Cercos:          ${mjActiveGeofence.name} (Activo) | ${mjInactiveGeofence.name} (Inactivo)`);
+  console.log(`⚡ Cerco:           ${mjActiveGeofence.name} (Activo)`);
   console.log(`📡 Gateway LoRa:    ${mjGateway.name} (ONLINE)`);
   console.log(`🐄 Ganados IA:      MJ-201 (Inactividad), MJ-202 (Celo), MJ-203 (Fiebre) con ${mjPredictionsData.length} predicciones`);
-  console.log(`🆓 Disponible:      Animal ${mjFreeAnimal.tag} + Collar ${mjFreeCollar.identifier} (sin datos, listo para vincular/asignar)`);
+  console.log(`⚠️ Prueba Validación: Animal ${mjFreeAnimal.tag} con collar ${mjFreeCollar.identifier} ubicado fuera del cerco activo (lat: -32.7220, lng: -62.1186)`);
   console.log('============================================================\n');
 }
 
