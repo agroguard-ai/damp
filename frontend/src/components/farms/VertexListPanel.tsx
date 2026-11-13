@@ -37,7 +37,11 @@ function CoordInput({ label, value, min, max, disabled, onCommit }: CoordInputPr
     if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
       setText(Number.isFinite(value) ? value.toFixed(6) : '');
     } else {
-      setText(parsed.toFixed(6));
+      const rounded = Number(parsed.toFixed(6));
+      setText(rounded.toFixed(6));
+      if (rounded !== value) {
+        onCommit(rounded);
+      }
     }
   };
 
@@ -46,7 +50,7 @@ function CoordInput({ label, value, min, max, disabled, onCommit }: CoordInputPr
       <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{label}</span>
       <input
         type="number"
-        step="0.00001"
+        step="any"
         min={min}
         max={max}
         disabled={disabled}
