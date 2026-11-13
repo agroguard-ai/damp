@@ -21,7 +21,7 @@ import { getProvinceCenter } from '@/data/argentinaLocations';
 import { useAuth } from '@/context/AuthContext';
 import { useFarmPermissions } from '@/hooks/useFarmPermissions';
 import { EmulationRequiredState } from '@/components/roles/EmulationRequiredState';
-import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3, Eye } from 'lucide-react';
+import { Zap, ArrowLeft, Radio, Tractor, Power, Plus, RotateCw, Edit3, Eye, Check, X, AlertCircle } from 'lucide-react';
 import type { Geofence } from '@/types';
 
 const PolygonFormModal = dynamic(() => import('@/components/maps/PolygonFormModal'), { ssr: false });
@@ -62,7 +62,7 @@ function CercosContent() {
     () => (activeFarmId ? animalsApi.getAll({ farmId: activeFarmId, status: 'ACTIVE' }) : Promise.resolve([])),
     [activeFarmId]
   );
-  const { data: animals = [] } = useApi(fetchAnimals, [activeFarmId]);
+  const { data: animals = [], refetch: refetchAnimals } = useApi(fetchAnimals, [activeFarmId]);
 
   const fetchGeofences = useCallback(
     () => (activeFarmId ? geofencesApi.getByFarm(activeFarmId) : Promise.resolve([])),
@@ -85,8 +85,33 @@ function CercosContent() {
   const [selectedAnimalIds, setSelectedAnimalIds] = useState<string[]>([]);
   const [activateOnSave, setActivateOnSave] = useState(false);
 
+  // Asignación rápida de cerco por animal (clic en animal -> clic en cerco)
+  const [quickAnimalId, setQuickAnimalId] = useState<string | null>(null);
+  const [quickAssigning, setQuickAssigning] = useState(false);
+  const [quickAssignError, setQuickAssignError] = useState<string | null>(null);
+
   // Solo se pueden encerrar animales con collar activo (el backend lo exige)
   const animalsWithCollar = useMemo(() => animals.filter((a) => a.animalCollars?.length > 0), [animals]);
+  const selectedQuickAnimal = useMemo(
+    () => animalsWithCollar.find((a) => a.id === quickAnimalId) ?? null,
+    [animalsWithCollar, quickAnimalId]
+  );
+
+  const handleQuickAssignGeofence = async (animalId: string, geofenceId: string | null) => {
+    setQuickAssigning(true);
+    setQuickAssignError(null);
+    try {
+      const res = await animalsApi.updateGeofence(animalId, { geofenceId });
+      toast.success(res.message || 'Cerco actualizado correctamente');
+      await Promise.all([refetchAnimals(), refetchGeofences()]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'No se pudo asignar el cerco virtual';
+      setQuickAssignError(message);
+      toast.error(message);
+    } finally {
+      setQuickAssigning(false);
+    }
+  };
 
   const farmProvince = activeFarm?.province;
   const mapCenter = useMemo<[number, number]>(() => {
@@ -307,7 +332,17 @@ function CercosContent() {
           {/* Mapa a todo el ancho (solo visualización; se dibuja dentro del modal) */}
           <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-2 rounded-2xl shadow-xs">
             {activeFarm && (
-              <FarmMapView key={activeFarm.id} farm={activeFarm} geofences={geofences} center={mapCenter} />
+              <FarmMapView
+                key={activeFarm.id}
+                farm={activeFarm}
+                geofences={geofences}
+                center={mapCenter}
+                canEdit={canEdit}
+                onGeofenceAssigned={() => {
+                  void refetchGeofences();
+                  void refetchAnimals();
+                }}
+              />
             )}
           </div>
 
@@ -482,6 +517,163 @@ function CercosContent() {
               </div>
             )}
           </div>
+
+          {animalsWithCollar.length > 0 && (
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
+              <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                    <Radio className="w-4 h-4 text-emerald-500" />
+                    <span>Animales con collar ({animalsWithCollar.length})</span>
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                    {canEdit
+                      ? 'Hacé clic en un animal y luego elegí el cerco al que querés asignarlo.'
+                      : 'Vista de animales con collar activo y su cerco asignado.'}
+                  </p>
+                </div>
+                {selectedQuickAnimal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickAnimalId(null);
+                      setQuickAssignError(null);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Deseleccionar</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="p-4 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {animalsWithCollar.map((animal) => {
+                    const isSelected = quickAnimalId === animal.id;
+                    const collarIdentifier = animal.animalCollars?.[0]?.collar?.identifier;
+                    const activeFence = animal.animalGeofences?.find((ag) => !ag.endAt)?.geofence ?? null;
+                    return (
+                      <button
+                        key={animal.id}
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => {
+                          setQuickAnimalId(isSelected ? null : animal.id);
+                          setQuickAssignError(null);
+                        }}
+                        className={`text-left p-3 rounded-xl border transition-all ${
+                          canEdit ? 'cursor-pointer' : 'cursor-default'
+                        } ${
+                          isSelected
+                            ? 'border-cyan-500 bg-cyan-50/70 dark:bg-cyan-950/30 ring-2 ring-cyan-500/20'
+                            : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-950/30'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-sm text-zinc-900 dark:text-zinc-100 truncate">
+                              {animal.tag || 'Sin caravana'}
+                              {animal.breed ? ` · ${animal.breed}` : ''}
+                            </p>
+                            {collarIdentifier && (
+                              <p className="text-[11px] font-mono text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                Collar {collarIdentifier}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                              activeFence
+                                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+                            }`}
+                          >
+                            {activeFence?.name ?? 'Sin cerco'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {canEdit && selectedQuickAnimal && (() => {
+                  const currentGeofenceId =
+                    selectedQuickAnimal.animalGeofences?.find((ag) => !ag.endAt)?.geofenceId ?? null;
+                  return (
+                    <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-zinc-950/60 border border-cyan-500/30 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                          Seleccioná el cerco para{' '}
+                          <span className="text-cyan-600 dark:text-cyan-400">
+                            {selectedQuickAnimal.tag || 'Sin caravana'}
+                            {selectedQuickAnimal.breed ? ` (${selectedQuickAnimal.breed})` : ''}
+                          </span>
+                          :
+                        </p>
+                        {quickAssigning && (
+                          <span className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">
+                            Actualizando cerco...
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {geofences.map((fence) => {
+                          const isCurrent = currentGeofenceId === fence.id;
+                          return (
+                            <button
+                              key={fence.id}
+                              type="button"
+                              disabled={quickAssigning || !fence.active || isCurrent}
+                              onClick={() => handleQuickAssignGeofence(selectedQuickAnimal.id, fence.id)}
+                              title={
+                                !fence.active
+                                  ? 'El cerco está inactivo'
+                                  : isCurrent
+                                    ? 'Cerco actual del animal'
+                                    : `Asignar a ${fence.name}`
+                              }
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                                isCurrent
+                                  ? 'bg-emerald-600 text-white border-emerald-600'
+                                  : fence.active
+                                    ? 'bg-white dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:border-cyan-500 hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer'
+                                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-400 cursor-not-allowed opacity-60'
+                              }`}
+                            >
+                              {isCurrent && <Check className="w-3.5 h-3.5" />}
+                              <span>{fence.name}</span>
+                              {!fence.active && <span className="text-[10px]">(Inactivo)</span>}
+                            </button>
+                          );
+                        })}
+
+                        {currentGeofenceId && (
+                          <button
+                            type="button"
+                            disabled={quickAssigning}
+                            onClick={() => handleQuickAssignGeofence(selectedQuickAnimal.id, null)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 dark:border-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Quitar cerco</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {quickAssignError && (
+                        <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-xs text-red-700 dark:text-red-300">
+                          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <span>{quickAssignError}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </>
       )}
 

@@ -82,6 +82,8 @@ export interface LiveTrackingMapProps {
   /** Sensibilidad / peso de cada lectura en el mapa de calor (ej. 0.1 a 1.5). */
   heatmapIntensity?: number;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
+  /** Callback para asignar o quitar rápidamente un cerco virtual desde el popup del animal. */
+  onAssignAnimalGeofence?: (animalId: string, geofenceId: string | null) => Promise<void>;
   /** Clases de altura del contenedor (por defecto 550px). */
   heightClassName?: string;
 }
@@ -317,6 +319,7 @@ export default function LiveTrackingMap({
   showHeatmap = false,
   heatmapIntensity,
   onSelectAnimalForTrajectory,
+  onAssignAnimalGeofence,
   heightClassName = 'h-137.5',
 }: LiveTrackingMapProps) {
   const [currentLayer, setCurrentLayer] = useState<MapLayerType>('satellite');
@@ -462,7 +465,9 @@ export default function LiveTrackingMap({
             animals={animals}
             referenceTime={animalsReferenceTime}
             farmId={farmId}
+            geofences={geofences}
             onSelectAnimalForTrajectory={onSelectAnimalForTrajectory}
+            onAssignAnimalGeofence={onAssignAnimalGeofence}
           />
         )}
 

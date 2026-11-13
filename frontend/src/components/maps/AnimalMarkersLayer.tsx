@@ -3,7 +3,8 @@
 import { useState, useMemo } from 'react';
 import { Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import { BrainCircuit, FileText, Route, Thermometer, TriangleAlert } from 'lucide-react';
+import { BrainCircuit, FileText, Route, Thermometer, TriangleAlert, Zap } from 'lucide-react';
+import { Select } from '@/components/ui/Select';
 
 const PAW_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4" r="2"/><circle cx="18" cy="8" r="2"/><circle cx="20" cy="16" r="2"/><path d="M9 10a5 5 0 0 1 5 5v3.5a3.5 3.5 0 0 1-6.84 1.045Q6.52 17.48 4.46 16.84A3.5 3.5 0 0 1 5.5 10Z"/></svg>';
@@ -66,7 +67,7 @@ export interface MapAnimal {
   status: string;
   hasActiveAlert?: boolean;
   animalType: { name: string; species: string } | null;
-  geofence?: { name: string } | null;
+  geofence?: { id?: string; name: string } | null;
   latestReading: {
     latitude: number;
     longitude: number;
@@ -93,15 +94,20 @@ export default function AnimalMarkersLayer({
   animals,
   referenceTime,
   farmId,
+  geofences,
   onSelectAnimalForTrajectory,
+  onAssignAnimalGeofence,
 }: {
   animals: MapAnimal[];
   referenceTime: number;
   farmId?: string;
+  geofences?: Array<{ id: string; name: string; active: boolean }>;
   onSelectAnimalForTrajectory?: (animalId: string) => void;
+  onAssignAnimalGeofence?: (animalId: string, geofenceId: string | null) => Promise<void>;
 }) {
   const map = useMap();
   const [zoom, setZoom] = useState(map.getZoom());
+  const [assigningAnimalId, setAssigningAnimalId] = useState<string | null>(null);
 
   useMapEvents({
     zoomend() {
@@ -214,6 +220,39 @@ export default function AnimalMarkersLayer({
                   </div>
 
                   <div className="pt-2 border-t border-zinc-100 flex flex-col gap-2">
+                    {onAssignAnimalGeofence && geofences && geofences.length > 0 && (
+                      <div className="space-y-1" onMouseDown={(e) => e.stopPropagation()}>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                          Asignar cerco rápido
+                        </label>
+                        <Select
+                          size="sm"
+                          value={animal.geofence?.id ?? ''}
+                          disabled={assigningAnimalId === animal.id}
+                          placeholder="Sin cerco virtual"
+                          options={[
+                            { value: '', label: 'Sin cerco virtual' },
+                            ...geofences.map((g) => ({
+                              value: g.id,
+                              label: g.name,
+                              icon: Zap,
+                              badge: g.active ? 'Activo' : 'Inactivo',
+                              disabled: !g.active,
+                            })),
+                          ]}
+                          onChange={async (val) => {
+                            const nextId = val || null;
+                            if (nextId === (animal.geofence?.id ?? null)) return;
+                            setAssigningAnimalId(animal.id);
+                            try {
+                              await onAssignAnimalGeofence(animal.id, nextId);
+                            } finally {
+                              setAssigningAnimalId(null);
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
                     {onSelectAnimalForTrajectory && (
                       <button
                         type="button"

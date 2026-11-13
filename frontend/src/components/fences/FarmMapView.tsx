@@ -6,6 +6,8 @@ import { RotateCcw, Zap } from 'lucide-react';
 import { useAnimalsToggle } from '@/hooks/useAnimalLocations';
 import { parsePolygon } from '@/lib/geo/spatial';
 import { Select } from '@/components/ui/Select';
+import { animalsApi } from '@/lib/api/animals';
+import { useToast } from '@/context/ToastContext';
 import type { Farm, Geofence } from '@/types';
 
 const LiveTrackingMap = dynamic(() => import('@/components/maps/LiveTrackingMap'), { ssr: false });
@@ -17,6 +19,8 @@ interface FarmMapViewProps {
   farm: Pick<Farm, 'id' | 'name' | 'polygonCoordinates'> & Partial<Pick<Farm, 'province' | 'location'>>;
   geofences: Geofence[];
   center?: [number, number];
+  canEdit?: boolean;
+  onGeofenceAssigned?: () => void;
 }
 
 /**
@@ -24,7 +28,8 @@ interface FarmMapViewProps {
  * del mapa, apagado por defecto): solo con la capa prendida se consultan posiciones.
  * "Ver recorrido" en un animal abre la ventana de Recorridos con ese animal elegido.
  */
-export default function FarmMapView({ farm, geofences, center }: FarmMapViewProps) {
+export default function FarmMapView({ farm, geofences, center, canEdit = false, onGeofenceAssigned }: FarmMapViewProps) {
+  const { toast } = useToast();
   const [filterGeofenceId, setFilterGeofenceId] = useState('');
   const [trajectoryAnimalId, setTrajectoryAnimalId] = useState<string | null>(null);
 
@@ -115,6 +120,22 @@ export default function FarmMapView({ farm, geofences, center }: FarmMapViewProp
         animalsReferenceTime={fetchedAt}
         animalsToggle={herd.control}
         onSelectAnimalForTrajectory={setTrajectoryAnimalId}
+        onAssignAnimalGeofence={
+          canEdit
+            ? async (animalId, geofenceId) => {
+                try {
+                  const res = await animalsApi.updateGeofence(animalId, { geofenceId });
+                  toast.success(res.message || 'Cerco actualizado correctamente');
+                  await herd.refetch();
+                  onGeofenceAssigned?.();
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'No se pudo asignar el cerco virtual';
+                  toast.error(message);
+                  throw err;
+                }
+              }
+            : undefined
+        }
         heightClassName="h-[55vh] min-h-96"
       />
 
